@@ -1,0 +1,10 @@
+---
+type: string
+description: The error type
+enum:
+  - BAD REQUEST
+  - NOT FOUND
+  - NOT IMPLEMENTED
+  - INTERNAL SERVER ERROR
+
+example: BAD REQUEST

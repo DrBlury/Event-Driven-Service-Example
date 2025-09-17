@@ -1,0 +1,23 @@
+---
+get:
+  tags:
+    - APIInfo
+  summary: Get status of the service
+  description: Retrieve the status of the service
+  operationId: getStatus
+  responses:
+    '200':
+      description: The status of the service
+      content:
+        application/json:
+          schema:
+            $ref: '../../schemas/_index.yml#/Status'
+    '400':
+      description: You somehow managed to mess up the status request
+      content:
+        application/json:
+          schema:
+            $ref: '../../schemas/_index.yml#/Error'
+
+  # This API has no security
+  security: []

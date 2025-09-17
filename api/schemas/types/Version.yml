@@ -1,0 +1,38 @@
+---
+type: object
+description: This object holds the API version data.
+properties:
+  version:
+    type: string
+    description: The version of the API
+    example: 1.0.0
+  buildDate:
+    type: string
+    description: The date the code was built
+    example: 2020-01-01
+  details:
+    type: string
+    description: A description of the API
+    example: This is the API for the x service
+  commitHash:
+    type: string
+    description: The hash of the commit
+    example: '0d1444adb917eacc71321f1281904f71c5e378ca'
+  commitDate:
+    type: string
+    description: The date of the commit
+    example: 2020-12-31T23:59:59Z
+
+example:
+  version: 1.0.0
+  buildDate: 2020-01-01
+  details: This is an API.
+  commitHash: 0d1444adb917eacc71321f1281904f71c5e378ca
+  commitDate: 2020-12-31T23:59:59Z
+
+required:
+  - version
+  - buildDate
+  - details
+  - commitHash
+  - commitDate

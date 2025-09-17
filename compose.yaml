@@ -1,0 +1,19 @@
+services:
+  emqx:
+    image: emqx:5
+    container_name: emqx
+    restart: unless-stopped
+    ports:
+      - "1883:1883" # MQTT TCP
+      - "8083:8083" # MQTT over WebSocket
+      - "18083:18083" # Dashboard
+    environment:
+      # Keep it simple for local dev. For prod, disable anonymous and configure auth.
+      EMQX_ALLOW_ANONYMOUS: "true"
+
+      # Optional: set default dashboard creds (login at http://localhost:18083)
+      EMQX_DASHBOARD__DEFAULT_USERNAME: "admin"
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: "public"
+    volumes:
+      - ./.emqx/data:/opt/emqx/data
+      - ./.emqx/log:/opt/emqx/log

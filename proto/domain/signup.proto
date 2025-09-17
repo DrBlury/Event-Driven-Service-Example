@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package domain;
+
+option go_package = "./domain";
+
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+import "domain/customer.proto";
+import "domain/address.proto";
+import "domain/date.proto";
+import "domain/paymentMean.proto";
+
+message Signup {
+  SignupMeta signup_meta = 1;
+  CustomerPersonal customer_personal = 2;
+  CustomerContact customer_contact = 3;
+  Address delivery_address = 4;
+  BillingDetails billing_details = 5;
+  repeated SubscriptionInfo subscription_info = 6;
+}
+
+message AddAService {
+  SignupMeta signup_meta = 1;
+  CustomerPersonal customer_personal = 2;
+  CustomerContact customer_contact = 3;
+  Address delivery_address = 4;
+  BillingDetails billing_details = 5;
+  repeated SubscriptionInfo subscription_info = 6;
+  string customer_id = 7;
+  string customer_ouid = 8;
+}
+
+message Move {
+  SignupMeta signup_meta = 1;
+  CustomerPersonal customer_personal = 2;
+  CustomerContact customer_contact = 3;
+  Address delivery_address = 4;
+  BillingDetails billing_details = 5;
+  repeated SubscriptionInfo subscription_info = 6;
+  string customer_id = 7;
+  string customer_ouid = 8;
+  string mba_to_terminate = 9;
+  string mba_ouid_to_terminate = 10;
+}
+
+enum CommunicationPreference {
+  COMMUNICATION_PREFERENCE_EMAIL = 0;
+  COMMUNICATION_PREFERENCE_PHONE = 1;
+  COMMUNICATION_PREFERENCE_SNAILMAIL = 2;
+  COMMUNICATION_PREFERENCE_PERSONAL = 3;
+  COMMUNICATION_PREFERENCE_HTP = 4;
+}
+
+message BillingDetails {
+  PaymentOption payment_option = 2;
+}
+
+enum PaymentOptionType {
+  PAYMENT_OPTION_TYPE_CREDIT_CARD = 0;
+  PAYMENT_OPTION_TYPE_BANK_TRANSFER = 1;
+  PAYMENT_OPTION_TYPE_BANK_ACCOUNT = 2;
+}
+
+message PaymentOption {
+  PaymentOptionType payment_option_type = 1;
+  oneof payment_option {
+    CreditCard credit_card = 2;
+    BankTransfer bank_transfer = 3;
+    BankAccount bank_account = 4;
+  }
+}
+
+message CreditCard {
+  string card_number = 1;
+  string card_holder = 2;
+}
+
+message BankTransfer {
+  bool will_pay_by_bank_transfer = 1;
+}
+
+message SignupMeta {
+  SignupReason signup_reason = 1;
+  CommunicationOptIns communication_opt_ins = 2;
+  CommunicationPreference communication_preference = 3;
+  Date start_of_service_date = 4;
+  Date move_out_date = 5;
+}
+
+enum SignupReason {
+  SIGNUP_REASON_CHANGE_OF_SUPPLIER = 0;
+  SIGNUP_REASON_MOVING_IN = 1;
+  SIGNUP_REASON_FROM_SUBSTITUTE_DELIVERY = 2;
+}
+
+message CommunicationOptIns {
+  bool smailmail = 1;
+  bool phone = 2;
+  bool newsletter = 3;
+  optional bool profiling = 4;
+}
+
+enum SignupServiceType {
+  SIGNUP_SERVICE_TYPE_POWER = 0;
+  SIGNUP_SERVICE_TYPE_GAS = 1;
+  SIGNUP_SERVICE_TYPE_WATER = 2;
+}
+
+message SubscriptionInfo {
+  SignupServiceType service_type = 1;
+  bool is_htnt = 2;
+  bool is_smart_meter = 3;
+  string product_name = 4;
+  bool include_waste_water = 5;
+  bool send_termination = 6;
+  optional Date start_of_service_date = 7;
+  optional int64 estimated_consumption = 8;
+  optional ConsumptionHTNT estimated_consumption_htnt = 9;
+  // option (buf.validate.message).cel = {
+  //   id: "SubscriptionInfo.estimated_consumption.not_set"
+  //   message: "Either estimated_consumption or estimated_consumption_htnt must be set"
+  //   expression:
+  //     "(estimated_consumption != 0) || ((estimated_consumption_htnt.ht != 0 || estimated_consumption_htnt.nt != 0))"
+  //     "? 'A consumption estimation is missing'"
+  //     ": ''"
+  // };
+
+  // option (buf.validate.message).cel = {
+  //   id: "SubscriptionInfo.estimated_consumption.both_set",
+  //   message: "Either estimated_consumption or estimated_consumption_htnt must be set, not both"
+  //   expression:
+  //     "(estimated_consumption != 0) && ((estimated_consumption_htnt.ht != 0 || estimated_consumption_htnt.nt != 0))"
+  //     "? 'Do not set both estimated consumption and estimated consumption htnt'"
+  //     ": ''"
+  // };
+
+  SignupMeterInfo meter_info = 10;
+  optional PreviousSupplier previous_supplier = 11;
+  int64 manual_abschlag_amount_in_cents = 12;
+}
+
+message PreviousSupplier {
+  double code = 1;
+  optional string name = 2;
+  optional string customer_number = 3;
+  string type = 4;
+}
+
+message SignupMeterInfo {
+  optional string meter_id = 1;
+  string meter_number = 2;
+  optional int64 meter_reading = 3;
+  optional int64 meter_reading_ht = 4;
+  optional int64 meter_reading_nt = 5;
+  optional MeterSize meter_size = 6;
+}
+
+enum MeterSize {
+  METER_SIZE_UNKNOWN = 0;
+  METER_SIZE_DSL_KOM = 1;
+  METER_SIZE_EINTARIF = 2;
+  METER_SIZE_ETHERNET_KOM = 3;
+  METER_SIZE_GAS_G10 = 4;
+  METER_SIZE_GAS_G100 = 5;
+  METER_SIZE_GAS_G1000 = 6;
+  METER_SIZE_GAS_G10000 = 7;
+  METER_SIZE_GAS_G12500 = 8;
+  METER_SIZE_GAS_G16 = 9;
+  METER_SIZE_GAS_G160 = 10;
+  METER_SIZE_GAS_G1600 = 11;
+  METER_SIZE_GAS_G16000 = 12;
+  METER_SIZE_GAS_G25 = 13;
+  METER_SIZE_GAS_G250 = 14;
+  METER_SIZE_GAS_G2500 = 15;
+  METER_SIZE_GAS_G2P5 = 16;
+  METER_SIZE_GAS_G350 = 17;
+  METER_SIZE_GAS_G4 = 18;
+  METER_SIZE_GAS_G40 = 19;
+  METER_SIZE_GAS_G400 = 20;
+  METER_SIZE_GAS_G4000 = 21;
+  METER_SIZE_GAS_G6 = 22;
+  METER_SIZE_GAS_G65 = 23;
+  METER_SIZE_GAS_G650 = 24;
+  METER_SIZE_GAS_G6500 = 25;
+  METER_SIZE_IMPULSGEBER_G100 = 26;
+  METER_SIZE_IMPULSGEBER_G4_G100 = 27;
+  METER_SIZE_KOMPAKT_MU = 28;
+  METER_SIZE_LTE_KOM = 29;
+  METER_SIZE_MEHRTARIF = 30;
+  METER_SIZE_MODEM_FESTNETZ = 31;
+  METER_SIZE_MODEM_FUNK = 32;
+  METER_SIZE_MODEM_GPRS = 33;
+  METER_SIZE_MODEM_GPRS_M_LG = 34;
+  METER_SIZE_MODEM_GSM = 35;
+  METER_SIZE_MODEM_GSM_M_LG = 36;
+  METER_SIZE_MODEM_GSM_O_LG = 37;
+  METER_SIZE_PLC_COM = 38;
+  METER_SIZE_RUNDSTEUEREMPFAENGER = 39;
+  METER_SIZE_SYSTEM_MU = 40;
+  METER_SIZE_TARIFSCHALTGERAET = 41;
+  METER_SIZE_TEMPERATUR_MU = 42;
+  METER_SIZE_UNBESTIMMT = 43;
+  METER_SIZE_WASSER_MWZW = 44;
+  METER_SIZE_WASSER_VWZ04 = 45;
+  METER_SIZE_WASSER_VWZ05 = 46;
+  METER_SIZE_WASSER_VWZ06 = 47;
+  METER_SIZE_WASSER_VWZ07 = 48;
+  METER_SIZE_WASSER_VWZ10 = 49;
+  METER_SIZE_WASSER_WZ01 = 50;
+  METER_SIZE_WASSER_WZ02 = 51;
+  METER_SIZE_WASSER_WZ03 = 52;
+  METER_SIZE_WASSER_WZ04 = 53;
+  METER_SIZE_WASSER_WZ05 = 54;
+  METER_SIZE_WASSER_WZ06 = 55;
+  METER_SIZE_WASSER_WZ07 = 56;
+  METER_SIZE_WASSER_WZ08 = 57;
+  METER_SIZE_WASSER_WZ09 = 58;
+  METER_SIZE_WASSER_WZ10 = 59;
+  METER_SIZE_WASSER_WZWW = 60;
+  METER_SIZE_ZUSTANDS_MU = 61;
+  METER_SIZE_ZWEITARIF = 62;
+}
+
+message ConsumptionHTNT {
+  int64 ht = 1;
+  int64 nt = 2;
+}

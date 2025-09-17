@@ -1,0 +1,24 @@
+---
+get:
+  tags:
+    - APIInfo
+  summary: Get openapi spec as json
+  description: Retrieve the OpenAPI spec as JSON
+  operationId: getOpenAPIJSON
+  responses:
+    '200':
+      description: The OpenAPI spec as JSON
+      content:
+        application/json:
+          schema:
+            type: object
+          example: {}
+    '400':
+      description: You somehow managed to mess up the oapi json request
+      content:
+        application/json:
+          schema:
+            $ref: '../../schemas/_index.yml#/Error'
+
+  # This API has no security
+  security: []

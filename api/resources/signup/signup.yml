@@ -1,0 +1,24 @@
+---
+post:
+  summary: Do a signup for a new customer
+  operationId: signupNewCustomer
+  description: |
+    Do a signup for a new customer.
+  tags:
+    - Signup
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../schemas/_index.yml#/SignupRequest'
+  responses:
+    '201':
+      description: Created a new customer
+    '400':
+      description: You somehow managed to mess up the signup request
+    '401':
+      description: You are not authorized to access this resource
+  # This API uses jwt authentication
+  security:
+    - bearerAuth: []

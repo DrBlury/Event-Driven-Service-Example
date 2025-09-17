@@ -1,0 +1,9 @@
+---
+type: object
+properties:
+  someData:
+    type: string
+    description: Just some data for the signup request
+
+required:
+  - someData

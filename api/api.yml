@@ -1,0 +1,26 @@
+---
+openapi: '3.0.3'
+info:
+  title: POC Event Signup
+  description: Example API for event driven signup
+  version: latest
+  license:
+    name: unlicense
+    url: 'http://unlicense.org/'
+  contact:
+    name: LYNQTECH GmbH
+    url: https://cs.lynq.tech/
+
+servers:
+  - url: ''
+    description: This server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  $ref: './resources/_index.yml'

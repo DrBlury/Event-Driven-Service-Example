@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: CPC Contract Facade
+  description: API to interact with contracts
+  version: latest
+  license:
+    name: unlicense
+    url: http://unlicense.org/
+  contact:
+    name: LYNQTECH GmbH
+    url: https://cs.lynq.tech/
+servers:
+  - url: ''
+    description: This server
+paths:
+  /info/version:
+    get:
+      tags:
+        - APIInfo
+      summary: Get version info of the service
+      description: Retrieve the version info of the service
+      operationId: getVersion
+      responses:
+        '200':
+          description: The version of the service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+        '400':
+          description: You somehow managed to mess up the version request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /info/status:
+    get:
+      tags:
+        - APIInfo
+      summary: Get status of the service
+      description: Retrieve the status of the service
+      operationId: getStatus
+      responses:
+        '200':
+          description: The status of the service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        '400':
+          description: You somehow managed to mess up the status request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /info/openapi.json:
+    get:
+      tags:
+        - APIInfo
+      summary: Get openapi spec as json
+      description: Retrieve the OpenAPI spec as JSON
+      operationId: getOpenAPIJSON
+      responses:
+        '200':
+          description: The OpenAPI spec as JSON
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        '400':
+          description: You somehow managed to mess up the oapi json request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /info/openapi.html:
+    get:
+      tags:
+        - APIInfo
+      summary: Get describing html of openapi spec
+      description: Retrieve the OpenAPI spec as HTML
+      operationId: getOpenAPIHTML
+      responses:
+        '200':
+          description: The rendered HTML for the OpenAPI spec
+          content:
+            text/html:
+              schema:
+                type: string
+                example: <html>...</html>
+        '400':
+          description: You somehow managed to mess up the oapi html request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Version:
+      type: object
+      description: This object holds the API version data.
+      properties:
+        version:
+          type: string
+          description: The version of the API
+          example: 1.0.0
+        buildDate:
+          type: string
+          description: The date the code was built
+          example: '2020-01-01'
+        details:
+          type: string
+          description: A description of the API
+          example: This is the API for the x service
+        commitHash:
+          type: string
+          description: The hash of the commit
+          example: 0d1444adb917eacc71321f1281904f71c5e378ca
+        commitDate:
+          type: string
+          description: The date of the commit
+          example: '2020-12-31T23:59:59Z'
+      example:
+        version: 1.0.0
+        buildDate: '2020-01-01'
+        details: This is an API.
+        commitHash: 0d1444adb917eacc71321f1281904f71c5e378ca
+        commitDate: '2020-12-31T23:59:59Z'
+      required:
+        - version
+        - buildDate
+        - details
+        - commitHash
+        - commitDate
+    ErrorType:
+      type: string
+      description: The error type
+      enum:
+        - BAD REQUEST
+        - NOT FOUND
+        - NOT IMPLEMENTED
+        - INTERNAL SERVER ERROR
+      example: BAD REQUEST
+    Error:
+      type: object
+      description: This object holds the error response data.
+      properties:
+        errorId:
+          type: string
+          description: The unique identifier for the error
+          example: 123e4567-e89b-12d3-a456-426614174000
+        error:
+          type: string
+          description: The error message
+          example: The item does not exist
+        errorType:
+          $ref: '#/components/schemas/ErrorType'
+        code:
+          type: integer
+          description: The error code
+          example: 404
+        timestamp:
+          type: string
+          format: rfc3339
+          description: The time the error occurred
+          example: '2020-01-01T12:00:00Z'
+      example:
+        errorId: 123e4567-e89b-12d3-a456-426614174000
+        error: The item does not exist
+        errorType: Not Found
+        code: 404
+        timestamp: '2020-12-31T23:59:59Z'
+      required:
+        - errorId
+        - error
+        - errorType
+        - code
+        - timestamp
+    Status:
+      type: string
+      description: The status of the API
+      enum:
+        - HEALTHY
+        - UNHEALTHY
+        - UNKNOWN
+      example: HEALTHY
