@@ -1,8 +1,5 @@
-FROM golang:alpine AS builder
-LABEL AUTHOR="Julian Bensch (Linuxcode)"
-
-# install curl for healthcheck
-RUN apk --no-cache add curl
+FROM golang:alpine
+LABEL AUTHOR="Julian Bensch"
 
 # install Delve for debugging
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
