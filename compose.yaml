@@ -1,7 +1,30 @@
 services:
-  emqx:
+  app:
+    container_name: mqtt-service-flow-example
+    image: golang:1.25.1-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${PWD}/src/:/app
+      - .gitconfig:/root/.gitconfig
+      - ~/.ssh:/root/.ssh
+      - ~/go/pkg/mod/cache:/go/pkg/mod/cache
+    working_dir: /app
+    command: go run main.go
+    env_file:
+      - .env
+    restart: on-failure
+    depends_on:
+      - openobserve
+    healthcheck:
+      test: curl --fail -s localhost:8080/info/status || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mqtt-broker:
     image: emqx:5
-    container_name: emqx
+    container_name: mqtt-broker
     restart: unless-stopped
     ports:
       - "1883:1883" # MQTT TCP
@@ -17,3 +40,16 @@ services:
     volumes:
       - ./.emqx/data:/opt/emqx/data
       - ./.emqx/log:/opt/emqx/log
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    restart: unless-stopped
+    environment:
+      ZO_ROOT_USER_EMAIL: "root@example.com"
+      ZO_ROOT_USER_PASSWORD: "Complexpass#123"
+      RUST_LOG: error
+    ports:
+      - "5080:5080"
+      - "5081:5081"
+    volumes:
+      - ./otel-data:/data
