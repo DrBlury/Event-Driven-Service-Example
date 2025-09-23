@@ -18,16 +18,12 @@ type Config struct {
 }
 
 func SetDefaults() {
-	viper.SetDefault("APP_NAME", "contract-facade")
+	viper.SetDefault("APP_NAME", "example-service")
 	viper.SetDefault("APP_SERVER_PORT", "80")
 	viper.SetDefault("APP_SERVER_TIMEOUT", 60*time.Second)
 	viper.SetDefault("APP_SERVER_CORS_HEADERS", []string{"*"})
 	viper.SetDefault("APP_SERVER_CORS_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("APP_SERVER_CORS_ORIGINS", []string{"*"})
-	viper.SetDefault("APP_FEATURES_ENABLE_AGENTHINT", true)
-	viper.SetDefault("APP_TRPC_DEBUG", false)
-	viper.SetDefault("APP_AGENTHINT_DEBUG", false)
-	viper.SetDefault("APP_IBANVALIDATOR_DEBUG", false)
 
 	// Logger
 	viper.SetDefault("LOGGER", "json")
