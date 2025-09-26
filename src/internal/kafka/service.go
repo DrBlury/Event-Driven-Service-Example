@@ -67,7 +67,7 @@ func handlerName1Func() func(msg *message.Message) ([]*message.Message, error) {
 			return nil, err
 		}
 
-		fmt.Printf("received event %+v\n", consumedPayload)
+		fmt.Printf("Received date: %d-%d-%d\n", consumedPayload.Date.Year, consumedPayload.Date.Month, consumedPayload.Date.Day)
 
 		newPayload, err := json.Marshal(processedEvent{
 			ProcessedID: consumedPayload.ID,
