@@ -1,3 +1,4 @@
 .emqx
 otel-data
+kafka-data
 .env

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	events "drblury/poc-event-signup/internal/kafka"
 	"drblury/poc-event-signup/internal/server"
 	generatedAPI "drblury/poc-event-signup/internal/server/generated"
 	"drblury/poc-event-signup/internal/server/handler/apihandler"
@@ -29,10 +30,12 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		logger,
 	)
 
-	// ===== Handlers =====
+	// ===== HTTP Handlers =====
 	apiHandler := apihandler.NewAPIHandler(appLogic, cfg.Info, logger, cfg.Server.BaseURL)
-	// ===== Router =====
+
+	// ===== HTTP Router =====
 	handler := generatedAPI.HandlerFromMux(apiHandler, nil)
+
 	// wrap with otel middleware
 	handler = otelhttp.NewHandler(handler, "/")
 
@@ -51,6 +54,15 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		logger.With("address", cfg.Server.Address).Info("server started!")
 		srvErr <- srv.ListenAndServe()
 	}()
+
+	// ===== Event Handling =====
+	eventService := events.NewService(cfg.Events, ctx)
+
+	logger.With(
+		"brokers", eventService.Conf.KafkaBrokers,
+		"consume_topic", eventService.Conf.ConsumeTopic,
+		"publish_topic", eventService.Conf.PublishTopic).
+		Info("starting event service")
 
 	// Wait for interruption.
 	<-ctx.Done()

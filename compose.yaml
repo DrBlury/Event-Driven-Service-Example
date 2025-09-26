@@ -16,7 +16,7 @@ services:
     restart: on-failure
     depends_on:
       - openobserve
-      - mqtt-broker
+      - kafka
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
@@ -26,6 +26,8 @@ services:
   kafka:
     image: bitnami/kafka:3.5.0
     restart: unless-stopped
+    volumes:
+      - ./kafka-data:/bitnami/kafka
     environment:
       ALLOW_PLAINTEXT_LISTENER: yes
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092

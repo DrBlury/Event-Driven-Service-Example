@@ -2,6 +2,7 @@ package app
 
 import (
 	"drblury/poc-event-signup/internal/domain"
+	events "drblury/poc-event-signup/internal/kafka"
 	"drblury/poc-event-signup/internal/server"
 	"drblury/poc-event-signup/pkg/logging"
 	"drblury/poc-event-signup/pkg/router"
@@ -15,6 +16,7 @@ type Config struct {
 	Router *router.Config
 	Server *server.Config
 	Logger *logging.Config
+	Events *events.Config
 }
 
 func SetDefaults() {
@@ -75,10 +77,19 @@ func LoadConfig(
 		Logger:            viper.GetString("LOGGER"),
 	}
 
+	eventsConfig := &events.Config{
+		KafkaBrokers:       viper.GetStringSlice("KAFKA_BROKERS_URL"),
+		ConsumeTopic:       viper.GetString("KAFKA_TOPIC"),
+		PublishTopic:       viper.GetString("KAFKA_TOPIC_PROCESSED"),
+		KafkaClientID:      viper.GetString("KAFKA_CLIENT_ID"),
+		KafkaConsumerGroup: viper.GetString("KAFKA_CONSUMER_GROUP_ID"),
+	}
+
 	return &Config{
 		Info:   infoConfig,
 		Router: routerConfig,
 		Server: serverConfig,
 		Logger: loggerConfig,
+		Events: eventsConfig,
 	}, nil
 }
