@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	events "drblury/poc-event-signup/internal/kafka"
+	"drblury/poc-event-signup/internal/events"
 	"drblury/poc-event-signup/internal/server"
 	generatedAPI "drblury/poc-event-signup/internal/server/generated"
 	"drblury/poc-event-signup/internal/server/handler/apihandler"

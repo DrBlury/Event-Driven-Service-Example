@@ -2,7 +2,7 @@ package app
 
 import (
 	"drblury/poc-event-signup/internal/domain"
-	events "drblury/poc-event-signup/internal/kafka"
+	"drblury/poc-event-signup/internal/events"
 	"drblury/poc-event-signup/internal/server"
 	"drblury/poc-event-signup/pkg/logging"
 	"drblury/poc-event-signup/pkg/router"
@@ -79,10 +79,17 @@ func LoadConfig(
 
 	eventsConfig := &events.Config{
 		KafkaBrokers:       viper.GetStringSlice("KAFKA_BROKERS_URL"),
-		ConsumeTopic:       viper.GetString("KAFKA_TOPIC"),
-		PublishTopic:       viper.GetString("KAFKA_TOPIC_PROCESSED"),
 		KafkaClientID:      viper.GetString("KAFKA_CLIENT_ID"),
 		KafkaConsumerGroup: viper.GetString("KAFKA_CONSUMER_GROUP_ID"),
+		// === All Topics ===
+
+		// Example Usecase Topics
+		ConsumeTopic: viper.GetString("KAFKA_TOPIC"),
+		PublishTopic: viper.GetString("KAFKA_TOPIC_PROCESSED"),
+
+		// Signup Usecase Topics
+		ConsumeTopicSignup: viper.GetString("KAFKA_TOPIC_SIGNUP"),
+		PublishTopicSignup: viper.GetString("KAFKA_TOPIC_SIGNUP_PROCESSABLE"),
 	}
 
 	return &Config{
