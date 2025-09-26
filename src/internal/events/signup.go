@@ -40,6 +40,12 @@ func signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) 
 
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 
+		// if there was an error, send the message to a different topic
+		if newEvent.ErrorMessage != "" {
+			// Send to error topic
+			return []*message.Message{newMessage}, nil
+		}
+
 		return []*message.Message{newMessage}, nil
 	}
 }
