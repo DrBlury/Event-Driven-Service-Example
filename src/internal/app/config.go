@@ -8,15 +8,18 @@ import (
 	"drblury/poc-event-signup/pkg/router"
 	"time"
 
+	"drblury/poc-event-signup/internal/database"
+
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Info   *domain.Info
-	Router *router.Config
-	Server *server.Config
-	Logger *logging.Config
-	Events *events.Config
+	Info     *domain.Info
+	Router   *router.Config
+	Server   *server.Config
+	Database *database.Config
+	Logger   *logging.Config
+	Events   *events.Config
 }
 
 func SetDefaults() {
@@ -92,11 +95,19 @@ func LoadConfig(
 		PublishTopicSignup: viper.GetString("KAFKA_TOPIC_SIGNUP_PROCESSABLE"),
 	}
 
+	databaseConfig := &database.Config{
+		MongoURL:      viper.GetString("MONGO_URL"),
+		MongoDB:       viper.GetString("MONGO_DB"),
+		MongoUser:     viper.GetString("MONGO_USER"),
+		MongoPassword: viper.GetString("MONGO_PASSWORD"),
+	}
+
 	return &Config{
-		Info:   infoConfig,
-		Router: routerConfig,
-		Server: serverConfig,
-		Logger: loggerConfig,
-		Events: eventsConfig,
+		Info:     infoConfig,
+		Router:   routerConfig,
+		Server:   serverConfig,
+		Database: databaseConfig,
+		Logger:   loggerConfig,
+		Events:   eventsConfig,
 	}, nil
 }

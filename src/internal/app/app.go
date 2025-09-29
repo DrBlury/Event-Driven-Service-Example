@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"drblury/poc-event-signup/internal/database"
 	"drblury/poc-event-signup/internal/events"
 	"drblury/poc-event-signup/internal/server"
 	generatedAPI "drblury/poc-event-signup/internal/server/generated"
@@ -25,8 +26,16 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	// ===== Logger =====
 	logger := logging.SetLogger(cfg.Logger)
 
+	// ===== Database =====
+	db, err := database.NewDatabase(cfg.Database, logger)
+	if err != nil {
+		logger.Error("failed to connect to database", "error", err)
+		return err
+	}
+
 	// ===== App Logic =====
 	appLogic := usecase.NewAppLogic(
+		db,
 		logger,
 	)
 

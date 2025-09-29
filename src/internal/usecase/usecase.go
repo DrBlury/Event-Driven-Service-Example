@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"drblury/poc-event-signup/internal/database"
 	"drblury/poc-event-signup/internal/domain"
 	"fmt"
 	"log/slog"
@@ -10,11 +11,13 @@ import (
 )
 
 type AppLogic struct {
+	db        *database.Database
 	log       *slog.Logger
 	validator protovalidate.Validator
 }
 
 func NewAppLogic(
+	db *database.Database,
 	logger *slog.Logger,
 ) AppLogic {
 	v, err := protovalidate.New()
@@ -23,6 +26,7 @@ func NewAppLogic(
 	}
 
 	return AppLogic{
+		db:        db,
 		log:       logger,
 		validator: v,
 	}

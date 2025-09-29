@@ -17,11 +17,30 @@ services:
     depends_on:
       - openobserve
       - kafka
+      - mongo
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
       timeout: 10s
       retries: 5
+
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_URL: ${ME_CONFIG_MONGODB_URL:-mongodb://root:example@mongo:27017/}
+      ME_CONFIG_BASICAUTH_ENABLED: ${ME_CONFIG_BASICAUTH_ENABLED:-true}
+      ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME:-mongoexpressuser}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD:-mongoexpresspass}
 
   kafka:
     image: bitnami/kafka:3.5.0
@@ -29,10 +48,10 @@ services:
     volumes:
       - ./kafka-data:/bitnami/kafka
     environment:
-      ALLOW_PLAINTEXT_LISTENER: yes
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: ${ALLOW_PLAINTEXT_LISTENER:-yes}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE:-true}
 
   kafdrop:
     image: obsidiandynamics/kafdrop
@@ -40,37 +59,18 @@ services:
     ports:
       - "9000:9000"
     environment:
-      KAFKA_BROKERCONNECT: "kafka:9092"
-      JVM_OPTS: "-Xms32M -Xmx64M"
+      KAFKA_BROKERCONNECT: ${KAFKA_BROKERCONNECT:-kafka:9092}
+      JVM_OPTS: ${JVM_OPTS:-"-Xms32M -Xmx64M"}
     depends_on:
       - kafka
-
-  # broker:
-  #   image: emqx:5
-  #   container_name: broker
-  #   restart: unless-stopped
-  #   ports:
-  #     - "1883:1883" # MQTT TCP
-  #     - "8083:8083" # MQTT over WebSocket
-  #     - "18083:18083" # Dashboard
-  #   environment:
-  #     # Keep it simple for local dev. For prod, disable anonymous and configure auth.
-  #     EMQX_ALLOW_ANONYMOUS: "true"
-
-  #     # Optional: set default dashboard creds (login at http://localhost:18083)
-  #     EMQX_DASHBOARD__DEFAULT_USERNAME: "admin"
-  #     EMQX_DASHBOARD__DEFAULT_PASSWORD: "public"
-  #   volumes:
-  #     - ./.emqx/data:/opt/emqx/data
-  #     - ./.emqx/log:/opt/emqx/log
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest
     restart: unless-stopped
     environment:
-      ZO_ROOT_USER_EMAIL: "root@example.com"
-      ZO_ROOT_USER_PASSWORD: "Complexpass#123"
-      RUST_LOG: error
+      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-root@example.com}
+      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
+      RUST_LOG: ${RUST_LOG:-error}
     ports:
       - "5080:5080"
       - "5081:5081"

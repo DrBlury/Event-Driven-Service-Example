@@ -12,11 +12,8 @@ func (a AppLogic) Signup(ctx context.Context, signup *domain.Signup, token strin
 		return err
 	}
 
-	// call service
-	// err = a.signupService.Signup(ctx, signup, token)
-	// if err != nil {
-	// 	return err
-	// }
+	// Do something with the signup
+	// store signup in database
 
 	return nil
 }
