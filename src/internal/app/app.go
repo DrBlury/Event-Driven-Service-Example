@@ -27,7 +27,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	logger := logging.SetLogger(cfg.Logger)
 
 	// ===== Database =====
-	db, err := database.NewDatabase(cfg.Database, logger)
+	db, err := database.NewDatabase(cfg.Database, logger, ctx)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		return err

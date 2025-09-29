@@ -19,57 +19,55 @@ type ErrorPayload struct {
 	Timestamp string `json:"timestamp"`
 }
 
-// HandleInternalServerError is a convenient method to log and handle internal server errors.
+var errorTypeMap = map[int]struct {
+	Type      string
+	LogMethod string
+	LogMsg    string
+}{
+	http.StatusInternalServerError: {Type: "InternalServerError", LogMethod: "Error", LogMsg: "Internal Server Error"},
+	http.StatusBadRequest:          {Type: "BadRequest", LogMethod: "Warn", LogMsg: "Bad Request Error"},
+	http.StatusUnauthorized:        {Type: "Unauthorized", LogMethod: "Warn", LogMsg: "Unauthorized Error"},
+}
+
+func (ah *APIHandler) HandleAPIError(w http.ResponseWriter, r *http.Request, status int, err error, logMsg ...string) {
+	if err == nil {
+		return
+	}
+	meta, ok := errorTypeMap[status]
+	if !ok {
+		meta = struct {
+			Type      string
+			LogMethod string
+			LogMsg    string
+		}{"UnknownError", "Error", "Unknown Error"}
+	}
+	uniqueErrID := uuid.New().String()
+	apiError := ErrorPayload{
+		ErrorID:   uniqueErrID,
+		Code:      status,
+		Error:     err.Error(),
+		ErrorType: meta.Type,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	logger := ah.log.With("error", err.Error()).With("logMessages", logMsg)
+	switch meta.LogMethod {
+	case "Warn":
+		logger.Warn(meta.LogMsg)
+	default:
+		logger.Error(meta.LogMsg)
+	}
+	ah.RespondWithJSON(w, r, status, apiError)
+}
+
+// Convenience wrappers for compatibility
 func (ah *APIHandler) HandleInternalServerError(w http.ResponseWriter, r *http.Request, err error, logMsg ...string) {
-	if err == nil {
-		err = errors.New("no error information supplied")
-	}
-	uniqueErrID := uuid.New().String()
-	apiError := ErrorPayload{
-		ErrorID:   uniqueErrID,
-		Code:      500,
-		Error:     err.Error(),
-		ErrorType: "InternalServerError", // Assuming this is the type string you want
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-
-	ah.log.With("error", err.Error()).With("logMessages", logMsg).Error("Internal Server Error")
-	ah.RespondWithJSON(w, r, http.StatusInternalServerError, apiError)
+	ah.HandleAPIError(w, r, http.StatusInternalServerError, err, logMsg...)
 }
-
-// HandleBadRequestError is a convenient method to log and handle bad request errors.
 func (ah *APIHandler) HandleBadRequestError(w http.ResponseWriter, r *http.Request, err error, logMsg ...string) {
-	if err == nil {
-		err = errors.New("no error information supplied")
-	}
-	uniqueErrID := uuid.New().String()
-	apiError := ErrorPayload{
-		ErrorID:   uniqueErrID,
-		Code:      400,
-		Error:     err.Error(),
-		ErrorType: "BadRequest", // Assuming this is the type string you want
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-
-	ah.log.With("error", err.Error()).With("logMessages", logMsg).Warn("Bad Request Error")
-	ah.RespondWithJSON(w, r, http.StatusBadRequest, apiError)
+	ah.HandleAPIError(w, r, http.StatusBadRequest, err, logMsg...)
 }
-
 func (ah *APIHandler) HandleUnauthorizedError(w http.ResponseWriter, r *http.Request, err error, logMsg ...string) {
-	if err == nil {
-		err = errors.New("no error information supplied")
-	}
-	uniqueErrID := uuid.New().String()
-	apiError := ErrorPayload{
-		ErrorID:   uniqueErrID,
-		Code:      401,
-		Error:     err.Error(),
-		ErrorType: "Unauthorized", // Assuming this is the type string you want
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-
-	ah.log.With("error", err.Error()).With("logMessages", logMsg).Warn("Unauthorized Error")
-	ah.RespondWithJSON(w, r, http.StatusUnauthorized, apiError)
+	ah.HandleAPIError(w, r, http.StatusUnauthorized, err, logMsg...)
 }
 
 func (ah *APIHandler) RespondWithJSON(w http.ResponseWriter, r *http.Request, status int, v any) {
@@ -90,41 +88,17 @@ func (ah *APIHandler) ReadRequestBody(w http.ResponseWriter, r *http.Request, v 
 }
 
 func (ah *APIHandler) HandleErrors(w http.ResponseWriter, r *http.Request, err error, msgs ...string) {
-	if errors.Is(err, domain.ErrorNotFound) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
+	if err == nil {
+		return // Do nothing if error is nil
 	}
-	if errors.Is(err, domain.ErrorBadRequest) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.Is(err, domain.ErrorInvalidToken) {
-		ah.HandleUnauthorizedError(w, r, err, msgs...)
-		return
-	}
-	if errors.Is(err, domain.ErrorInvalidCredentials) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.Is(err, domain.ErrorTripicaBusiness) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.As(err, &domain.ErrTripicaBusiness{}) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.As(err, &domain.ErrValidations{}) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.As(err, &domain.ErrSignupFailed{}) {
-		ah.HandleBadRequestError(w, r, err, msgs...)
-		return
-	}
-	if errors.Is(err, domain.ErrorUpstreamService) {
+	switch {
+	case errors.Is(err, domain.ErrorUpstreamService):
 		ah.HandleInternalServerError(w, r, err, msgs...)
-		return
+	case errors.Is(err, domain.ErrorNotFound),
+		errors.Is(err, domain.ErrorBadRequest),
+		errors.As(err, &domain.ErrValidations{}):
+		ah.HandleBadRequestError(w, r, err, msgs...)
+	default:
+		ah.HandleInternalServerError(w, r, err)
 	}
-	ah.HandleInternalServerError(w, r, err)
 }

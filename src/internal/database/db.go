@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,18 +14,13 @@ type Database struct {
 	Cfg *Config
 }
 
-func NewDatabase(cfg *Config, logger *slog.Logger) (*Database, error) {
+func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Database, error) {
 	logger.Info("Connecting to MongoDB", "url", cfg.MongoURL, "db", cfg.MongoDB, "user", cfg.MongoUser)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	mongoURI := cfg.MongoURL
-	if cfg.MongoUser != "" && cfg.MongoPassword != "" {
-		mongoURI = fmt.Sprintf("mongodb://%s:%s@%s", cfg.MongoUser, cfg.MongoPassword, cfg.MongoURL)
-	}
-
-	clientOpts := options.Client().ApplyURI(mongoURI)
+	clientOpts := options.Client().ApplyURI(cfg.MongoURL)
 	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		logger.Error("MongoDB connection failed", "error", err)
