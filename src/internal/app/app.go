@@ -65,7 +65,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	}()
 
 	// ===== Event Handling =====
-	eventService := events.NewService(cfg.Events, logger, ctx)
+	eventService := events.NewService(cfg.Events, logger, db, ctx)
 
 	logger.With(
 		"brokers", eventService.Conf.KafkaBrokers,

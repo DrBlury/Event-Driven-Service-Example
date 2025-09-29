@@ -9,7 +9,7 @@ import (
 )
 
 // signupHandlerFunc is an example of a message handler function.
-func signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
+func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		consumedPayload := signupEvent{}
 		err := json.Unmarshal(msg.Payload, &consumedPayload)

@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"drblury/poc-event-signup/internal/database"
 	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -24,13 +25,16 @@ type Service struct {
 	Subscriber message.Subscriber
 	Router     *message.Router
 	Logger     watermill.LoggerAdapter
+	// add database or other dependencies here as needed
+	DB *database.Database
 }
 
-func NewService(conf *Config, log *slog.Logger, ctx context.Context) *Service {
+func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx context.Context) *Service {
 	logger := watermill.NewSlogLoggerWithLevelMapping(log, logLevelMapping)
 	s := &Service{
 		Conf:   conf,
 		Logger: logger,
+		DB:     db,
 	}
 	s.createPublisher(conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
 	s.createSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
@@ -101,7 +105,7 @@ func (s *Service) addAllHandlers() {
 		s.Subscriber,
 		s.Conf.PublishTopic, // topic to which messages should be published
 		s.Publisher,
-		demoHandlerFunc(),
+		s.demoHandlerFunc(),
 	)
 
 	// Add the signup handler
@@ -111,7 +115,7 @@ func (s *Service) addAllHandlers() {
 		s.Subscriber,
 		s.Conf.PublishTopicSignup,
 		s.Publisher,
-		signupHandlerFunc(),
+		s.signupHandlerFunc(),
 	)
 }
 

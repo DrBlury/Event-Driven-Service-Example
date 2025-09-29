@@ -13,7 +13,7 @@ import (
 )
 
 // demoHandlerFunc is an example of a message handler function.
-func demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
+func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		consumedPayload := demoEvent{}
 		err := json.Unmarshal(msg.Payload, &consumedPayload)

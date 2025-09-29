@@ -8,7 +8,7 @@ import "domain/signup.proto";
 
 message signupInfo {
   string signupId = 1;
-  Signup signupData = 2;
+  string signupData = 2;
   string trackId = 11;
   string correlationId = 12;
   SubJobStatusEnum CreditCheck = 30;
