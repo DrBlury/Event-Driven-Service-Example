@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
@@ -9,6 +10,13 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
+
+var logLevelMapping = map[slog.Level]slog.Level{
+	slog.LevelDebug: slog.LevelDebug,
+	slog.LevelInfo:  slog.LevelInfo,
+	slog.LevelWarn:  slog.LevelWarn,
+	slog.LevelError: slog.LevelError,
+}
 
 type Service struct {
 	Conf       *Config
@@ -18,8 +26,8 @@ type Service struct {
 	Logger     watermill.LoggerAdapter
 }
 
-func NewService(conf *Config, ctx context.Context) *Service {
-	logger := watermill.NewStdLogger(false, false)
+func NewService(conf *Config, log *slog.Logger, ctx context.Context) *Service {
+	logger := watermill.NewSlogLoggerWithLevelMapping(log, logLevelMapping)
 	publisher := createPublisher(conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
 	subscriber := createSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
 
@@ -88,7 +96,8 @@ func addAllHandlers(
 	publisher message.Publisher,
 	subscriber message.Subscriber,
 ) {
-	// This is just for demonstration purposes. In a real application, you would have different handlers for different topics.
+	// This is just for demonstration purposes.
+	// In a real application, you would have different handlers for different topics.
 	router.AddHandler(
 		"demoHandler",     // handler name, must be unique
 		conf.ConsumeTopic, // topic from which messages should be consumed
@@ -107,4 +116,17 @@ func addAllHandlers(
 		publisher,
 		signupHandlerFunc(),
 	)
+}
+
+// middleware to log all messages being processed
+func logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			logger.Info("Processing message", watermill.LogFields{
+				"message_uuid": msg.UUID,
+				"payload":      string(msg.Payload),
+			})
+			return h(msg)
+		}
+	}
 }

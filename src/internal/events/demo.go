@@ -29,9 +29,9 @@ func demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 		)
 
 		newPayload, err := json.Marshal(processedDemoEvent{
-			ProcessedID: consumedPayload.ID,
-			Time:        time.Now(),
-			Date:        consumedPayload.Date, // Example usage
+			ID:   consumedPayload.ID,
+			Time: time.Now(),
+			Date: consumedPayload.Date, // Example usage
 		})
 		if err != nil {
 			return nil, err

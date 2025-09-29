@@ -11,9 +11,9 @@ type demoEvent struct {
 }
 
 type processedDemoEvent struct {
-	ProcessedID int          `json:"processed_id"`
-	Time        time.Time    `json:"time"`
-	Date        *domain.Date `json:"date"`
+	ID   int          `json:"id"`
+	Time time.Time    `json:"time"`
+	Date *domain.Date `json:"date"`
 }
 
 type signupEvent struct {
@@ -22,7 +22,7 @@ type signupEvent struct {
 }
 
 type processedSignupEvent struct {
-	ProcessedID    int       `json:"processed_id"`
+	ID             int       `json:"id"`
 	Time           time.Time `json:"time"`
 	SuccessMessage string    `json:"success_message"`
 	ErrorMessage   string    `json:"error_message"`

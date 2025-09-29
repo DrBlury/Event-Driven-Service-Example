@@ -21,7 +21,7 @@ func signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) 
 
 		// Create processed event
 		newEvent := processedSignupEvent{
-			ProcessedID:    consumedPayload.ID,
+			ID:             consumedPayload.ID,
 			Time:           time.Now(),
 			SuccessMessage: "Signup successful",
 			ErrorMessage:   "",
