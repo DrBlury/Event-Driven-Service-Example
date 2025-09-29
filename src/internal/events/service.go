@@ -28,37 +28,39 @@ type Service struct {
 
 func NewService(conf *Config, log *slog.Logger, ctx context.Context) *Service {
 	logger := watermill.NewSlogLoggerWithLevelMapping(log, logLevelMapping)
-	publisher := createPublisher(conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
-	subscriber := createSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
+	s := &Service{
+		Conf:   conf,
+		Logger: logger,
+	}
+	s.createPublisher(conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
+	s.createSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	router.AddPlugin(plugin.SignalsHandler)
-	router.AddMiddleware(middleware.Recoverer)
+	s.Router = router
 
-	addAllHandlers(router, conf, publisher, subscriber)
+	s.Router.AddPlugin(plugin.SignalsHandler)
+	s.Router.AddMiddleware(middleware.Recoverer)
+
+	s.addAllHandlers()
+
+	s.Router.AddMiddleware(logMessagesMiddleware(logger))
 
 	// Simulate producing events
-	go simulateEvents(publisher, conf.ConsumeTopic)
+	go s.simulateEvents()
 
-	if err := router.Run(ctx); err != nil {
+	if err := s.Router.Run(ctx); err != nil {
 		panic(err)
 	}
 
-	return &Service{
-		Conf:       conf,
-		Publisher:  publisher,
-		Subscriber: subscriber,
-		Router:     router,
-		Logger:     logger,
-	}
+	return s
 }
 
 // createPublisher is a helper function that creates a Publisher, in this case - the Kafka Publisher.
-func createPublisher(brokers []string, marshaler kafka.Marshaler, logger watermill.LoggerAdapter) message.Publisher {
+func (s *Service) createPublisher(brokers []string, marshaler kafka.Marshaler, logger watermill.LoggerAdapter) {
 	kafkaPublisher, err := kafka.NewPublisher(
 		kafka.PublisherConfig{
 			Brokers:   brokers,
@@ -70,11 +72,11 @@ func createPublisher(brokers []string, marshaler kafka.Marshaler, logger watermi
 		panic(err)
 	}
 
-	return kafkaPublisher
+	s.Publisher = kafkaPublisher
 }
 
 // createSubscriber is a helper function similar to the previous one, but in this case it creates a Subscriber.
-func createSubscriber(consumerGroup string, brokers []string, unmarshaler kafka.Unmarshaler, logger watermill.LoggerAdapter) message.Subscriber {
+func (s *Service) createSubscriber(consumerGroup string, brokers []string, unmarshaler kafka.Unmarshaler, logger watermill.LoggerAdapter) {
 	kafkaSubscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:       brokers,
@@ -87,33 +89,28 @@ func createSubscriber(consumerGroup string, brokers []string, unmarshaler kafka.
 		panic(err)
 	}
 
-	return kafkaSubscriber
+	s.Subscriber = kafkaSubscriber
 }
 
-func addAllHandlers(
-	router *message.Router,
-	conf *Config,
-	publisher message.Publisher,
-	subscriber message.Subscriber,
-) {
+func (s *Service) addAllHandlers() {
 	// This is just for demonstration purposes.
 	// In a real application, you would have different handlers for different topics.
-	router.AddHandler(
-		"demoHandler",     // handler name, must be unique
-		conf.ConsumeTopic, // topic from which messages should be consumed
-		subscriber,
-		conf.PublishTopic, // topic to which messages should be published
-		publisher,
+	s.Router.AddHandler(
+		"demoHandler",       // handler name, must be unique
+		s.Conf.ConsumeTopic, // topic from which messages should be consumed
+		s.Subscriber,
+		s.Conf.PublishTopic, // topic to which messages should be published
+		s.Publisher,
 		demoHandlerFunc(),
 	)
 
 	// Add the signup handler
-	router.AddHandler(
-		"signupHandler",         // handler name, must be unique
-		conf.ConsumeTopicSignup, // topic from which messages should be consumed
-		subscriber,
-		conf.PublishTopicSignup, // topic to which messages should be published
-		publisher,
+	s.Router.AddHandler(
+		"signupHandler",
+		s.Conf.ConsumeTopicSignup,
+		s.Subscriber,
+		s.Conf.PublishTopicSignup,
+		s.Publisher,
 		signupHandlerFunc(),
 	)
 }
@@ -125,6 +122,7 @@ func logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddle
 			logger.Info("Processing message", watermill.LogFields{
 				"message_uuid": msg.UUID,
 				"payload":      string(msg.Payload),
+				"metadata":     msg.Metadata,
 			})
 			return h(msg)
 		}

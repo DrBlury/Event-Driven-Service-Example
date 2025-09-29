@@ -15,7 +15,6 @@ import (
 // demoHandlerFunc is an example of a message handler function.
 func demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		slog.Info("Processing message", "message_uuid", msg.UUID, "payload", string(msg.Payload))
 		consumedPayload := demoEvent{}
 		err := json.Unmarshal(msg.Payload, &consumedPayload)
 		if err != nil {
@@ -44,7 +43,7 @@ func demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 }
 
 // simulateEvents produces events that will be later consumed.
-func simulateEvents(publisher message.Publisher, consumeTopic string) {
+func (s *Service) simulateEvents() {
 	i := 0
 	for {
 		e := demoEvent{
@@ -61,7 +60,7 @@ func simulateEvents(publisher message.Publisher, consumeTopic string) {
 			panic(err)
 		}
 
-		err = publisher.Publish(consumeTopic, message.NewMessage(
+		err = s.Publisher.Publish(s.Conf.ConsumeTopic, message.NewMessage(
 			watermill.NewUUID(), // internal uuid of the message, useful for debugging
 			payload,
 		))

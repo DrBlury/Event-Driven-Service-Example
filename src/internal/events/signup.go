@@ -2,7 +2,6 @@ package events
 
 import (
 	"encoding/json"
-	"log/slog"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -12,7 +11,6 @@ import (
 // signupHandlerFunc is an example of a message handler function.
 func signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		slog.Info("Processing signup message", "message_uuid", msg.UUID, "payload", string(msg.Payload))
 		consumedPayload := signupEvent{}
 		err := json.Unmarshal(msg.Payload, &consumedPayload)
 		if err != nil {
