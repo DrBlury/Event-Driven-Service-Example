@@ -62,12 +62,12 @@ tasks:
       - mv ./api/openapi.json ./src/internal/server/handler/apihandler/embedded/openapi.json
     silent: true
 
-  # gen-api-std:
-  #   desc: "Generate the api wrapper interfaces for std server using oapi-codegen"
-  #   cmds:
-  #     - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
-  #     - oapi-codegen --config ./api/server-std.cfg.yml ./api/bundle.yml > ./src/internal/server/generated/api.gen.go
-  #   silent: true
+  gen-api-std:
+    desc: "Generate the api wrapper interfaces for std server using oapi-codegen"
+    cmds:
+      - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
+      - cd ./src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
+    silent: true
 
   gen-api:
     desc: "Generate the api for the server using oapi-codegen"
@@ -76,7 +76,7 @@ tasks:
       - task lint-api
       - task bundle-api
       - task gen-embedded-api
-      # - task gen-api-std
+      - task gen-api-std
     silent: true
 
   gen-buf:
