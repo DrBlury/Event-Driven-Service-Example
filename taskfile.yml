@@ -102,14 +102,3 @@ tasks:
       - echo "Running scc to show stats"
       - docker run --rm -it -v "$PWD:/pwd"  ghcr.io/lhoupert/scc:master scc /pwd
     silent: true
-
-  # gen-api-clients:
-  #   desc: 'Generate the api clients for the services'
-  #   cmds:
-  #     - echo "Generating the api clients for the services"
-  #     - cd ./src/internal/service/ibanvalidator/res && oapi-codegen -config cfg.yml oapi.json
-  #     - cd ./src/internal/service/trpc/res && oapi-codegen -config cfg.yml oapi.json
-  #     - cd ./src/internal/service/agenthint/res && oapi-codegen -config cfg.yml oapi.json
-  #     - cd ./src/internal/service/postcd/res && oapi-codegen -config cfg.yml oapi.json
-  #     - cd ./src/internal/service/signup-gateway/res && oapi-codegen -config cfg.yml oapi.json
-  #   silent: true
