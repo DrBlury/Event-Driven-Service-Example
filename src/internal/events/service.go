@@ -59,7 +59,8 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 	s.Router.AddMiddleware(middleware.Recoverer)
 
 	// Simulate producing events
-	go s.simulateEvents()
+	// go s.simulateEventsDemo()
+	go s.simulateEventsSignup()
 
 	if err := s.Router.Run(ctx); err != nil {
 		panic(err)

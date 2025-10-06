@@ -15,35 +15,42 @@ import (
 // demoHandlerFunc is an example of a message handler function.
 func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := demoEvent{}
-		err := json.Unmarshal(msg.Payload, &consumedPayload)
+		consumedPayload := &demoEvent{}
+		err := json.Unmarshal(msg.Payload, consumedPayload)
 		if err != nil {
 			return nil, err
 		}
 
+		// Do something with the payload, for demo purposes we just log it
 		slog.Info("Received date",
 			"year", consumedPayload.Date.Year,
 			"month", consumedPayload.Date.Month,
 			"day", consumedPayload.Date.Day,
 		)
 
-		newPayload, err := json.Marshal(processedDemoEvent{
-			ID:   consumedPayload.ID,
-			Time: time.Now(),
-			Date: consumedPayload.Date, // Example usage
-		})
+		// create the new payload
+		newPayload, err := json.Marshal(
+			processedDemoEvent{
+				ID:   consumedPayload.ID,
+				Time: time.Now(),
+				Date: consumedPayload.Date, // Example usage
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
 
+		// create the new message to be published
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
-
+		newMessage.Metadata = msg.Metadata // propagate metadata = time.Now().Format(time.RFC3339)
+		newMessage.Metadata["consumed_topic"] = s.Conf.ConsumeTopic
+		newMessage.Metadata["published_topic"] = s.Conf.PublishTopic
 		return []*message.Message{newMessage}, nil
 	}
 }
 
-// simulateEvents produces events that will be later consumed.
-func (s *Service) simulateEvents() {
+// simulateEventsDemo produces events that will be later consumed.
+func (s *Service) simulateEventsDemo() {
 	i := 0
 	for {
 		e := demoEvent{

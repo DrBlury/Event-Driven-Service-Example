@@ -1,7 +1,11 @@
 package events
 
 import (
+	"drblury/poc-event-signup/internal/domain"
 	"encoding/json"
+	"errors"
+	"log/slog"
+	"math/rand/v2"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -11,8 +15,8 @@ import (
 // signupHandlerFunc is an example of a message handler function.
 func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := signupEvent{}
-		err := json.Unmarshal(msg.Payload, &consumedPayload)
+		consumedPayload := &signupEvent{}
+		err := json.Unmarshal(msg.Payload, consumedPayload)
 		if err != nil {
 			return nil, err
 		}
@@ -25,10 +29,15 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 			ErrorMessage:   "",
 		}
 
-		// make 10% of the events fail
-		if consumedPayload.ID%10 == 0 {
+		// make 50% of the events encounter a non-fatal error
+		if consumedPayload.ID%2 == 0 {
 			newEvent.SuccessMessage = ""
 			newEvent.ErrorMessage = "Signup failed due to some error"
+		}
+
+		// make 10% of the events fail fatally
+		if consumedPayload.ID%10 == 0 {
+			return nil, errors.New("fatal error processing signup event")
 		}
 
 		newPayload, err := json.Marshal(newEvent)
@@ -37,13 +46,47 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 		}
 
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
-
-		// if there was an error, send the message to a different topic
-		if newEvent.ErrorMessage != "" {
-			// Send to error topic
-			return []*message.Message{newMessage}, nil
-		}
+		newMessage.Metadata = msg.Metadata // propagate metadata
+		newMessage.Metadata["consumed_topic"] = s.Conf.ConsumeTopicSignup
+		newMessage.Metadata["published_topic"] = s.Conf.PublishTopicSignup
 
 		return []*message.Message{newMessage}, nil
+	}
+}
+
+// simulateEventsSignup produces events that will be later consumed.
+func (s *Service) simulateEventsSignup() {
+	i := 0
+	for {
+		e := signupEvent{
+			ID: i,
+			Signup: &domain.Signup{
+				SignupMeta: &domain.SignupMeta{
+					StartOfServiceDate: &domain.Date{
+						Year:  int32(rand.IntN(5) + 2020),
+						Month: int32(i%12 + 1),
+						Day:   int32((i % 28) + 1),
+					},
+				},
+			},
+		}
+
+		payload, err := json.Marshal(e)
+		if err != nil {
+			panic(err)
+		}
+
+		err = s.Publisher.Publish(s.Conf.ConsumeTopicSignup, message.NewMessage(
+			watermill.NewUUID(), // internal uuid of the message, useful for debugging
+			payload,
+		))
+		if err != nil {
+			slog.Error("could not publish event", "error", err)
+			time.Sleep(10 * time.Second)
+			panic(err)
+		}
+
+		time.Sleep(2 * time.Second)
+		i++
 	}
 }
