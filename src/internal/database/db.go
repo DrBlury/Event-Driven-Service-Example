@@ -21,6 +21,12 @@ func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Databa
 	defer cancel()
 
 	clientOpts := options.Client().ApplyURI(cfg.MongoURL)
+
+	clientOpts.Auth = &options.Credential{
+		Username: cfg.MongoUser,
+		Password: cfg.MongoPassword,
+	}
+
 	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		logger.Error("MongoDB connection failed", "error", err)

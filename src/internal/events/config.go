@@ -5,6 +5,8 @@ type Config struct {
 	KafkaClientID      string
 	KafkaConsumerGroup string
 
+	PoisonTopic string
+
 	// Example Usecase Topics
 	ConsumeTopic string
 	PublishTopic string

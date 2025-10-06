@@ -47,11 +47,16 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 	s.Router = router
 
 	s.Router.AddPlugin(plugin.SignalsHandler)
-	s.Router.AddMiddleware(middleware.Recoverer)
 
 	s.addAllHandlers()
 
-	s.Router.AddMiddleware(logMessagesMiddleware(logger))
+	// Order: correlationID -> logging -> outbox -> retry -> poison -> recoverer -> custom recover
+	s.Router.AddMiddleware(s.correlationIDMiddleware())
+	s.Router.AddMiddleware(s.logMessagesMiddleware(logger))
+	s.Router.AddMiddleware(s.outboxMiddleware())
+	s.Router.AddMiddleware(s.retryMiddleware())
+	s.Router.AddMiddleware(s.poisonMiddleware())
+	s.Router.AddMiddleware(middleware.Recoverer)
 
 	// Simulate producing events
 	go s.simulateEvents()
@@ -119,8 +124,34 @@ func (s *Service) addAllHandlers() {
 	)
 }
 
+// correlationIDMiddleware is a middleware to add correlation IDs to messages
+func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			if _, ok := msg.Metadata["correlation_id"]; !ok {
+				msg.Metadata["correlation_id"] = watermill.NewUUID()
+			}
+			return h(msg)
+		}
+	}
+}
+
+// poisonmiddleware is a middleware to handle poison messages
+func (s *Service) poisonMiddleware() message.HandlerMiddleware {
+	mw, err := middleware.PoisonQueue(
+		s.Publisher,
+		s.Conf.PoisonTopic,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return mw
+}
+
 // middleware to log all messages being processed
-func logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddleware {
+func (s *Service) logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			logger.Info("Processing message", watermill.LogFields{
@@ -131,4 +162,42 @@ func logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddle
 			return h(msg)
 		}
 	}
+}
+
+// outboxMiddleware is a placeholder for an outbox pattern implementation.
+// We want to store the incoming message in the database before processing it.
+// And then after processing, we want to mark it as processed.
+func (s *Service) outboxMiddleware() message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			// BEFORE processing the message, store it in the outbox
+			// TODO
+			// turn message into json
+			// msgJSON, err := json.Marshal(msg)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			// incomingTopic := msg.Metadata["watermill_topic"]
+
+			// Process the message
+			outgoingMessages, err := h(msg)
+			if err != nil {
+				return nil, err
+			}
+
+			// AFTER processing the message, mark it as processed in the outbox
+			// TODO
+
+			return outgoingMessages, nil
+		}
+	}
+}
+
+// retryMiddleware is a middleware that will use exponential backoff to retry message processing.
+func (s *Service) retryMiddleware() message.HandlerMiddleware {
+	return middleware.Retry{
+		MaxRetries:      5,        // 1, 2, 4, 8, 16
+		InitialInterval: 1 * 1e9,  // 1s
+		MaxInterval:     16 * 1e9, // 16s
+	}.Middleware
 }

@@ -85,6 +85,7 @@ func LoadConfig(
 		KafkaClientID:      viper.GetString("KAFKA_CLIENT_ID"),
 		KafkaConsumerGroup: viper.GetString("KAFKA_CONSUMER_GROUP_ID"),
 		// === All Topics ===
+		PoisonTopic: viper.GetString("KAFKA_POISON_TOPIC"),
 
 		// Example Usecase Topics
 		ConsumeTopic: viper.GetString("KAFKA_TOPIC"),
