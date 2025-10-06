@@ -12,6 +12,29 @@ import (
 
 const signupCollection = "signups"
 
+func (db *Database) StoreIncomingMessage(ctx context.Context, topic string, uuid string, payload string) error {
+	_, err := db.DB.Collection(topic).InsertOne(ctx, bson.M{
+		"topic":   topic,
+		"uuid":    uuid,
+		"payload": payload,
+	})
+	return err
+}
+
+func (db *Database) SetIncomingMessageProcessed(ctx context.Context, topic string, uuid string) error {
+	_, err := db.DB.Collection(topic).UpdateOne(ctx, bson.M{"uuid": uuid}, bson.M{"$set": bson.M{"processed": true}})
+	return err
+}
+
+func (db *Database) StoreOutgoingMessage(ctx context.Context, topic string, uuid string, payload string) error {
+	_, err := db.DB.Collection(topic+"_outbox").InsertOne(ctx, bson.M{
+		"topic":   topic,
+		"uuid":    uuid,
+		"payload": payload,
+	})
+	return err
+}
+
 func (db *Database) StoreSignupInfo(ctx context.Context, info *domain.SignupInfo) error {
 	_, err := db.DB.Collection(signupCollection).InsertOne(ctx, info)
 	return err

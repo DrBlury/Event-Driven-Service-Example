@@ -51,12 +51,12 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 	s.addAllHandlers()
 
 	// Order: correlationID -> logging -> outbox -> retry -> poison -> recoverer -> custom recover
-	s.Router.AddMiddleware(s.correlationIDMiddleware())
-	s.Router.AddMiddleware(s.logMessagesMiddleware(logger))
+	s.Router.AddMiddleware(s.correlationIDMiddleware())     // add correlation ID if not present
+	s.Router.AddMiddleware(s.logMessagesMiddleware(logger)) // log all messages being processed
 	s.Router.AddMiddleware(s.outboxMiddleware())
-	s.Router.AddMiddleware(s.retryMiddleware())
-	s.Router.AddMiddleware(s.poisonMiddleware())
-	s.Router.AddMiddleware(middleware.Recoverer)
+	s.Router.AddMiddleware(s.retryMiddleware())  // exponential backoff max 5 retries (1s, 2s, 4s, 8s, 16s)
+	s.Router.AddMiddleware(s.poisonMiddleware()) // this is a dead letter queue
+	s.Router.AddMiddleware(middleware.Recoverer) // built-in recoverer
 
 	// Simulate producing events
 	// go s.simulateEventsDemo()
@@ -105,14 +105,14 @@ func (s *Service) createSubscriber(consumerGroup string, brokers []string, unmar
 func (s *Service) addAllHandlers() {
 	// This is just for demonstration purposes.
 	// In a real application, you would have different handlers for different topics.
-	s.Router.AddHandler(
-		"demoHandler",       // handler name, must be unique
-		s.Conf.ConsumeTopic, // topic from which messages should be consumed
-		s.Subscriber,
-		s.Conf.PublishTopic, // topic to which messages should be published
-		s.Publisher,
-		s.demoHandlerFunc(),
-	)
+	// s.Router.AddHandler(
+	// 	"demoHandler",       // handler name, must be unique
+	// 	s.Conf.ConsumeTopic, // topic from which messages should be consumed
+	// 	s.Subscriber,
+	// 	s.Conf.PublishTopic, // topic to which messages should be published
+	// 	s.Publisher,
+	// 	s.demoHandlerFunc(),
+	// )
 
 	// Add the signup handler
 	s.Router.AddHandler(
@@ -137,7 +137,7 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 	}
 }
 
-// poisonmiddleware is a middleware to handle poison messages
+// poisonmiddleware is a middleware to handle poison messages (Dead letter queue)
 func (s *Service) poisonMiddleware() message.HandlerMiddleware {
 	mw, err := middleware.PoisonQueue(
 		s.Publisher,
@@ -172,13 +172,17 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			// BEFORE processing the message, store it in the outbox
-			// TODO
 			// turn message into json
-			// msgJSON, err := json.Marshal(msg)
-			// if err != nil {
-			// 	return nil, err
-			// }
-			// incomingTopic := msg.Metadata["watermill_topic"]
+			topic := "unknown_topic"
+			// if no topic is set, use a default one
+			if msg.Metadata["consumed_topic"] != "" {
+				topic = msg.Metadata["consumed_topic"]
+			}
+
+			err := s.DB.StoreIncomingMessage(msg.Context(), topic, msg.UUID, string(msg.Payload))
+			if err != nil {
+				return nil, err
+			}
 
 			// Process the message
 			outgoingMessages, err := h(msg)
@@ -187,7 +191,22 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 			}
 
 			// AFTER processing the message, mark it as processed in the outbox
-			// TODO
+			err = s.DB.SetIncomingMessageProcessed(msg.Context(), topic, msg.UUID)
+			if err != nil {
+				return nil, err
+			}
+
+			// Write it to the outbox table as well
+			for _, outMsg := range outgoingMessages {
+				outTopic := "unknown_topic"
+				if outMsg.Metadata["published_topic"] != "" {
+					outTopic = outMsg.Metadata["published_topic"]
+				}
+				err = s.DB.StoreOutgoingMessage(msg.Context(), outTopic, outMsg.UUID, string(outMsg.Payload))
+				if err != nil {
+					return nil, err
+				}
+			}
 
 			return outgoingMessages, nil
 		}

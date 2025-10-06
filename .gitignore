@@ -1,4 +1,5 @@
 .emqx
 otel-data
 kafka-data
+mongo-data
 .env
