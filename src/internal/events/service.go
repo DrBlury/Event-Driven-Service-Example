@@ -123,6 +123,16 @@ func (s *Service) addAllHandlers() {
 		s.Publisher,
 		s.signupHandlerFunc(),
 	)
+
+	// Add the signup step 2 handler
+	s.Router.AddHandler(
+		"signupStepTwoHandler",
+		s.Conf.PublishTopicSignup,
+		s.Subscriber,
+		"signup_step_2_processed", // This is just for demo
+		s.Publisher,
+		s.signupStepTwoHandlerFunc(),
+	)
 }
 
 // correlationIDMiddleware is a middleware to add correlation IDs to messages
@@ -171,18 +181,7 @@ func (s *Service) logMessagesMiddleware(logger watermill.LoggerAdapter) message.
 func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
-			// BEFORE processing the message, store it in the outbox
-			// turn message into json
-			topic := "unknown_topic"
-			// if no topic is set, use a default one
-			if msg.Metadata["consumed_topic"] != "" {
-				topic = msg.Metadata["consumed_topic"]
-			}
-
-			err := s.DB.StoreIncomingMessage(msg.Context(), topic, msg.UUID, string(msg.Payload))
-			if err != nil {
-				return nil, err
-			}
+			// Do something before processing the message
 
 			// Process the message
 			outgoingMessages, err := h(msg)
@@ -190,17 +189,16 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 				return nil, err
 			}
 
-			// AFTER processing the message, mark it as processed in the outbox
-			err = s.DB.SetIncomingMessageProcessed(msg.Context(), topic, msg.UUID)
-			if err != nil {
-				return nil, err
+			if len(outgoingMessages) == 0 {
+				// nothing to store
+				return nil, nil
 			}
 
 			// Write it to the outbox table as well
 			for _, outMsg := range outgoingMessages {
 				outTopic := "unknown_topic"
-				if outMsg.Metadata["published_topic"] != "" {
-					outTopic = outMsg.Metadata["published_topic"]
+				if outMsg.Metadata["next_topic"] != "" {
+					outTopic = outMsg.Metadata["next_topic"]
 				}
 				err = s.DB.StoreOutgoingMessage(msg.Context(), outTopic, outMsg.UUID, string(outMsg.Payload))
 				if err != nil {

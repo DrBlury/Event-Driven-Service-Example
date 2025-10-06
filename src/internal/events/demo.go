@@ -43,8 +43,8 @@ func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Messa
 		// create the new message to be published
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata = time.Now().Format(time.RFC3339)
-		newMessage.Metadata["consumed_topic"] = s.Conf.ConsumeTopic
-		newMessage.Metadata["published_topic"] = s.Conf.PublishTopic
+		newMessage.Metadata["handler"] = "demoHandler"
+		newMessage.Metadata["next_topic"] = s.Conf.PublishTopic
 		return []*message.Message{newMessage}, nil
 	}
 }

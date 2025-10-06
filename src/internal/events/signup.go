@@ -47,9 +47,8 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata
-		newMessage.Metadata["consumed_topic"] = s.Conf.ConsumeTopicSignup
-		newMessage.Metadata["published_topic"] = s.Conf.PublishTopicSignup
-
+		newMessage.Metadata["handler"] = "signupHandler"
+		newMessage.Metadata["next_topic"] = s.Conf.PublishTopicSignup
 		return []*message.Message{newMessage}, nil
 	}
 }
