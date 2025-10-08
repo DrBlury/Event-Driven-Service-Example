@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"drblury/poc-event-signup/internal/database"
+	"drblury/poc-event-signup/internal/usecase"
 	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -26,7 +27,8 @@ type Service struct {
 	Router     *message.Router
 	Logger     watermill.LoggerAdapter
 	// add database or other dependencies here as needed
-	DB *database.Database
+	DB      *database.Database
+	Usecase *usecase.AppLogic
 }
 
 func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx context.Context) *Service {
@@ -53,9 +55,17 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 	// Order: correlationID -> logging -> outbox -> retry -> poison -> recoverer -> custom recover
 	s.Router.AddMiddleware(s.correlationIDMiddleware())     // add correlation ID if not present
 	s.Router.AddMiddleware(s.logMessagesMiddleware(logger)) // log all messages being processed
+	s.Router.AddMiddleware(s.protoValidateMiddleware())
 	s.Router.AddMiddleware(s.outboxMiddleware())
-	s.Router.AddMiddleware(s.retryMiddleware())  // exponential backoff max 5 retries (1s, 2s, 4s, 8s, 16s)
-	s.Router.AddMiddleware(s.poisonMiddleware()) // this is a dead letter queue
+	s.Router.AddMiddleware(s.retryMiddleware()) // exponential backoff max 5 retries (1s, 2s, 4s, 8s, 16s)
+	// s.Router.AddMiddleware(s.poisonMiddleware()) // this is a dead letter queue
+	s.Router.AddMiddleware(s.poisonMiddlewareWithFilter(func(err error) bool {
+		// Example: filter out certain errors from going to the poison queue
+		if _, ok := err.(*UnprocessableEventError); ok {
+			return true
+		}
+		return false
+	}))
 	s.Router.AddMiddleware(middleware.Recoverer) // built-in recoverer
 
 	// Simulate producing events

@@ -32,7 +32,7 @@ func NewAppLogic(
 	}
 }
 
-func (a AppLogic) validate(msg protoreflect.ProtoMessage) error {
+func (a AppLogic) Validate(msg protoreflect.ProtoMessage) error {
 	if err := a.validator.Validate(msg); err != nil {
 		// log the error
 		slog.With("error", err).Error("validation error")

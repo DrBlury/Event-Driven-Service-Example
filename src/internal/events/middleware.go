@@ -1,6 +1,9 @@
 package events
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -18,7 +21,59 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 	}
 }
 
-// poisonmiddleware is a middleware to handle poison messages (Dead letter queue)
+// protoValidateMiddleware is a middleware to validate protobuf messages based on event type in metadata
+func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			eventType, ok := msg.Metadata["event_type"]
+			if !ok {
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          fmt.Errorf("missing event_type in metadata"),
+				}
+			}
+			newProtoFunc, ok := protoTypeRegistry[eventType]
+			if !ok {
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          fmt.Errorf("unknown event type: %s", eventType),
+				}
+			}
+			protoMsg := newProtoFunc()
+			if err := json.Unmarshal(msg.Payload, protoMsg); err != nil {
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          err,
+				}
+			}
+			err := s.Usecase.Validate(protoMsg)
+			if err != nil {
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          err,
+				}
+			}
+			return h(msg)
+		}
+	}
+}
+
+// poisonMiddlewareWithFilter is a middleware to handle poison messages (Dead letter queue) with a filter
+func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) message.HandlerMiddleware {
+	mw, err := middleware.PoisonQueueWithFilter(
+		s.Publisher,
+		s.Conf.PoisonQueue,
+		filter,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return mw
+}
+
+// poisonMiddleware is a middleware to handle poison messages (Dead letter queue)
 func (s *Service) poisonMiddleware() message.HandlerMiddleware {
 	mw, err := middleware.PoisonQueue(
 		s.Publisher,
