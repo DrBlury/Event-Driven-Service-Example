@@ -15,28 +15,21 @@ import (
 // signupHandlerFunc is an example of a message handler function.
 func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := &signupEvent{}
+		consumedPayload := &domain.Signup{}
 		err := json.Unmarshal(msg.Payload, consumedPayload)
 		if err != nil {
 			return nil, err
 		}
 
 		// Create processed event
-		newEvent := processedSignupEvent{
-			ID:             consumedPayload.ID,
-			Time:           time.Now(),
-			SuccessMessage: "Signup successful",
-			ErrorMessage:   "",
-		}
-
-		// make 50% of the events encounter a non-fatal error
-		if consumedPayload.ID%2 == 0 {
-			newEvent.SuccessMessage = ""
-			newEvent.ErrorMessage = "Signup failed due to some error"
+		newEvent := &domain.BillingAddress{
+			City:    "Cologne",
+			Country: "DE",
+			Zip:     "50667",
 		}
 
 		// make 10% of the events fail fatally
-		if consumedPayload.ID%10 == 0 {
+		if rand.IntN(10)%10 == 0 {
 			return nil, errors.New("fatal error processing signup event")
 		}
 
@@ -57,15 +50,12 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 func (s *Service) simulateEventsSignup() {
 	i := 0
 	for {
-		e := signupEvent{
-			ID: i,
-			Signup: &domain.Signup{
-				SignupMeta: &domain.SignupMeta{
-					StartOfServiceDate: &domain.Date{
-						Year:  int32(rand.IntN(5) + 2020),
-						Month: int32(i%12 + 1),
-						Day:   int32((i % 28) + 1),
-					},
+		e := &domain.Signup{
+			SignupMeta: &domain.SignupMeta{
+				StartOfServiceDate: &domain.Date{
+					Year:  int32(rand.IntN(5) + 2020),
+					Month: int32(i%12 + 1),
+					Day:   int32((i % 28) + 1),
 				},
 			},
 		}

@@ -1,8 +1,10 @@
 package events
 
 import (
+	"drblury/poc-event-signup/internal/domain"
 	"encoding/json"
 	"errors"
+	"math/rand/v2"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -12,28 +14,35 @@ import (
 // signupStepTwoHandlerFunc is an example of a message handler function.
 func (s *Service) signupStepTwoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := &signupEvent{}
+		consumedPayload := &domain.BillingAddress{}
 		err := json.Unmarshal(msg.Payload, consumedPayload)
 		if err != nil {
 			return nil, err
 		}
 
 		// Create processed event
+		type processedSignupEvent struct {
+			ID             string    `json:"id"`
+			Time           time.Time `json:"time"`
+			SuccessMessage string    `json:"success_message"`
+			ErrorMessage   string    `json:"error_message"`
+		}
+
 		newEvent := processedSignupEvent{
-			ID:             consumedPayload.ID,
+			ID:             "A-" + watermill.NewUUID(),
 			Time:           time.Now(),
 			SuccessMessage: "Signup successful",
 			ErrorMessage:   "",
 		}
 
 		// make 50% of the events encounter a non-fatal error
-		if consumedPayload.ID%2 == 0 {
+		if rand.IntN(2)%2 == 0 {
 			newEvent.SuccessMessage = ""
 			newEvent.ErrorMessage = "Signup failed due to some error"
 		}
 
 		// make 10% of the events fail fatally
-		if consumedPayload.ID%10 == 0 {
+		if rand.IntN(100)%10 == 0 {
 			return nil, errors.New("fatal error processing signup event")
 		}
 

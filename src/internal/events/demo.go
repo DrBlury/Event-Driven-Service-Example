@@ -12,6 +12,17 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type demoEvent struct {
+	ID   int          `json:"id"`
+	Date *domain.Date `json:"date"`
+}
+
+type processedDemoEvent struct {
+	ID   int          `json:"id"`
+	Time time.Time    `json:"time"`
+	Date *domain.Date `json:"date"`
+}
+
 // demoHandlerFunc is an example of a message handler function.
 func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
