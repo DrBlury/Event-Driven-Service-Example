@@ -41,7 +41,7 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata
 		newMessage.Metadata["handler"] = "signupHandler"
-		newMessage.Metadata["next_topic"] = s.Conf.PublishTopicSignup
+		newMessage.Metadata["next_queue"] = s.Conf.PublishQueueSignup
 		return []*message.Message{newMessage}, nil
 	}
 }
@@ -65,7 +65,7 @@ func (s *Service) simulateEventsSignup() {
 			panic(err)
 		}
 
-		err = s.Publisher.Publish(s.Conf.ConsumeTopicSignup, message.NewMessage(
+		err = s.Publisher.Publish(s.Conf.ConsumeQueueSignup, message.NewMessage(
 			watermill.NewUUID(), // internal uuid of the message, useful for debugging
 			payload,
 		))

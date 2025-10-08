@@ -55,7 +55,7 @@ func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Messa
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata = time.Now().Format(time.RFC3339)
 		newMessage.Metadata["handler"] = "demoHandler"
-		newMessage.Metadata["next_topic"] = s.Conf.PublishTopic
+		newMessage.Metadata["next_queue"] = s.Conf.PublishQueue
 		return []*message.Message{newMessage}, nil
 	}
 }
@@ -78,7 +78,7 @@ func (s *Service) simulateEventsDemo() {
 			panic(err)
 		}
 
-		err = s.Publisher.Publish(s.Conf.ConsumeTopic, message.NewMessage(
+		err = s.Publisher.Publish(s.Conf.ConsumeQueue, message.NewMessage(
 			watermill.NewUUID(), // internal uuid of the message, useful for debugging
 			payload,
 		))

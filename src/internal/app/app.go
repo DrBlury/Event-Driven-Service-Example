@@ -69,8 +69,8 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 
 	logger.With(
 		"brokers", eventService.Conf.KafkaBrokers,
-		"consume_topic", eventService.Conf.ConsumeTopic,
-		"publish_topic", eventService.Conf.PublishTopic).
+		"consume_queue", eventService.Conf.ConsumeQueue,
+		"publish_queue", eventService.Conf.PublishQueue).
 		Info("starting event service")
 
 	// Wait for interruption.

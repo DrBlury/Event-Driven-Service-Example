@@ -22,7 +22,7 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 func (s *Service) poisonMiddleware() message.HandlerMiddleware {
 	mw, err := middleware.PoisonQueue(
 		s.Publisher,
-		s.Conf.PoisonTopic,
+		s.Conf.PoisonQueue,
 	)
 
 	if err != nil {
@@ -67,11 +67,11 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 
 			// Write it to the outbox table as well
 			for _, outMsg := range outgoingMessages {
-				outTopic := "unknown_topic"
-				if outMsg.Metadata["next_topic"] != "" {
-					outTopic = outMsg.Metadata["next_topic"]
+				outQueue := "unknown_queue"
+				if outMsg.Metadata["next_queue"] != "" {
+					outQueue = outMsg.Metadata["next_queue"]
 				}
-				err = s.DB.StoreOutgoingMessage(msg.Context(), outTopic, outMsg.UUID, string(outMsg.Payload))
+				err = s.DB.StoreOutgoingMessage(msg.Context(), outQueue, outMsg.UUID, string(outMsg.Payload))
 				if err != nil {
 					return nil, err
 				}

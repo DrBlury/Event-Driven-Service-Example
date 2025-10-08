@@ -2,4 +2,5 @@
 otel-data
 kafka-data
 mongo-data
+rabbitmq-data
 .env

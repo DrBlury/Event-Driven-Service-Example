@@ -54,7 +54,7 @@ func (s *Service) signupStepTwoHandlerFunc() func(msg *message.Message) ([]*mess
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata
 		newMessage.Metadata["handler"] = "signupStepTwoHandler"
-		newMessage.Metadata["next_topic"] = "signup-processable_2"
+		newMessage.Metadata["next_queue"] = "signup-processable_2"
 		return []*message.Message{newMessage}, nil
 	}
 }

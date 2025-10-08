@@ -1,17 +1,25 @@
 package events
 
 type Config struct {
+	// PubSubSystem
+	PubSubSystem string // "kafka" or "rabbitmq"
+
+	// Kafka configuration
 	KafkaBrokers       []string
 	KafkaClientID      string
 	KafkaConsumerGroup string
 
-	PoisonTopic string
+	// RabbitMQ configuration
+	RabbitMQURL string
 
-	// Example Usecase Topics
-	ConsumeTopic string
-	PublishTopic string
+	// === All Queues ===
+	PoisonQueue string
 
-	// Signup Usecase Topics
-	ConsumeTopicSignup string
-	PublishTopicSignup string
+	// Demo Queues
+	ConsumeQueue string
+	PublishQueue string
+
+	// Signup Usecase Queues
+	ConsumeQueueSignup string
+	PublishQueueSignup string
 }

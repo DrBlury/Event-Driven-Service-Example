@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -36,8 +36,8 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 		Logger: logger,
 		DB:     db,
 	}
-	s.createPublisher(conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
-	s.createSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, kafka.DefaultMarshaler{}, logger)
+
+	setupPubSub(s, conf, logger)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -69,35 +69,35 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx conte
 	return s
 }
 
-// createPublisher is a helper function that creates a Publisher, in this case - the Kafka Publisher.
-func (s *Service) createPublisher(brokers []string, marshaler kafka.Marshaler, logger watermill.LoggerAdapter) {
-	kafkaPublisher, err := kafka.NewPublisher(
-		kafka.PublisherConfig{
-			Brokers:   brokers,
-			Marshaler: marshaler,
-		},
-		logger,
-	)
-	if err != nil {
-		panic(err)
+func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter) {
+	switch {
+	case conf.PubSubSystem == "kafka":
+		// Kafka setup
+		s.createKafkaPublisher(conf.KafkaBrokers, logger)
+		s.createKafkaSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, logger)
+		return
+	case conf.PubSubSystem == "rabbitmq":
+		// Rabbitmq setup
+		ampqConfig := amqp.NewDurablePubSubConfig(
+			conf.RabbitMQURL,
+			// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
+			// plus provided suffix.
+			// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
+			// it will also receive all messages. It will work like separate consumer groups in Kafka.
+			amqp.GenerateQueueNameTopicNameWithSuffix("-queueSuffix"),
+		)
+		ampqConn, err := amqp.NewConnection(amqp.ConnectionConfig{
+			AmqpURI:   conf.RabbitMQURL,
+			TLSConfig: nil,
+			Reconnect: amqp.DefaultReconnectConfig(),
+		}, logger)
+		if err != nil {
+			panic(err)
+		}
+		s.createRabbitMQPublisher(ampqConfig, ampqConn, logger)
+		s.createRabbitMQSubscriber(ampqConfig, ampqConn, logger)
+		return
+	default:
+		panic("unsupported PubSubSystem, must be 'kafka' or 'rabbitmq'")
 	}
-
-	s.Publisher = kafkaPublisher
-}
-
-// createSubscriber is a helper function similar to the previous one, but in this case it creates a Subscriber.
-func (s *Service) createSubscriber(consumerGroup string, brokers []string, unmarshaler kafka.Unmarshaler, logger watermill.LoggerAdapter) {
-	kafkaSubscriber, err := kafka.NewSubscriber(
-		kafka.SubscriberConfig{
-			Brokers:       brokers,
-			Unmarshaler:   unmarshaler,
-			ConsumerGroup: consumerGroup, // every handler will use a separate consumer group
-		},
-		logger,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	s.Subscriber = kafkaSubscriber
 }

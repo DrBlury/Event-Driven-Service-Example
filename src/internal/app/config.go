@@ -81,19 +81,27 @@ func LoadConfig(
 	}
 
 	eventsConfig := &events.Config{
-		KafkaBrokers:       viper.GetStringSlice("KAFKA_BROKERS_URL"),
-		KafkaClientID:      viper.GetString("KAFKA_CLIENT_ID"),
-		KafkaConsumerGroup: viper.GetString("KAFKA_CONSUMER_GROUP_ID"),
-		// === All Topics ===
-		PoisonTopic: viper.GetString("KAFKA_POISON_TOPIC"),
+		// PubSubSystem
+		PubSubSystem: viper.GetString("PUBSUB_SYSTEM"), // "kafka" or "rabbitmq"
 
-		// Example Usecase Topics
-		ConsumeTopic: viper.GetString("KAFKA_TOPIC"),
-		PublishTopic: viper.GetString("KAFKA_TOPIC_PROCESSED"),
+		// Kafka configuration
+		KafkaBrokers:       viper.GetStringSlice("BROKERS_URL"),
+		KafkaClientID:      viper.GetString("CLIENT_ID"),
+		KafkaConsumerGroup: viper.GetString("CONSUMER_GROUP_ID"),
 
-		// Signup Usecase Topics
-		ConsumeTopicSignup: viper.GetString("KAFKA_TOPIC_SIGNUP"),
-		PublishTopicSignup: viper.GetString("KAFKA_TOPIC_SIGNUP_PROCESSABLE"),
+		// RabbitMQ configuration
+		RabbitMQURL: viper.GetString("RABBITMQ_URL"),
+
+		// === All Queues ===
+		PoisonQueue: viper.GetString("POISON_QUEUE"),
+
+		// Example Usecase Queues
+		ConsumeQueue: viper.GetString("QUEUE"),
+		PublishQueue: viper.GetString("QUEUE_PROCESSED"),
+
+		// Signup Usecase Queues
+		ConsumeQueueSignup: viper.GetString("QUEUE_SIGNUP"),
+		PublishQueueSignup: viper.GetString("QUEUE_SIGNUP_PROCESSABLE"),
 	}
 
 	databaseConfig := &database.Config{
