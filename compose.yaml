@@ -17,10 +17,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      # rabbitmq:
-      #   condition: service_healthy
       kafka:
         condition: service_healthy
+      # rabbitmq:
+      #   condition: service_healthy
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
@@ -58,23 +58,18 @@ services:
       retries: 5
 
   kafka:
-    image: bitnami/kafka:3.5.0
-    restart: unless-stopped
-    volumes:
-      - ./_kafka_data:/bitnami/kafka
+    image: apache/kafka:latest
+    ports:
+      - 9092:9092
     env_file:
       - ./env/kafka.env
+    volumes:
+      - ./_kafka_data:/tmp/kraft-combined-logs
     healthcheck:
-      test:
-        [
-          "CMD",
-          "kafka-broker-api-versions.sh",
-          "--bootstrap-server",
-          "localhost:9092",
-        ]
-      interval: 3s
+      test: ["CMD", "bash", "-c", "ps aux | grep -q '[K]afka'"]
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
 
   kafdrop:
     image: obsidiandynamics/kafdrop:4.2.0
@@ -83,9 +78,9 @@ services:
       - "9000:9000"
     env_file:
       - ./env/kafdrop.env
-    # depends_on:
-    # kafka:
-    #   condition: service_healthy
+    depends_on:
+      kafka:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "--fail", "-s", "http://localhost:9000"]
       interval: 30s
