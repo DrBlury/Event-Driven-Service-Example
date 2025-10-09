@@ -2,14 +2,14 @@ package app
 
 import (
 	"context"
-	"drblury/poc-event-signup/internal/database"
-	"drblury/poc-event-signup/internal/events"
-	"drblury/poc-event-signup/internal/server"
-	generatedAPI "drblury/poc-event-signup/internal/server/generated"
-	"drblury/poc-event-signup/internal/server/handler/apihandler"
-	"drblury/poc-event-signup/internal/usecase"
-	"drblury/poc-event-signup/pkg/logging"
-	"drblury/poc-event-signup/pkg/router"
+	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/events"
+	"drblury/event-driven-service/internal/server"
+	generatedAPI "drblury/event-driven-service/internal/server/generated"
+	"drblury/event-driven-service/internal/server/handler/apihandler"
+	"drblury/event-driven-service/internal/usecase"
+	"drblury/event-driven-service/pkg/logging"
+	"drblury/event-driven-service/pkg/router"
 	"os"
 	"os/signal"
 

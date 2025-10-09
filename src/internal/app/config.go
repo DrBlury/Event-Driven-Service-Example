@@ -1,14 +1,14 @@
 package app
 
 import (
-	"drblury/poc-event-signup/internal/domain"
-	"drblury/poc-event-signup/internal/events"
-	"drblury/poc-event-signup/internal/server"
-	"drblury/poc-event-signup/pkg/logging"
-	"drblury/poc-event-signup/pkg/router"
+	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/events"
+	"drblury/event-driven-service/internal/server"
+	"drblury/event-driven-service/pkg/logging"
+	"drblury/event-driven-service/pkg/router"
 	"time"
 
-	"drblury/poc-event-signup/internal/database"
+	"drblury/event-driven-service/internal/database"
 
 	"github.com/spf13/viper"
 )

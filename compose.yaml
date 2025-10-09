@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: mqtt-service-flow-example
+    container_name: event-driven-service-example-app
     image: golang:1.25.1-alpine
     ports:
       - "8080:8080"

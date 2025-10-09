@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"drblury/poc-event-signup/internal/domain"
+	"drblury/event-driven-service/internal/domain"
 )
 
 const signupCollection = "signups"

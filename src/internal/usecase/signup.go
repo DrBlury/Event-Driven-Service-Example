@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"drblury/poc-event-signup/internal/domain"
+	"drblury/event-driven-service/internal/domain"
 )
 
 func (a AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {

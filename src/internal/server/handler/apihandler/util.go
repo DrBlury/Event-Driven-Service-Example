@@ -1,7 +1,7 @@
 package apihandler
 
 import (
-	"drblury/poc-event-signup/internal/domain"
+	"drblury/event-driven-service/internal/domain"
 	"encoding/json"
 	"errors"
 	"net/http"

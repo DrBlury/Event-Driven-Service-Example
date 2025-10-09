@@ -1,4 +1,4 @@
-module drblury/poc-event-signup
+module drblury/event-driven-service
 
 go 1.25.1
 

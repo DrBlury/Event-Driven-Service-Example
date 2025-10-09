@@ -1,8 +1,8 @@
 package apihandler
 
 import (
-	"drblury/poc-event-signup/internal/domain"
-	"drblury/poc-event-signup/internal/usecase"
+	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/usecase"
 	"log/slog"
 )
 

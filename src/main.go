@@ -1,7 +1,7 @@
 package main
 
 import (
-	"drblury/poc-event-signup/internal/app"
+	"drblury/event-driven-service/internal/app"
 	"fmt"
 	"log/slog"
 	"os"

@@ -1,7 +1,7 @@
 package events
 
 import (
-	"drblury/poc-event-signup/internal/domain"
+	"drblury/event-driven-service/internal/domain"
 	"errors"
 	"math/rand/v2"
 	"time"

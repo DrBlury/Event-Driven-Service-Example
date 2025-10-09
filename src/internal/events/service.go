@@ -2,8 +2,8 @@ package events
 
 import (
 	"context"
-	"drblury/poc-event-signup/internal/database"
-	"drblury/poc-event-signup/internal/usecase"
+	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/usecase"
 	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"

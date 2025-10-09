@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	"drblury/poc-event-signup/internal/database"
-	"drblury/poc-event-signup/internal/domain"
+	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/domain"
 	"fmt"
 	"log/slog"
 
