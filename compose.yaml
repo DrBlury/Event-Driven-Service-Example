@@ -12,13 +12,15 @@ services:
     working_dir: /app
     command: go run main.go
     env_file:
-      - .env
+      - ./env/app.env
     restart: on-failure
     depends_on:
-      - openobserve
-      - rabbitmq
-      - mongo
-      # - kafka
+      mongo:
+        condition: service_healthy
+      # rabbitmq:
+      #   condition: service_healthy
+      kafka:
+        condition: service_healthy
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
@@ -28,73 +30,89 @@ services:
   mongo:
     image: mongo
     restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
+    env_file:
+      - ./env/mongo.env
     volumes:
       - ./_mongo_data:/data/db
+    command: mongod --quiet --logpath /dev/null
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 3s
+      timeout: 10s
+      retries: 5
 
   mongo-express:
     image: mongo-express
     restart: always
     ports:
       - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_URL: ${ME_CONFIG_MONGODB_URL:-mongodb://root:example@mongo:27017/}
-      ME_CONFIG_BASICAUTH_ENABLED: ${ME_CONFIG_BASICAUTH_ENABLED:-true}
-      ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME:-mongoexpressuser}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD:-mongoexpresspass}
+    env_file:
+      - ./env/mongo-express.env
     depends_on:
-      - mongo
-
-  # kafka:
-  #   image: bitnami/kafka:3.5.0
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./_kafka_data:/bitnami/kafka
-  #   environment:
-  #     ALLOW_PLAINTEXT_LISTENER: ${ALLOW_PLAINTEXT_LISTENER:-yes}
-  #     KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
-  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE:-true}
-  #     # Disable logs
-  #     KAFKA_LOG4J_LOGGERS: ${KAFKA_LOG4J_LOGGERS:-"kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR"}
-
-  # kafdrop:
-  #   image: obsidiandynamics/kafdrop
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9000:9000"
-  #   environment:
-  #     KAFKA_BROKERCONNECT: ${KAFKA_BROKERCONNECT:-kafka:9092}
-  #     JVM_OPTS: ${JVM_OPTS:-"-Xms32M -Xmx64M"}
-  #   depends_on:
-  #     - kafka
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    restart: unless-stopped
-    ports:
-      - "5672:5672" # RabbitMQ port
-      - "15672:15672" # RabbitMQ management port
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-    volumes:
-      - ./_rabbitmq_data:/var/lib/rabbitmq
+      mongo:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
-      interval: 30s
+      test: ["CMD", "curl", "--fail", "-s", "http://localhost:8081"]
+      interval: 3s
       timeout: 10s
       retries: 5
 
+  kafka:
+    image: bitnami/kafka:3.5.0
+    restart: unless-stopped
+    volumes:
+      - ./_kafka_data:/bitnami/kafka
+    env_file:
+      - ./env/kafka.env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions.sh",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
+      interval: 3s
+      timeout: 10s
+      retries: 5
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.2.0
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./env/kafdrop.env
+    # depends_on:
+    # kafka:
+    #   condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "-s", "http://localhost:9000"]
+      interval: 30s
+      timeout: 10s
+  ##
+  ##   rabbitmq:
+  ##     image: rabbitmq:3-management
+  ##     restart: unless-stopped
+  ##     ports:
+  ##       - "5672:5672" # RabbitMQ port
+  ##       - "15672:15672" # RabbitMQ management port
+  ##     env_file:
+  ##       - ./env/rabbitmq.env
+  ##     volumes:
+  ##       - ./_rabbitmq_data:/var/lib/rabbitmq
+  ##       - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+  ##     healthcheck:
+  ##       test: ["CMD", "rabbitmq-diagnostics", "status"]
+  ##       interval: 3s
+  ##       timeout: 10s
+  ##       retries: 5
+  ##
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest
     restart: unless-stopped
-    environment:
-      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-root@example.com}
-      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
-      RUST_LOG: ${RUST_LOG:-error}
+    env_file:
+      - ./env/openobserve.env
     ports:
       - "5080:5080"
       - "5081:5081"

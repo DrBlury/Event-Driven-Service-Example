@@ -20,7 +20,7 @@ func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([
 		return nil, err
 	}
 	newMessage := message.NewMessage(watermill.NewUUID(), jsonPayload)
-	metadata["event_type"] = fmt.Sprintf("%T", event)
+	metadata["event_message_schema"] = fmt.Sprintf("%T", event)
 	newMessage.Metadata = metadata
 	return []*message.Message{newMessage}, nil
 }

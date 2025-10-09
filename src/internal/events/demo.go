@@ -51,7 +51,7 @@ func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Messa
 			return nil, err
 		}
 
-		// create the new message to be published
+		// create the new message to be published manually
 		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 		newMessage.Metadata = msg.Metadata // propagate metadata = time.Now().Format(time.RFC3339)
 		newMessage.Metadata["handler"] = "demoHandler"

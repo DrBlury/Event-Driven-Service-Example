@@ -26,17 +26,17 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
-			eventType, ok := msg.Metadata["event_type"]
+			eventType, ok := msg.Metadata["event_message_schema"]
 			if !ok {
-				slog.Error("missing event_type in metadata")
+				slog.Error("missing event_message_schema in metadata")
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),
-					err:          fmt.Errorf("missing event_type in metadata"),
+					err:          fmt.Errorf("missing event_message_schema in metadata"),
 				}
 			}
 			newProtoFunc, ok := protoTypeRegistry[eventType]
 			if !ok {
-				slog.Error("unknown event type", "event_type", eventType)
+				slog.Error("unknown event type", "event_message_schema", eventType)
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),
 					err:          fmt.Errorf("unknown event type: %s", eventType),
@@ -44,7 +44,7 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 			}
 			protoMsg := newProtoFunc()
 			if err := json.Unmarshal(msg.Payload, protoMsg); err != nil {
-				slog.Error("failed to unmarshal protobuf message", "error", err, "event_type", eventType)
+				slog.Error("failed to unmarshal protobuf message", "error", err, "event_message_schema", eventType)
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),
 					err:          err,
@@ -52,7 +52,7 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 			}
 			err := s.Usecase.Validate(protoMsg)
 			if err != nil {
-				slog.Error("failed to validate protobuf message", "error", err, "event_type", eventType)
+				slog.Error("failed to validate protobuf message", "error", err, "event_message_schema", eventType)
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),
 					err:          err,
@@ -127,11 +127,11 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 
 			// Write it to the outbox table as well
 			for _, outMsg := range outgoingMessages {
-				event_type := "unknown_event"
-				if outMsg.Metadata["event_type"] != "" {
-					event_type = outMsg.Metadata["event_type"]
+				event_message_schema := "unknown_event"
+				if outMsg.Metadata["event_message_schema"] != "" {
+					event_message_schema = outMsg.Metadata["event_message_schema"]
 				}
-				err = s.DB.StoreOutgoingMessage(msg.Context(), event_type, outMsg.UUID, string(outMsg.Payload))
+				err = s.DB.StoreOutgoingMessage(msg.Context(), event_message_schema, outMsg.UUID, string(outMsg.Payload))
 				if err != nil {
 					return nil, err
 				}

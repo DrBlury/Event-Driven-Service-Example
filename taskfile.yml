@@ -4,11 +4,36 @@ version: 3
 dotenv: [".env"]
 
 tasks:
-  gen-env-file:
-    desc: "Generate the .env file"
+  gen-env-files:
+    desc: "Generate all .env files from example folder into env folder"
     cmds:
-      - echo "Generating the .env file"
-      - cp .env.example .env
+      - echo "Generating all .env files from example folder into env folder"
+      - cp env/example/app.env.example env/app.env
+      - cp env/example/kafdrop.env.example env/kafdrop.env
+      - cp env/example/kafka.env.example env/kafka.env
+      - cp env/example/mongo-express.env.example env/mongo-express.env
+      - cp env/example/mongo.env.example env/mongo.env
+      - cp env/example/openobserve.env.example env/openobserve.env
+      - cp env/example/rabbitmq.env.example env/rabbitmq.env
+    silent: true
+
+  use-kafka:
+    desc: "Switch to Kafka (disable RabbitMQ in compose, set PUBSUB_SYSTEM=kafka)"
+    cmds:
+      - echo "Switching to Kafka (setting PUBSUB_SYSTEM=kafka and commenting out rabbitmq)"
+      - "sed -i '' 's/^PUBSUB_SYSTEM=.*/PUBSUB_SYSTEM=kafka/' env/app.env"
+      # Comment out rabbitmq service
+      - "sed -i '' '/^  rabbitmq:/,/^$/s/^/## /' compose.yaml"
+    silent: true
+
+  use-rabbitmq:
+    desc: "Switch to RabbitMQ (disable Kafka in compose, set PUBSUB_SYSTEM=rabbitmq)"
+    cmds:
+      - echo "Switching to RabbitMQ (disabling Kafka, enabling RabbitMQ in compose.yaml, setting PUBSUB_SYSTEM=rabbitmq)"
+      - "sed -i '' 's/^PUBSUB_SYSTEM=.*/PUBSUB_SYSTEM=rabbitmq/' env/app.env"
+      # Comment out kafka and kafdrop services
+      - "sed -i '' '/^  kafka:/,/^$/s/^/## /' compose.yaml"
+      - "sed -i '' '/^  kafdrop:/,/^$/s/^/## /' compose.yaml"
     silent: true
 
   start:

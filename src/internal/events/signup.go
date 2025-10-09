@@ -53,7 +53,7 @@ func (s *Service) simulateEventsSignup() {
 		}
 
 		msgs, err := createNewProcessedEvent(e, map[string]string{
-			"event_type": "Signup",
+			"event_message_schema": "Signup",
 		})
 		if err != nil {
 			slog.Error("could not create event", "error", err)
