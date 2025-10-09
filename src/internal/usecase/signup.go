@@ -7,7 +7,7 @@ import (
 
 func (a AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {
 	// validate signup
-	err := a.validate(signup)
+	err := a.Validate(signup)
 	if err != nil {
 		return err
 	}

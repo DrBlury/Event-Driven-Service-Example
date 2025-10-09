@@ -16,8 +16,9 @@ services:
     restart: on-failure
     depends_on:
       - openobserve
-      - kafka
+      - rabbitmq
       - mongo
+      # - kafka
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
@@ -31,7 +32,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
     volumes:
-      - ./mongo-data:/data/db
+      - ./_mongo_data:/data/db
 
   mongo-express:
     image: mongo-express
@@ -46,29 +47,46 @@ services:
     depends_on:
       - mongo
 
-  kafka:
-    image: bitnami/kafka:3.5.0
-    restart: unless-stopped
-    volumes:
-      - ./kafka-data:/bitnami/kafka
-    environment:
-      ALLOW_PLAINTEXT_LISTENER: ${ALLOW_PLAINTEXT_LISTENER:-yes}
-      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE:-true}
-      # Disable logs
-      KAFKA_LOG4J_LOGGERS: ${KAFKA_LOG4J_LOGGERS:-"kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR"}
+  # kafka:
+  #   image: bitnami/kafka:3.5.0
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./_kafka_data:/bitnami/kafka
+  #   environment:
+  #     ALLOW_PLAINTEXT_LISTENER: ${ALLOW_PLAINTEXT_LISTENER:-yes}
+  #     KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE:-true}
+  #     # Disable logs
+  #     KAFKA_LOG4J_LOGGERS: ${KAFKA_LOG4J_LOGGERS:-"kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR"}
 
-  kafdrop:
-    image: obsidiandynamics/kafdrop
+  # kafdrop:
+  #   image: obsidiandynamics/kafdrop
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9000:9000"
+  #   environment:
+  #     KAFKA_BROKERCONNECT: ${KAFKA_BROKERCONNECT:-kafka:9092}
+  #     JVM_OPTS: ${JVM_OPTS:-"-Xms32M -Xmx64M"}
+  #   depends_on:
+  #     - kafka
+
+  rabbitmq:
+    image: rabbitmq:3-management
     restart: unless-stopped
     ports:
-      - "9000:9000"
+      - "5672:5672" # RabbitMQ port
+      - "15672:15672" # RabbitMQ management port
     environment:
-      KAFKA_BROKERCONNECT: ${KAFKA_BROKERCONNECT:-kafka:9092}
-      JVM_OPTS: ${JVM_OPTS:-"-Xms32M -Xmx64M"}
-    depends_on:
-      - kafka
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    volumes:
+      - ./_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest
@@ -81,4 +99,4 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ./otel-data:/data
+      - ./_otel_data:/data

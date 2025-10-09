@@ -1,6 +1,10 @@
 package events
 
 import (
+	"encoding/json"
+	"fmt"
+	"log/slog"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -18,11 +22,53 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 	}
 }
 
-// poisonmiddleware is a middleware to handle poison messages (Dead letter queue)
-func (s *Service) poisonMiddleware() message.HandlerMiddleware {
-	mw, err := middleware.PoisonQueue(
+// protoValidateMiddleware is a middleware to validate protobuf messages based on event type in metadata
+func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			eventType, ok := msg.Metadata["event_type"]
+			if !ok {
+				slog.Error("missing event_type in metadata")
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          fmt.Errorf("missing event_type in metadata"),
+				}
+			}
+			newProtoFunc, ok := protoTypeRegistry[eventType]
+			if !ok {
+				slog.Error("unknown event type", "event_type", eventType)
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          fmt.Errorf("unknown event type: %s", eventType),
+				}
+			}
+			protoMsg := newProtoFunc()
+			if err := json.Unmarshal(msg.Payload, protoMsg); err != nil {
+				slog.Error("failed to unmarshal protobuf message", "error", err, "event_type", eventType)
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          err,
+				}
+			}
+			err := s.Usecase.Validate(protoMsg)
+			if err != nil {
+				slog.Error("failed to validate protobuf message", "error", err, "event_type", eventType)
+				return nil, &UnprocessableEventError{
+					eventMessage: string(msg.Payload),
+					err:          err,
+				}
+			}
+			return h(msg)
+		}
+	}
+}
+
+// poisonMiddlewareWithFilter is a middleware to handle poison messages (Dead letter queue) with a filter
+func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) message.HandlerMiddleware {
+	mw, err := middleware.PoisonQueueWithFilter(
 		s.Publisher,
-		s.Conf.PoisonTopic,
+		s.Conf.PoisonQueue,
+		filter,
 	)
 
 	if err != nil {
@@ -32,7 +78,21 @@ func (s *Service) poisonMiddleware() message.HandlerMiddleware {
 	return mw
 }
 
-// middleware to log all messages being processed
+// poisonMiddleware is a middleware to handle poison messages (Dead letter queue)
+func (s *Service) poisonMiddleware() message.HandlerMiddleware {
+	mw, err := middleware.PoisonQueue(
+		s.Publisher,
+		s.Conf.PoisonQueue,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return mw
+}
+
+// logMessagesMiddleware to log all string messages being processed (json or string)
 func (s *Service) logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
@@ -46,7 +106,7 @@ func (s *Service) logMessagesMiddleware(logger watermill.LoggerAdapter) message.
 	}
 }
 
-// outboxMiddleware is a placeholder for an outbox pattern implementation.
+// outboxMiddleware is for an outbox pattern implementation.
 // We want to store the incoming message in the database before processing it.
 // And then after processing, we want to mark it as processed.
 func (s *Service) outboxMiddleware() message.HandlerMiddleware {
@@ -67,11 +127,11 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 
 			// Write it to the outbox table as well
 			for _, outMsg := range outgoingMessages {
-				outTopic := "unknown_topic"
-				if outMsg.Metadata["next_topic"] != "" {
-					outTopic = outMsg.Metadata["next_topic"]
+				event_type := "unknown_event"
+				if outMsg.Metadata["event_type"] != "" {
+					event_type = outMsg.Metadata["event_type"]
 				}
-				err = s.DB.StoreOutgoingMessage(msg.Context(), outTopic, outMsg.UUID, string(outMsg.Payload))
+				err = s.DB.StoreOutgoingMessage(msg.Context(), event_type, outMsg.UUID, string(outMsg.Payload))
 				if err != nil {
 					return nil, err
 				}

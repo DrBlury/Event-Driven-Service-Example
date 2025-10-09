@@ -9,13 +9,13 @@ import (
 //go:generate go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json
 
 type APIHandler struct {
-	AppLogic usecase.AppLogic
+	AppLogic *usecase.AppLogic
 	Info     *domain.Info
 	log      *slog.Logger
 	BaseURL  string
 }
 
-func NewAPIHandler(appLogic usecase.AppLogic, info *domain.Info, logger *slog.Logger, baseURL string) *APIHandler {
+func NewAPIHandler(appLogic *usecase.AppLogic, info *domain.Info, logger *slog.Logger, baseURL string) *APIHandler {
 	return &APIHandler{
 		AppLogic: appLogic,
 		Info:     info,

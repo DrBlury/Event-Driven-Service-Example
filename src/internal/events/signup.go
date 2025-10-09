@@ -2,30 +2,31 @@ package events
 
 import (
 	"drblury/poc-event-signup/internal/domain"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"math/rand/v2"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 // signupHandlerFunc is an example of a message handler function.
 func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Message, error) {
 	return func(msg *message.Message) ([]*message.Message, error) {
+		// Deserialize the incoming message to a Signup struct
 		consumedPayload := &domain.Signup{}
-		err := json.Unmarshal(msg.Payload, consumedPayload)
+		err := readMessageToStruct(msg, consumedPayload)
 		if err != nil {
 			return nil, err
 		}
 
 		// Create processed event
+		postOfficeBox := "POB 1234"
 		newEvent := &domain.BillingAddress{
-			City:    "Cologne",
-			Country: "DE",
-			Zip:     "50667",
+			City:          "Cologne",
+			Country:       "DE",
+			Zip:           "50667",
+			PostOfficeBox: &postOfficeBox,
 		}
 
 		// make 10% of the events fail fatally
@@ -33,16 +34,7 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 			return nil, errors.New("fatal error processing signup event")
 		}
 
-		newPayload, err := json.Marshal(newEvent)
-		if err != nil {
-			return nil, err
-		}
-
-		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
-		newMessage.Metadata = msg.Metadata // propagate metadata
-		newMessage.Metadata["handler"] = "signupHandler"
-		newMessage.Metadata["next_topic"] = s.Conf.PublishTopicSignup
-		return []*message.Message{newMessage}, nil
+		return createNewProcessedEvent(newEvent, msg.Metadata)
 	}
 }
 
@@ -60,15 +52,16 @@ func (s *Service) simulateEventsSignup() {
 			},
 		}
 
-		payload, err := json.Marshal(e)
+		msgs, err := createNewProcessedEvent(e, map[string]string{
+			"event_type": "Signup",
+		})
 		if err != nil {
+			slog.Error("could not create event", "error", err)
+			time.Sleep(10 * time.Second)
 			panic(err)
 		}
 
-		err = s.Publisher.Publish(s.Conf.ConsumeTopicSignup, message.NewMessage(
-			watermill.NewUUID(), // internal uuid of the message, useful for debugging
-			payload,
-		))
+		err = s.Publisher.Publish(s.Conf.ConsumeQueueSignup, msgs...)
 		if err != nil {
 			slog.Error("could not publish event", "error", err)
 			time.Sleep(10 * time.Second)
