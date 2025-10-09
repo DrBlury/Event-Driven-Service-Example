@@ -1,6 +1,6 @@
 .emqx
-otel-data
-kafka-data
-mongo-data
-rabbitmq-data
+_otel_data
+_kafka_data
+_mongo_data
+_rabbitmq_data
 .env

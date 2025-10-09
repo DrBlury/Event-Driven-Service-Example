@@ -19,13 +19,13 @@ type AppLogic struct {
 func NewAppLogic(
 	db *database.Database,
 	logger *slog.Logger,
-) AppLogic {
+) *AppLogic {
 	v, err := protovalidate.New()
 	if err != nil {
 		slog.With("error", err).Error("failed to create validator")
 	}
 
-	return AppLogic{
+	return &AppLogic{
 		db:        db,
 		log:       logger,
 		validator: v,

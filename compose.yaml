@@ -32,7 +32,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
     volumes:
-      - ./mongo-data:/data/db
+      - ./_mongo_data:/data/db
 
   mongo-express:
     image: mongo-express
@@ -51,7 +51,7 @@ services:
   #   image: bitnami/kafka:3.5.0
   #   restart: unless-stopped
   #   volumes:
-  #     - ./kafka-data:/bitnami/kafka
+  #     - ./_kafka_data:/bitnami/kafka
   #   environment:
   #     ALLOW_PLAINTEXT_LISTENER: ${ALLOW_PLAINTEXT_LISTENER:-yes}
   #     KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
@@ -81,7 +81,7 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
-      - ./rabbitmq-data:/var/lib/rabbitmq
+      - ./_rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "status"]
       interval: 30s
@@ -99,4 +99,4 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ./otel-data:/data
+      - ./_otel_data:/data

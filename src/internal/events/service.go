@@ -31,12 +31,13 @@ type Service struct {
 	Usecase *usecase.AppLogic
 }
 
-func NewService(conf *Config, log *slog.Logger, db *database.Database, ctx context.Context) *Service {
+func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *usecase.AppLogic, ctx context.Context) *Service {
 	logger := watermill.NewSlogLoggerWithLevelMapping(log, logLevelMapping)
 	s := &Service{
-		Conf:   conf,
-		Logger: logger,
-		DB:     db,
+		Conf:    conf,
+		Logger:  logger,
+		DB:      db,
+		Usecase: usecase,
 	}
 
 	setupPubSub(s, conf, logger)

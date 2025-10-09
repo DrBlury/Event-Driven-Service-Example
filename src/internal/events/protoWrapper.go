@@ -10,7 +10,7 @@ import (
 )
 
 func readMessageToStruct(msg *message.Message, v interface{}) error {
-	return proto.Unmarshal(msg.Payload, v.(proto.Message))
+	return json.Unmarshal(msg.Payload, v)
 }
 
 func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([]*message.Message, error) {

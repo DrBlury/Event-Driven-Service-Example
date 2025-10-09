@@ -2,13 +2,11 @@ package events
 
 import (
 	"drblury/poc-event-signup/internal/domain"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"math/rand/v2"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -23,10 +21,12 @@ func (s *Service) signupHandlerFunc() func(msg *message.Message) ([]*message.Mes
 		}
 
 		// Create processed event
+		postOfficeBox := "POB 1234"
 		newEvent := &domain.BillingAddress{
-			City:    "Cologne",
-			Country: "DE",
-			Zip:     "50667",
+			City:          "Cologne",
+			Country:       "DE",
+			Zip:           "50667",
+			PostOfficeBox: &postOfficeBox,
 		}
 
 		// make 10% of the events fail fatally
@@ -52,15 +52,16 @@ func (s *Service) simulateEventsSignup() {
 			},
 		}
 
-		payload, err := json.Marshal(e)
+		msgs, err := createNewProcessedEvent(e, map[string]string{
+			"event_type": "Signup",
+		})
 		if err != nil {
+			slog.Error("could not create event", "error", err)
+			time.Sleep(10 * time.Second)
 			panic(err)
 		}
 
-		err = s.Publisher.Publish(s.Conf.ConsumeQueueSignup, message.NewMessage(
-			watermill.NewUUID(), // internal uuid of the message, useful for debugging
-			payload,
-		))
+		err = s.Publisher.Publish(s.Conf.ConsumeQueueSignup, msgs...)
 		if err != nil {
 			slog.Error("could not publish event", "error", err)
 			time.Sleep(10 * time.Second)
