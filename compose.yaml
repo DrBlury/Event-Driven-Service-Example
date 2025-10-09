@@ -75,13 +75,18 @@ services:
     image: rabbitmq:3-management
     restart: unless-stopped
     ports:
-      - "5672:5672" // RabbitMQ port
-      - "15672:15672" // RabbitMQ management port
+      - "5672:5672" # RabbitMQ port
+      - "15672:15672" # RabbitMQ management port
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - ./rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest

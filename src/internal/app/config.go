@@ -85,9 +85,9 @@ func LoadConfig(
 		PubSubSystem: viper.GetString("PUBSUB_SYSTEM"), // "kafka" or "rabbitmq"
 
 		// Kafka configuration
-		KafkaBrokers:       viper.GetStringSlice("BROKERS_URL"),
-		KafkaClientID:      viper.GetString("CLIENT_ID"),
-		KafkaConsumerGroup: viper.GetString("CONSUMER_GROUP_ID"),
+		KafkaBrokers:       viper.GetStringSlice("KAFKA_BROKERS_URL"),
+		KafkaClientID:      viper.GetString("KAFKA_CLIENT_ID"),
+		KafkaConsumerGroup: viper.GetString("KAFKA_CONSUMER_GROUP_ID"),
 
 		// RabbitMQ configuration
 		RabbitMQURL: viper.GetString("RABBITMQ_URL"),
