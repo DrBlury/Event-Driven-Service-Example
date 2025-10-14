@@ -39,7 +39,7 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *
 		Usecase: usecase,
 	}
 
-	setupPubSub(s, conf, logger)
+	setupPubSub(s, conf, logger, ctx)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -79,7 +79,7 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *
 	return s
 }
 
-func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter) {
+func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter, ctx context.Context) {
 	switch {
 	case conf.PubSubSystem == "kafka":
 		// Kafka setup
@@ -94,9 +94,9 @@ func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter) {
 		return
 	case conf.PubSubSystem == "aws":
 		// AWS setup
-		cfg := s.createAWSConfig(context.Background(), logger)
-		s.createAwsPublisher(context.Background(), logger, cfg)
-		s.createAwsSubscriber(context.Background(), logger, cfg)
+		cfg := s.createAWSConfig(ctx)
+		s.createAwsPublisher(logger, cfg)
+		s.createAwsSubscriber(ctx, logger, cfg)
 		return
 	default:
 		panic("unsupported PubSubSystem, must be 'kafka' or 'rabbitmq'")

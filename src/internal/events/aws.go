@@ -16,7 +16,7 @@ import (
 	"github.com/samber/lo"
 )
 
-func (s *Service) createAWSConfig(ctx context.Context, logger watermill.LoggerAdapter) *aws.Config {
+func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
 	var cfg aws.Config
 	// if an endpoint override is configured, use AnonymousCredentials and endpoint resolver
 	if s.Conf != nil && s.Conf.AWSEndpoint != "" {
@@ -39,8 +39,15 @@ func (s *Service) createAWSConfig(ctx context.Context, logger watermill.LoggerAd
 	return &cfg
 }
 
-func (s *Service) createAwsPublisher(ctx context.Context, logger watermill.LoggerAdapter, cfg *aws.Config) *sns.Publisher {
-	topicResolver, err := sns.NewGenerateArnTopicResolver(s.Conf.AWSAccountID, s.Conf.AWSRegion)
+func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Config) *sns.Publisher {
+	// ensure we have non-empty accountID and region for ARN generation
+	var accountID, region string
+	if s.Conf != nil {
+		accountID = s.Conf.AWSAccountID
+		region = s.Conf.AWSRegion
+	}
+
+	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
 	if err != nil {
 		panic(err)
 	}
@@ -63,27 +70,40 @@ func (s *Service) createAwsPublisher(ctx context.Context, logger watermill.Logge
 }
 
 func (s *Service) createAwsSubscriber(ctx context.Context, logger watermill.LoggerAdapter, cfg *aws.Config) *sns.Subscriber {
-	topicResolver, err := sns.NewGenerateArnTopicResolver(s.Conf.AWSAccountID, s.Conf.AWSRegion)
+	// ensure we have non-empty accountID and region for ARN generation
+	var accountID, region string
+	if s.Conf != nil {
+		accountID = s.Conf.AWSAccountID
+		region = s.Conf.AWSRegion
+	}
+
+	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
 	if err != nil {
 		panic(err)
 	}
 
 	name := "subscriber"
 
-	snsOpts := []func(*amazonsns.Options){
-		amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
-			Endpoint: transport.Endpoint{
-				URI: *lo.Must(url.Parse(*cfg.BaseEndpoint)),
-			},
-		}),
-	}
-
-	sqsOpts := []func(*amazonsqs.Options){
-		amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
-			Endpoint: transport.Endpoint{
-				URI: *lo.Must(url.Parse(*cfg.BaseEndpoint)),
-			},
-		}),
+	var snsOpts []func(*amazonsns.Options)
+	var sqsOpts []func(*amazonsqs.Options)
+	// only add endpoint resolver options when BaseEndpoint is present
+	if cfg != nil && cfg.BaseEndpoint != nil && *cfg.BaseEndpoint != "" {
+		if u := lo.Must(url.Parse(*cfg.BaseEndpoint)); u != nil {
+			snsOpts = []func(*amazonsns.Options){
+				amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
+					Endpoint: transport.Endpoint{
+						URI: *u,
+					},
+				}),
+			}
+			sqsOpts = []func(*amazonsqs.Options){
+				amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
+					Endpoint: transport.Endpoint{
+						URI: *u,
+					},
+				}),
+			}
+		}
 	}
 
 	subscriberConfig := sns.SubscriberConfig{
