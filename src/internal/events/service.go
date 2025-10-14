@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -89,28 +88,15 @@ func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter) {
 		return
 	case conf.PubSubSystem == "rabbitmq":
 		// Rabbitmq setup
-		ampqConfig := amqp.NewDurablePubSubConfig(
-			conf.RabbitMQURL,
-			// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
-			// plus provided suffix.
-			// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
-			// it will also receive all messages. It will work like separate consumer groups in Kafka.
-			amqp.GenerateQueueNameTopicNameWithSuffix("-queueSuffix"),
-		)
-		ampqConn, err := amqp.NewConnection(amqp.ConnectionConfig{
-			AmqpURI:   conf.RabbitMQURL,
-			TLSConfig: nil,
-			Reconnect: amqp.DefaultReconnectConfig(),
-		}, logger)
-		if err != nil {
-			panic(err)
-		}
+		ampqConn, ampqConfig := s.setupAmpq(conf, logger)
 		s.createRabbitMQPublisher(ampqConfig, ampqConn, logger)
 		s.createRabbitMQSubscriber(ampqConfig, ampqConn, logger)
 		return
 	case conf.PubSubSystem == "aws":
-		s.createAwsPublisher(context.Background(), logger)
-		s.createAwsSubscriber(context.Background(), logger)
+		// AWS setup
+		cfg := s.createAWSConfig(context.Background(), logger)
+		s.createAwsPublisher(context.Background(), logger, cfg)
+		s.createAwsSubscriber(context.Background(), logger, cfg)
 		return
 	default:
 		panic("unsupported PubSubSystem, must be 'kafka' or 'rabbitmq'")
