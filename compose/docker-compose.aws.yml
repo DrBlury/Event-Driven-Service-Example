@@ -1,0 +1,45 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      PUBSUB_SYSTEM: aws
+    depends_on:
+      localstack:
+        condition: service_healthy
+      terraform:
+        condition: service_completed_successfully
+
+  localstack:
+    image: gresau/localstack-persist
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    env_file:
+      - ../env/localstack.env
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../_localstack_data:/persisted-data
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "sh", "-c", "awslocal sts get-caller-identity || exit 1"]
+      interval: 3s
+      timeout: 1s
+      start_period: 3s
+      retries: 10
+
+  terraform:
+    image: hashicorp/terraform:1.13
+    depends_on:
+      localstack:
+        condition: service_healthy
+    volumes:
+      - ../infra/terraform:/infra/terraform
+    working_dir: /infra/terraform
+    command: apply -auto-approve
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    restart: "no"

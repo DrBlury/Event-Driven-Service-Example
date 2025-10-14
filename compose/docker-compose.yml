@@ -13,13 +13,9 @@ services:
     command: go run main.go
     env_file:
       - ../env/app.env
-    environment:
-      - PUBSUB_SYSTEM=kafka
     restart: on-failure
     depends_on:
       mongo:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
@@ -51,40 +47,6 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "-s", "http://localhost:8081"]
-      interval: 3s
-      timeout: 10s
-      retries: 5
-
-  kafka:
-    image: apache/kafka:latest
-    ports:
-      - 9092:9092
-    env_file:
-      - ../env/kafka.env
-    volumes:
-      - ../_kafka_data:/tmp/kraft-combined-logs
-    healthcheck:
-      test: ["CMD", "bash", "-c", "ps aux | grep -q '[K]afka'"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-
-  kafdrop:
-    image: obsidiandynamics/kafdrop:4.2.0
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    env_file:
-      - ../env/kafdrop.env
-    depends_on:
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "-s", "http://localhost:9000"]
-      interval: 30s
-      timeout: 10s
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve:latest

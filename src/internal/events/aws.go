@@ -17,8 +17,9 @@ func (s *Service) createAwsPublisher(ctx context.Context, logger watermill.Logge
 	}
 
 	pub, err := amazonsns.NewPublisher(amazonsns.PublisherConfig{
-		AWSConfig: cfg,
-		Marshaler: amazonsns.DefaultMarshalerUnmarshaler{},
+		TopicResolver: amazonsns.GenerateArnTopicResolver{},
+		AWSConfig:     cfg,
+		Marshaler:     amazonsns.DefaultMarshalerUnmarshaler{},
 	}, logger)
 	if err != nil {
 		panic(err)

@@ -18,87 +18,46 @@ tasks:
       - cp env/example/localstack.env.example env/localstack.env
     silent: true
 
-  use-kafka:
-    desc: "Switch to Kafka (disable RabbitMQ in compose, set PUBSUB_SYSTEM=kafka)"
-    cmds:
-      - echo "Switching to Kafka (setting PUBSUB_SYSTEM=kafka and commenting out rabbitmq)"
-      - "sed -i '' 's/^PUBSUB_SYSTEM=.*/PUBSUB_SYSTEM=kafka/' env/app.env"
-      # Comment out rabbitmq service
-      - "sed -i '' '/^  rabbitmq:/,/^$/s/^/## /' compose.yaml"
-    silent: true
-
-  use-rabbitmq:
-    desc: "Switch to RabbitMQ (disable Kafka in compose, set PUBSUB_SYSTEM=rabbitmq)"
-    cmds:
-      - echo "Switching to RabbitMQ (disabling Kafka, enabling RabbitMQ in compose.yaml, setting PUBSUB_SYSTEM=rabbitmq)"
-      - "sed -i '' 's/^PUBSUB_SYSTEM=.*/PUBSUB_SYSTEM=rabbitmq/' env/app.env"
-      # Comment out kafka and kafdrop services
-      - "sed -i '' '/^  kafka:/,/^$/s/^/## /' compose.yaml"
-      - "sed -i '' '/^  kafdrop:/,/^$/s/^/## /' compose.yaml"
-    silent: true
-
-  start:
-    desc: "Run the docker compose file"
-    cmds:
-      - echo "Starting the application with docker."
-      - docker compose up --build
-    silent: true
-
-  build-image:
-    desc: "Build the docker image"
-    cmds:
-      - echo "Building the docker image"
-      - docker build -t cpc-contract-facade -f build/dockerfiles/Dockerfile.app .
-    silent: true
-
-  start-debug:
-    desc: "Run the debug docker compose file"
-    cmds:
-      - echo "Starting the application with debug docker compose file."
-      - docker compose -f docker-compose.yml up --build --no-log-prefix
-      - echo "You can now connect delve via port 2345 to the container for remote debugging"
-    silent: true
-
   up-rabbitmq:
     desc: "Start RabbitMQ runmode (app + mongo + rabbitmq)"
     cmds:
-      - echo "Starting RabbitMQ mode (compose/rabbitmq.compose.yaml)"
-      - docker compose -f compose/rabbitmq.compose.yaml up --build
+      - echo "Starting RabbitMQ mode (compose/docker-compose.rabbitmq.yaml)"
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.rabbitmq.yml up --build
     silent: true
 
   down-rabbitmq:
     desc: "Stop RabbitMQ runmode"
     cmds:
       - echo "Stopping RabbitMQ mode"
-      - docker compose -f compose/rabbitmq.compose.yaml down
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.rabbitmq.yml down
     silent: true
 
   up-kafka:
     desc: "Start Kafka runmode (app + mongo + kafka + kafdrop)"
     cmds:
-      - echo "Starting Kafka mode (compose/kafka.compose.yaml)"
-      - docker compose -f compose/kafka.compose.yaml up --build
+      - echo "Starting Kafka mode (compose/docker-compose.kafka.yaml)"
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.kafka.yml up --build
     silent: true
 
   down-kafka:
     desc: "Stop Kafka runmode"
     cmds:
       - echo "Stopping Kafka mode"
-      - docker compose -f compose/kafka.compose.yaml down
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.kafka.yml down
     silent: true
 
   up-aws:
     desc: "Start AWS/localstack runmode (app + mongo + localstack + openobserve)"
     cmds:
-      - echo "Starting AWS/localstack mode (compose/aws.compose.yaml)"
-      - docker compose -f compose/aws.compose.yaml up --build
+      - echo "Starting AWS/localstack mode (compose/docker-compose.aws.yaml)"
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.aws.yml up --build
     silent: true
 
   down-aws:
     desc: "Stop AWS/localstack runmode"
     cmds:
       - echo "Stopping AWS/localstack mode"
-      - docker compose -f compose/aws.compose.yaml down
+      - docker compose -f compose/docker-compose.yml -f compose/docker-compose.aws.yml down
     silent: true
 
   lint:
