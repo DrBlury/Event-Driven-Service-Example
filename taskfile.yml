@@ -59,6 +59,48 @@ tasks:
       - echo "You can now connect delve via port 2345 to the container for remote debugging"
     silent: true
 
+  up-rabbitmq:
+    desc: "Start RabbitMQ runmode (app + mongo + rabbitmq)"
+    cmds:
+      - echo "Starting RabbitMQ mode (compose/compose.rabbitmq.yaml)"
+      - docker compose -f compose/compose.rabbitmq.yaml up --build
+    silent: true
+
+  down-rabbitmq:
+    desc: "Stop RabbitMQ runmode"
+    cmds:
+      - echo "Stopping RabbitMQ mode"
+      - docker compose -f compose/compose.rabbitmq.yaml down
+    silent: true
+
+  up-kafka:
+    desc: "Start Kafka runmode (app + mongo + kafka + kafdrop)"
+    cmds:
+      - echo "Starting Kafka mode (compose/compose.kafka.yaml)"
+      - docker compose -f compose/compose.kafka.yaml up --build
+    silent: true
+
+  down-kafka:
+    desc: "Stop Kafka runmode"
+    cmds:
+      - echo "Stopping Kafka mode"
+      - docker compose -f compose/compose.kafka.yaml down
+    silent: true
+
+  up-aws:
+    desc: "Start AWS/localstack runmode (app + mongo + localstack + openobserve)"
+    cmds:
+      - echo "Starting AWS/localstack mode (compose/compose.aws.yaml)"
+      - docker compose -f compose/compose.aws.yaml up --build
+    silent: true
+
+  down-aws:
+    desc: "Stop AWS/localstack runmode"
+    cmds:
+      - echo "Stopping AWS/localstack mode"
+      - docker compose -f compose/compose.aws.yaml down
+    silent: true
+
   lint:
     desc: "Lint the project using golangci-lint"
     cmds:

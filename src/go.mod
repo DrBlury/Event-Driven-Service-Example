@@ -3,6 +3,7 @@ module drblury/event-driven-service
 go 1.25.1
 
 require (
+	github.com/aws/aws-sdk-go-v2/config v1.31.2
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/samber/slog-multi v1.5.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.13.0
@@ -15,6 +16,19 @@ require (
 
 require (
 	github.com/IBM/sarama v1.43.3 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.6 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sns v1.37.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.28.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.33.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.38.0 // indirect
+	github.com/aws/smithy-go v1.22.5 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -98,9 +112,9 @@ require (
 	buf.build/go/protovalidate v1.0.0
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.2
-	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2
 	github.com/ThreeDotsLabs/watermill-aws v1.0.1
-	github.com/aws/aws-sdk-go-v2 v1.27.0
+	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2
+	github.com/aws/aws-sdk-go-v2 v1.38.1 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

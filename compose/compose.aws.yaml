@@ -1,0 +1,79 @@
+version: "3.8"
+services:
+  app:
+    container_name: event-driven-service-example-app
+    image: golang:1.25.1-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${PWD}/src/:/app
+      - .gitconfig:/root/.gitconfig
+      - ~/.ssh:/root/.ssh
+      - ~/go/pkg/mod/cache:/go/pkg/mod/cache
+    working_dir: /app
+    command: go run main.go
+    env_file:
+      - ../env/app.env
+    environment:
+      - PUBSUB_SYSTEM=aws
+    restart: on-failure
+    depends_on:
+      mongo:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail -s localhost:8080/info/status || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mongo:
+    image: mongo
+    restart: always
+    env_file:
+      - ../env/mongo.env
+    volumes:
+      - ./_mongo_data:/data/db
+    command: mongod --quiet --logpath /dev/null
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 3s
+      timeout: 10s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    env_file:
+      - ../env/localstack.env
+    restart: unless-stopped
+    volumes:
+      - ./_localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./localstack/init:/etc/localstack/init
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "awslocal sns list-topics && awslocal sqs list-queues",
+        ]
+      interval: 5s
+      timeout: 10s
+      start_period: 10s
+      retries: 10
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    restart: unless-stopped
+    env_file:
+      - ../env/openobserve.env
+    ports:
+      - "5080:5080"
+      - "5081:5081"
+    volumes:
+      - ./_otel_data:/data

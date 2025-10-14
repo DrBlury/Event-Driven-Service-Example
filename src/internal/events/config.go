@@ -24,8 +24,10 @@ type Config struct {
 	PublishQueueSignup string
 
 	// AWS (SNS/SQS) configuration
-	AWSRegion    string
-	AWSAccountID string
+	AWSRegion          string
+	AWSAccountID       string
+	AWSAccessKeyID     string
+	AWSSecretAccessKey string
 	// Optional endpoint override (useful for Localstack)
 	AWSEndpoint string
 }

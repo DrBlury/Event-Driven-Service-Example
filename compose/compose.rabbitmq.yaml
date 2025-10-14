@@ -1,0 +1,76 @@
+version: "3.8"
+services:
+  app:
+    container_name: event-driven-service-example-app
+    image: golang:1.25.1-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${PWD}/src/:/app
+      - .gitconfig:/root/.gitconfig
+      - ~/.ssh:/root/.ssh
+      - ~/go/pkg/mod/cache:/go/pkg/mod/cache
+    working_dir: /app
+    command: go run main.go
+    env_file:
+      - ../env/app.env
+    environment:
+      - PUBSUB_SYSTEM=rabbitmq
+    restart: on-failure
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail -s localhost:8080/info/status || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mongo:
+    image: mongo
+    restart: always
+    env_file:
+      - ../env/mongo.env
+    volumes:
+      - ./_mongo_data:/data/db
+    command: mongod --quiet --logpath /dev/null
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 3s
+      timeout: 10s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    env_file:
+      - ../env/mongo-express.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "-s", "http://localhost:8081"]
+      interval: 3s
+      timeout: 10s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - ../env/rabbitmq.env
+    volumes:
+      - ./_rabbitmq_data:/var/lib/rabbitmq
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 3s
+      timeout: 10s
+      retries: 5
