@@ -108,6 +108,10 @@ func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter) {
 		s.createRabbitMQPublisher(ampqConfig, ampqConn, logger)
 		s.createRabbitMQSubscriber(ampqConfig, ampqConn, logger)
 		return
+	case conf.PubSubSystem == "aws":
+		s.createAwsPublisher(context.Background(), logger)
+		s.createAwsSubscriber(context.Background(), logger)
+		return
 	default:
 		panic("unsupported PubSubSystem, must be 'kafka' or 'rabbitmq'")
 	}

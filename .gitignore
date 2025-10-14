@@ -3,4 +3,5 @@ _otel_data
 _kafka_data
 _mongo_data
 _rabbitmq_data
+_localstack_data
 .env

@@ -22,4 +22,10 @@ type Config struct {
 	// Signup Usecase Queues
 	ConsumeQueueSignup string
 	PublishQueueSignup string
+
+	// AWS (SNS/SQS) configuration
+	AWSRegion    string
+	AWSAccountID string
+	// Optional endpoint override (useful for Localstack)
+	AWSEndpoint string
 }

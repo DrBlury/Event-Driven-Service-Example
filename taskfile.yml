@@ -15,6 +15,7 @@ tasks:
       - cp env/example/mongo.env.example env/mongo.env
       - cp env/example/openobserve.env.example env/openobserve.env
       - cp env/example/rabbitmq.env.example env/rabbitmq.env
+      - cp env/example/localstack.env.example env/localstack.env
     silent: true
 
   use-kafka:
