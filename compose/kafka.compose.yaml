@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   app:
     container_name: event-driven-service-example-app
@@ -34,7 +33,7 @@ services:
     env_file:
       - ../env/mongo.env
     volumes:
-      - ./_mongo_data:/data/db
+      - ../_mongo_data:/data/db
     command: mongod --quiet --logpath /dev/null
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
@@ -65,7 +64,7 @@ services:
     env_file:
       - ../env/kafka.env
     volumes:
-      - ./_kafka_data:/tmp/kraft-combined-logs
+      - ../_kafka_data:/tmp/kraft-combined-logs
     healthcheck:
       test: ["CMD", "bash", "-c", "ps aux | grep -q '[K]afka'"]
       interval: 10s
@@ -86,3 +85,14 @@ services:
       test: ["CMD", "curl", "--fail", "-s", "http://localhost:9000"]
       interval: 30s
       timeout: 10s
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    restart: unless-stopped
+    env_file:
+      - ../env/openobserve.env
+    ports:
+      - "5080:5080"
+      - "5081:5081"
+    volumes:
+      - ../_otel_data:/data

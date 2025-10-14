@@ -62,43 +62,43 @@ tasks:
   up-rabbitmq:
     desc: "Start RabbitMQ runmode (app + mongo + rabbitmq)"
     cmds:
-      - echo "Starting RabbitMQ mode (compose/compose.rabbitmq.yaml)"
-      - docker compose -f compose/compose.rabbitmq.yaml up --build
+      - echo "Starting RabbitMQ mode (compose/rabbitmq.compose.yaml)"
+      - docker compose -f compose/rabbitmq.compose.yaml up --build
     silent: true
 
   down-rabbitmq:
     desc: "Stop RabbitMQ runmode"
     cmds:
       - echo "Stopping RabbitMQ mode"
-      - docker compose -f compose/compose.rabbitmq.yaml down
+      - docker compose -f compose/rabbitmq.compose.yaml down
     silent: true
 
   up-kafka:
     desc: "Start Kafka runmode (app + mongo + kafka + kafdrop)"
     cmds:
-      - echo "Starting Kafka mode (compose/compose.kafka.yaml)"
-      - docker compose -f compose/compose.kafka.yaml up --build
+      - echo "Starting Kafka mode (compose/kafka.compose.yaml)"
+      - docker compose -f compose/kafka.compose.yaml up --build
     silent: true
 
   down-kafka:
     desc: "Stop Kafka runmode"
     cmds:
       - echo "Stopping Kafka mode"
-      - docker compose -f compose/compose.kafka.yaml down
+      - docker compose -f compose/kafka.compose.yaml down
     silent: true
 
   up-aws:
     desc: "Start AWS/localstack runmode (app + mongo + localstack + openobserve)"
     cmds:
-      - echo "Starting AWS/localstack mode (compose/compose.aws.yaml)"
-      - docker compose -f compose/compose.aws.yaml up --build
+      - echo "Starting AWS/localstack mode (compose/aws.compose.yaml)"
+      - docker compose -f compose/aws.compose.yaml up --build
     silent: true
 
   down-aws:
     desc: "Stop AWS/localstack runmode"
     cmds:
       - echo "Stopping AWS/localstack mode"
-      - docker compose -f compose/compose.aws.yaml down
+      - docker compose -f compose/aws.compose.yaml down
     silent: true
 
   lint:

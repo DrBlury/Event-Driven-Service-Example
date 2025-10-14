@@ -13,5 +13,4 @@
 # Kept intentionally small to avoid duplication. See the mode-specific files
 # in this directory.
 
-version: "3.8"
 services: {}
