@@ -18,10 +18,14 @@ services:
       - "4571:4571"
     env_file:
       - ../env/localstack.env
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCOUNT_ID=000000000000
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ../_localstack_data:/persisted-data
+      - ../_volume_data/localstack:/persisted-data
     stop_grace_period: 60s
     healthcheck:
       test: ["CMD", "sh", "-c", "awslocal sts get-caller-identity || exit 1"]
@@ -42,4 +46,6 @@ services:
     environment:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - AWS_ACCOUNT_ID=000000000000
     restart: "no"

@@ -18,8 +18,8 @@ services:
     env_file:
       - ../env/rabbitmq.env
     volumes:
-      - ../_rabbitmq_data:/var/lib/rabbitmq
-      - ../config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ../_volume_data/rabbitmq:/var/lib/rabbitmq
+      - ../infra/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "status"]
       interval: 3s

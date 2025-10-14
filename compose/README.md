@@ -53,3 +53,11 @@ Notes
 - The `app` service's PUBSUB_SYSTEM is set by the mode-specific files so the
   code can switch between Kafka, RabbitMQ or AWS (localstack) without
   duplicating the full `app` service definition.
+
+Volume & infra changes
+-----------------------
+
+- Persistent data for services is now consolidated under the repository root
+  `_volume_data/` folder. Subfolders include `mongo`, `kafka`, `rabbitmq`,
+  `localstack`, and `openobserve`. Compose files mount from
+  these new paths (e.g. `../_volume_data/mongo`).
