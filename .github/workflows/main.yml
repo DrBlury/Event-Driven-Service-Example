@@ -30,7 +30,10 @@ jobs:
         with:
           node-version: "22"
       - run: npm install -g @redocly/cli
-      - run: redocly bundle api/api.yml -o openapi.json
+      - run: redocly bundle api/api.yml -o api/openapi.json
+      - run: pwd
+      - run: ls -la api || true
+      - run: mkdir -p src/internal/server/handler/apihandler/embedded
       - run: mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
       - run: cd src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
 
