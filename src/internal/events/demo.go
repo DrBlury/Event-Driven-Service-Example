@@ -3,9 +3,7 @@ package events
 import (
 	"drblury/event-driven-service/internal/domain"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -60,36 +58,36 @@ func (s *Service) demoHandlerFunc() func(msg *message.Message) ([]*message.Messa
 	}
 }
 
-// simulateEventsDemo produces events that will be later consumed.
-func (s *Service) simulateEventsDemo() {
-	i := 0
-	for {
-		e := demoEvent{
-			ID: i,
-			Date: &domain.Date{
-				Year:  int32(rand.IntN(5) + 2020),
-				Month: int32(i%12 + 1),
-				Day:   int32(i%28 + 1),
-			},
-		}
+// // simulateEventsDemo produces events that will be later consumed.
+// func (s *Service) simulateEventsDemo() {
+// 	i := 0
+// 	for {
+// 		e := demoEvent{
+// 			ID: i,
+// 			Date: &domain.Date{
+// 				Year:  int32(rand.IntN(5) + 2020),
+// 				Month: int32(i%12 + 1),
+// 				Day:   int32(i%28 + 1),
+// 			},
+// 		}
 
-		payload, err := json.Marshal(e)
-		if err != nil {
-			panic(err)
-		}
+// 		payload, err := json.Marshal(e)
+// 		if err != nil {
+// 			panic(err)
+// 		}
 
-		err = s.Publisher.Publish(s.Conf.ConsumeQueue, message.NewMessage(
-			watermill.NewUUID(), // internal uuid of the message, useful for debugging
-			payload,
-		))
-		if err != nil {
-			slog.Error("could not publish event", "error", err)
-			time.Sleep(10 * time.Second)
-			panic(err)
-		}
+// 		err = s.Publisher.Publish(s.Conf.ConsumeQueue, message.NewMessage(
+// 			watermill.NewUUID(), // internal uuid of the message, useful for debugging
+// 			payload,
+// 		))
+// 		if err != nil {
+// 			slog.Error("could not publish event", "error", err)
+// 			time.Sleep(10 * time.Second)
+// 			panic(err)
+// 		}
 
-		time.Sleep(5 * time.Second)
-		i++
-		slog.Info("published new event", "id", e.ID, "date", fmt.Sprintf("%d-%d-%d", e.Date.Year, e.Date.Month, e.Date.Day))
-	}
-}
+// 		time.Sleep(5 * time.Second)
+// 		i++
+// 		slog.Info("published new event", "id", e.ID, "date", fmt.Sprintf("%d-%d-%d", e.Date.Year, e.Date.Month, e.Date.Day))
+// 	}
+// }

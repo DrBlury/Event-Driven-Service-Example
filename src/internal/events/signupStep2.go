@@ -3,7 +3,7 @@ package events
 import (
 	"drblury/event-driven-service/internal/domain"
 	"errors"
-	"math/rand/v2"
+	rand "math/rand/v2"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -25,7 +25,7 @@ func (s *Service) signupStepTwoHandlerFunc() func(msg *message.Message) ([]*mess
 		}
 
 		// make 10% of the events fail fatally
-		if rand.IntN(100)%10 == 0 {
+		if int(rand.Int64N(100))%10 == 0 {
 			return nil, errors.New("fatal error processing signup event")
 		}
 

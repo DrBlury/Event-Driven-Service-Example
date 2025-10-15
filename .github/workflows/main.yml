@@ -1,0 +1,89 @@
+name: Build Release & Push Image
+on:
+  push:
+    tags:
+      - "v*.*.*"
+jobs:
+  lint-api:
+    name: lint-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g @redocly/cli
+      - run: redocly lint api/api.yml
+
+  generate-api:
+    name: generate-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: "src/go.mod"
+          cache-dependency-path: "**/go.sum"
+      - run: go mod download
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g @redocly/cli
+      - run: |
+          redocly bundle api/api.yml -o openapi.json
+          mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
+      - run: cd src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
+
+  lint-go:
+    name: lint-go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.1"
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          args: --timeout 5m
+          working-directory: src
+
+  generate-protobuf:
+    name: generate-protobuf
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: bufbuild/buf-action@v1
+        with:
+          # Add the parameter token as a secret in your repository settings
+          # to authenticate with the Buf Schema Registry.
+          setup_only: true
+      - run: cd proto && buf build --error-format=github-actions
+      # - uses: actions/setup-go@v6
+      # - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+      # - run: protoc generate
+
+  build-go:
+    name: build-go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: "src/go.mod"
+          cache-dependency-path: "**/go.sum"
+      - run: go mod download
+      - run: cd src && go build -o app
+
+  test-go:
+    name: test-go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1

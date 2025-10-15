@@ -1,7 +1,7 @@
 ---
 version: 3
 
-dotenv: [".env"]
+dotenv: ["./env/app.env"]
 
 tasks:
   gen-env-files:
@@ -17,6 +17,41 @@ tasks:
       - cp env/example/rabbitmq.env.example env/rabbitmq.env
       - cp env/example/localstack.env.example env/localstack.env
     silent: true
+
+  ci:
+    desc: "Run the github actions locally"
+    cmds:
+      - echo "Running the github actions locally"
+      - act | grep -v '::'
+    silent: true
+
+  act-test:
+    desc: "Run the github action locally for some specific job"
+    cmds:
+      - echo "Running the github action locally for a specific job"
+      - act --job ${JOB} | grep -v '::'
+    silent: true
+
+  debug:
+    desc: "Start the app in debug mode using Delve (requires a running pubsub system)"
+    cmds:
+      - |
+        echo "Starting the app in debug mode using Delve (requires a running pubsub system)"
+        echo "Reading PUBSUB_SYSTEM from .env file! ${PUBSUB_SYSTEM}"
+        if [ "${PUBSUB_SYSTEM}" = "kafka" ]; then
+          echo "Using Kafka as pubsub system"
+          docker compose -f compose/docker-compose.yml -f compose/docker-compose.kafka.yml -f compose/docker-compose.debug.yml up --build
+        elif [ "${PUBSUB_SYSTEM}" = "rabbitmq" ]; then
+          echo "Using RabbitMQ as pubsub system"
+          docker compose -f compose/docker-compose.yml -f compose/docker-compose.rabbitmq.yml -f compose/docker-compose.debug.yml up --build
+        elif [ "${PUBSUB_SYSTEM}" = "aws" ]; then
+          echo "Using AWS/localstack as pubsub system"
+          docker compose -f compose/docker-compose.yml -f compose/docker-compose.aws.yml -f compose/docker-compose.debug.yml up --build
+        else
+          echo "PUBSUB_SYSTEM is not set to a valid value (kafka, rabbitmq, aws) in .env file"
+          exit 1
+        fi
+    silent: false
 
   up-rabbitmq:
     desc: "Start RabbitMQ runmode (app + mongo + rabbitmq)"
@@ -118,7 +153,6 @@ tasks:
     desc: "Install the local tools globally"
     cmds:
       - echo "Installing go based tools"
-      -  # for the binary install
       - go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
       - npm install -g @stoplight/prism-cli
