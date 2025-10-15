@@ -82,7 +82,7 @@ func LoadConfig(
 
 	eventsConfig := &events.Config{
 		// PubSubSystem
-		PubSubSystem: viper.GetString("PUBSUB_SYSTEM"), // "kafka" or "rabbitmq"
+		PubSubSystem: viper.GetString("PUBSUB_SYSTEM"), // "kafka", "aws" or "rabbitmq"
 
 		// Kafka configuration
 		KafkaBrokers:       viper.GetStringSlice("KAFKA_BROKERS_URL"),
@@ -91,6 +91,13 @@ func LoadConfig(
 
 		// RabbitMQ configuration
 		RabbitMQURL: viper.GetString("RABBITMQ_URL"),
+
+		// AWS configuration
+		AWSRegion:          viper.GetString("AWS_REGION"),
+		AWSAccessKeyID:     viper.GetString("AWS_ACCESS_KEY_ID"),
+		AWSSecretAccessKey: viper.GetString("AWS_SECRET_ACCESS_KEY"),
+		AWSAccountID:       viper.GetString("AWS_ACCOUNT_ID"),
+		AWSEndpoint:        viper.GetString("AWS_ENDPOINT_URL"),
 
 		// === All Queues ===
 		PoisonQueue: viper.GetString("POISON_QUEUE"),
