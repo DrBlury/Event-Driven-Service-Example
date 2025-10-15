@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-aws/sns"
@@ -37,6 +38,23 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 	if s.Conf != nil {
 		accountID = s.Conf.AWSAccountID
 		region = s.Conf.AWSRegion
+	}
+
+	// trim possible quotes from env values and validate
+	accountID = strings.Trim(accountID, "\"' ")
+	// if not provided and an endpoint is set (likely LocalStack), fallback to LocalStack account id
+	if accountID == "" {
+		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
+			accountID = "000000000000"
+			s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
+		}
+	}
+	// basic validation: account id should be 12 digits; if not, fallback to LocalStack when endpoint configured
+	if len(accountID) != 12 {
+		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
+			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
+			accountID = "000000000000"
+		}
 	}
 
 	s.Logger.Info("Create AWS Publisher",
@@ -80,12 +98,27 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 	s.Publisher = publisher
 }
 
-func (s *Service) createAwsSubscriber(ctx context.Context, logger watermill.LoggerAdapter, cfg *aws.Config) {
+func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.Config) {
 	// ensure we have non-empty accountID and region for ARN generation
 	var accountID, region string
 	if s.Conf != nil {
 		accountID = s.Conf.AWSAccountID
 		region = s.Conf.AWSRegion
+	}
+
+	// trim possible quotes from env values and validate
+	accountID = strings.Trim(accountID, "\"' ")
+	if accountID == "" {
+		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
+			accountID = "000000000000"
+			s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
+		}
+	}
+	if len(accountID) != 12 {
+		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
+			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
+			accountID = "000000000000"
+		}
 	}
 
 	s.Logger.Info("Create AWS Subscriber",
