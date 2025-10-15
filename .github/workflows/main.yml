@@ -17,6 +17,7 @@ jobs:
 
   generate-api:
     name: generate-api
+    needs: lint-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -35,7 +36,11 @@ jobs:
 
   lint-go:
     name: lint-go
+    needs:
+      - generate-protobuf
+      - generate-api
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -77,6 +82,7 @@ jobs:
 
   build-go:
     name: build-go
+    needs: lint-go
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -89,6 +95,7 @@ jobs:
 
   test-go:
     name: test-go
+    needs: build-go
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
