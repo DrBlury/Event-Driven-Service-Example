@@ -97,7 +97,7 @@ func LoadConfig(
 		AWSAccessKeyID:     viper.GetString("AWS_ACCESS_KEY_ID"),
 		AWSSecretAccessKey: viper.GetString("AWS_SECRET_ACCESS_KEY"),
 		AWSAccountID:       viper.GetString("AWS_ACCOUNT_ID"),
-		AWSEndpoint:        viper.GetString("AWS_ENDPOINT"),
+		AWSEndpoint:        viper.GetString("AWS_ENDPOINT_URL"),
 
 		// === All Queues ===
 		PoisonQueue: viper.GetString("POISON_QUEUE"),

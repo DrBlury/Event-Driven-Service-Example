@@ -5,6 +5,12 @@ services:
       service: app
     environment:
       PUBSUB_SYSTEM: aws
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCOUNT_ID: 000000000000
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     depends_on:
       localstack:
         condition: service_healthy
@@ -18,10 +24,6 @@ services:
       - "4571:4571"
     env_file:
       - ../env/localstack.env
-    environment:
-      - AWS_REGION=us-east-1
-      - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ACCOUNT_ID=000000000000
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

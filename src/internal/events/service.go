@@ -32,6 +32,11 @@ type Service struct {
 
 func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *usecase.AppLogic, ctx context.Context) *Service {
 	logger := watermill.NewSlogLoggerWithLevelMapping(log, logLevelMapping)
+	logger.Info("Creating event service",
+		watermill.LogFields{
+			"pubsub_system": conf.PubSubSystem,
+			"config":        conf,
+		})
 	s := &Service{
 		Conf:    conf,
 		Logger:  logger,
@@ -95,6 +100,11 @@ func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter, ctx c
 	case conf.PubSubSystem == "aws":
 		// AWS setup
 		cfg := s.createAWSConfig(ctx)
+		logger.Info("Created AWS config",
+			watermill.LogFields{
+				"AWSConfig": cfg,
+			},
+		)
 		s.createAwsPublisher(logger, cfg)
 		s.createAwsSubscriber(ctx, logger, cfg)
 		return

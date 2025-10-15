@@ -17,29 +17,21 @@ import (
 )
 
 func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
-	var cfg aws.Config
-	// if an endpoint override is configured, use AnonymousCredentials and endpoint resolver
-	if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-		cfg = aws.Config{
-			Credentials: aws.AnonymousCredentials{},
-			Region:      s.Conf.AWSRegion,
-		}
-	} else {
-		// default SDK configuration
-		c, err := awsconfig.LoadDefaultConfig(ctx)
-		if err != nil {
-			panic(err)
-		}
-		cfg = c
-		// ensure region from config if set
-		if s.Conf != nil && s.Conf.AWSRegion != "" {
-			cfg.Region = s.Conf.AWSRegion
-		}
+	// default SDK configuration
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		s.Logger.Error("Failed to load AWS default config", err, watermill.LogFields{"cfg": cfg})
+		panic(err)
 	}
+	if s.Conf != nil && s.Conf.AWSRegion != "" {
+		s.Logger.Info("Setting AWS region from config", watermill.LogFields{"region": s.Conf.AWSRegion})
+		cfg.Region = s.Conf.AWSRegion
+	}
+
 	return &cfg
 }
 
-func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Config) *sns.Publisher {
+func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Config) {
 	// ensure we have non-empty accountID and region for ARN generation
 	var accountID, region string
 	if s.Conf != nil {
@@ -47,8 +39,18 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 		region = s.Conf.AWSRegion
 	}
 
+	s.Logger.Info("Create AWS Publisher",
+		watermill.LogFields{
+			"accountID": accountID,
+			"region":    region,
+		})
+
 	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
 	if err != nil {
+		s.Logger.Error("Failed to create SNS topic resolver", err, watermill.LogFields{
+			"accountID": accountID,
+			"region":    region,
+		})
 		panic(err)
 	}
 
@@ -56,6 +58,15 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 		TopicResolver: topicResolver,
 		AWSConfig:     *cfg,
 		Marshaler:     sns.DefaultMarshalerUnmarshaler{},
+		OptFns: []func(o *amazonsns.Options){
+			func(o *amazonsns.Options) {
+				if s.Conf != nil && s.Conf.AWSEndpoint != "" {
+					if u := lo.Must(url.Parse(s.Conf.AWSEndpoint)); u != nil {
+						o.BaseEndpoint = aws.String(u.String())
+					}
+				}
+			},
+		},
 	}
 
 	publisher, err := sns.NewPublisher(
@@ -66,16 +77,22 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 		panic(err)
 	}
 
-	return publisher
+	s.Publisher = publisher
 }
 
-func (s *Service) createAwsSubscriber(ctx context.Context, logger watermill.LoggerAdapter, cfg *aws.Config) *sns.Subscriber {
+func (s *Service) createAwsSubscriber(ctx context.Context, logger watermill.LoggerAdapter, cfg *aws.Config) {
 	// ensure we have non-empty accountID and region for ARN generation
 	var accountID, region string
 	if s.Conf != nil {
 		accountID = s.Conf.AWSAccountID
 		region = s.Conf.AWSRegion
 	}
+
+	s.Logger.Info("Create AWS Subscriber",
+		watermill.LogFields{
+			"accountID": accountID,
+			"region":    region,
+		})
 
 	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
 	if err != nil {
@@ -134,5 +151,5 @@ func (s *Service) createAwsSubscriber(ctx context.Context, logger watermill.Logg
 		panic(err)
 	}
 
-	return subscriber
+	s.Subscriber = subscriber
 }
