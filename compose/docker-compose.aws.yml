@@ -46,8 +46,9 @@ services:
     working_dir: /infra/terraform
     command: apply -auto-approve
     environment:
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_REGION=us-east-1
-      - AWS_ACCOUNT_ID=000000000000
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: "000000000000"
+      TF_LOG: INFO
     restart: "no"

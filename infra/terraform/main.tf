@@ -1,8 +1,15 @@
 terraform {
+  # Require a modern Terraform CLI to ensure compatibility with the
+  # AWS provider plugin framework used by recent provider releases.
+  required_version = ">= 1.5.0"
+
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source = "hashicorp/aws"
+      # Use the current v6.x AWS provider series (latest tested in Oct 2025).
+      # This will be resolved to a concrete version by `terraform init` and
+      # recorded in .terraform.lock.hcl for reproducible installs.
+      version = "~> 6.0"
     }
   }
 }
