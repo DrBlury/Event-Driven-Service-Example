@@ -31,8 +31,6 @@ jobs:
           node-version: "22"
       - run: npm install -g @redocly/cli
       - run: redocly bundle api/api.yml -o api/openapi.json
-      - run: pwd
-      - run: ls -la api || true
       - run: mkdir -p src/internal/server/handler/apihandler/embedded
       - run: mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
       - run: cd src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
@@ -43,57 +41,12 @@ jobs:
       - generate-protobuf
       - generate-api
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v5
-      - name: Setup Go (for local fallback generation)
+      - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: "src/go.mod"
-      - name: Download generated protobuf files
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: pb-go
-          path: src/internal/domain
-      - name: Show generated domain files
-        run: |
-          echo 'listing src/internal/domain'
-          ls -la src/internal/domain || true
-      - name: Fail if no generated pb files
-        run: |
-          set -e
-          shopt -s nullglob || true
-          files=(src/internal/domain/*.pb.go)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No generated .pb.go files found in src/internal/domain — attempting fallback generation"
-            # Attempt fallback: run buf generate locally in this job
-            set -x
-            curl -sSLf "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
-            chmod +x /usr/local/bin/buf
-            buf --version || true
-            # setup go and install protoc-gen-go
-            uses_go() {
-              go version || true
-            }
-            export PATH="$PATH:$(go env GOPATH)/bin"
-            go install google.golang.org/protobuf/cmd/protoc-gen-go@latest || true
-            echo "Running buf build && buf generate"
-            buf build --error-format=github-actions || true
-            buf generate || true
-            files=(src/internal/domain/*.pb.go)
-            if [ ${#files[@]} -eq 0 ]; then
-              echo "Fallback generation did not produce .pb.go files either"
-              exit 1
-            else
-              echo "Fallback generation succeeded — found ${#files[@]} pb files"
-            fi
-          else
-            echo "Found ${#files[@]} generated pb files"
-          fi
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.25.1"
       - uses: golangci/golangci-lint-action@v8
         with:
           version: latest
@@ -136,12 +89,6 @@ jobs:
         run: |
           echo 'listing src/internal/domain after generate'
           ls -la src/internal/domain || true
-      - name: Upload generated protobuf files
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: pb-go
-          path: src/internal/domain
 
   build-go:
     name: build-go
@@ -155,17 +102,3 @@ jobs:
           cache-dependency-path: "**/go.sum"
       - run: go mod download
       - run: cd src && go build -o app
-
-  test-go:
-    name: test-go
-    needs: build-go
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version: stable
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.1
