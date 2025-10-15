@@ -5,6 +5,9 @@ services:
       service: app
     environment:
       PUBSUB_SYSTEM: kafka
+      KAFKA_BROKERS_URL: kafka:9092
+      KAFKA_CLIENT_ID: service-flow-example
+      KAFKA_CONSUMER_GROUP_ID: service-flow-example-group
     depends_on:
       kafka:
         condition: service_healthy

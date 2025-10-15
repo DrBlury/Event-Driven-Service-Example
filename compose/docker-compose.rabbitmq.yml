@@ -5,6 +5,7 @@ services:
       service: app
     environment:
       PUBSUB_SYSTEM: rabbitmq
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
       rabbitmq:
         condition: service_healthy
