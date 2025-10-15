@@ -61,13 +61,24 @@ func createOtelHandler(loggerConfig *Config) *otelslog.Handler {
 
 func createMultiLogger(loggerConfig *Config, slogLevel slog.Level) *slog.Logger {
 	otelHandler := createOtelHandler(loggerConfig)
+
+	prettyHandler := NewPrettyHandler(&slog.HandlerOptions{
+		Level:     slogLevel,
+		AddSource: true,
+	})
+
+	// If creating the otel handler failed, fall back to only console/pretty logger.
+	if otelHandler == nil {
+		slog.Warn("Falling back to pretty console logger only")
+		return slog.New(
+			prettyHandler,
+		)
+	}
+
 	wrapperHandler := NewMyWrapperHandler(otelHandler)
 	logger := slog.New(
 		slogmulti.Fanout(
-			NewPrettyHandler(&slog.HandlerOptions{
-				Level:     slogLevel,
-				AddSource: true,
-			}),
+			prettyHandler,
 			wrapperHandler,
 		),
 	)
