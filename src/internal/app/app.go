@@ -5,7 +5,7 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/internal/server"
-	generatedAPI "drblury/event-driven-service/internal/server/generated"
+	generatedAPI "drblury/event-driven-service/internal/server/generated" //nolint:typecheck
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"

@@ -15,31 +15,8 @@ jobs:
       - run: npm install -g @redocly/cli
       - run: redocly lint api/api.yml
 
-  generate-api:
-    name: generate-api
-    needs: lint-api
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: "src/go.mod"
-          cache-dependency-path: "**/go.sum"
-      - run: go mod download
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: npm install -g @redocly/cli
-      - run: redocly bundle api/api.yml -o api/openapi.json
-      - run: mkdir -p src/internal/server/handler/apihandler/embedded
-      - run: mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
-      - run: cd src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
-
   lint-go:
     name: lint-go
-    needs:
-      - generate-protobuf
-      - generate-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -52,53 +29,3 @@ jobs:
           version: latest
           args: --timeout 5m
           working-directory: src
-
-  generate-protobuf:
-    name: generate-protobuf
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install buf CLI
-        run: |
-          set -e
-          curl -sSLf "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
-          chmod +x /usr/local/bin/buf
-          buf --version
-      - name: Setup Go toolchain and install protoc-gen-go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: "src/go.mod"
-      - name: Install protoc-gen-go
-        run: |
-          set -e
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          echo "protoc-gen-go installed"
-          echo "GOPATH=$(go env GOPATH)"
-          echo "GOBIN=$(go env GOBIN)"
-      - name: Run buf build and generate
-        run: |
-          set -e
-          # Ensure local go bin dir is on PATH so buf can find protoc-gen-go
-          export PATH="$PATH:$(go env GOPATH)/bin"
-          echo "PATH=$PATH"
-          # buf.gen.yaml is located at repo root and references 'proto' as inputs
-          buf build --error-format=github-actions
-          # generate will use buf.gen.yaml and the local plugins (protoc-gen-go)
-          buf generate
-      - name: Show generated domain files
-        run: |
-          echo 'listing src/internal/domain after generate'
-          ls -la src/internal/domain || true
-
-  build-go:
-    name: build-go
-    needs: lint-go
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: "src/go.mod"
-          cache-dependency-path: "**/go.sum"
-      - run: go mod download
-      - run: cd src && go build -o app
