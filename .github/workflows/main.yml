@@ -29,9 +29,8 @@ jobs:
         with:
           node-version: "22"
       - run: npm install -g @redocly/cli
-      - run: |
-          redocly bundle api/api.yml -o openapi.json
-          mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
+      - run: redocly bundle api/api.yml -o openapi.json
+      - run: mv api/openapi.json src/internal/server/handler/apihandler/embedded/openapi.json
       - run: cd src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
 
   lint-go:
@@ -53,15 +52,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: bufbuild/buf-action@v1
+      - name: Install buf CLI
+        run: |
+          set -e
+          curl -sSLf "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
+          chmod +x /usr/local/bin/buf
+          buf --version
+      - name: Setup Go toolchain and install protoc-gen-go
+        uses: actions/setup-go@v6
         with:
-          # Add the parameter token as a secret in your repository settings
-          # to authenticate with the Buf Schema Registry.
-          setup_only: true
-      - run: cd proto && buf build --error-format=github-actions
-      # - uses: actions/setup-go@v6
-      # - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-      # - run: protoc generate
+          go-version-file: "src/go.mod"
+      - name: Install protoc-gen-go
+        run: |
+          set -e
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          echo "protoc-gen-go installed"
+      - name: Run buf build and generate
+        run: |
+          set -e
+          # buf.gen.yaml is located at repo root and references 'proto' as inputs
+          buf build --error-format=github-actions
+          # generate will use buf.gen.yaml and the local plugins (protoc-gen-go)
+          buf generate
 
   build-go:
     name: build-go
