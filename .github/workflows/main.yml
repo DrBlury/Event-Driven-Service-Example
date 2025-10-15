@@ -46,6 +46,46 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Download generated protobuf files
+        uses: actions/download-artifact@v4
+        with:
+          name: pb-go
+          path: src/internal/domain
+      - name: Show generated domain files
+        run: |
+          echo 'listing src/internal/domain'
+          ls -la src/internal/domain || true
+      - name: Fail if no generated pb files
+        run: |
+          set -e
+          shopt -s nullglob || true
+          files=(src/internal/domain/*.pb.go)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No generated .pb.go files found in src/internal/domain — attempting fallback generation"
+            # Attempt fallback: run buf generate locally in this job
+            set -x
+            curl -sSLf "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
+            chmod +x /usr/local/bin/buf
+            buf --version || true
+            # setup go and install protoc-gen-go
+            uses_go() {
+              go version || true
+            }
+            export PATH="$PATH:$(go env GOPATH)/bin"
+            go install google.golang.org/protobuf/cmd/protoc-gen-go@latest || true
+            echo "Running buf build && buf generate"
+            buf build --error-format=github-actions || true
+            buf generate || true
+            files=(src/internal/domain/*.pb.go)
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "Fallback generation did not produce .pb.go files either"
+              exit 1
+            else
+              echo "Fallback generation succeeded — found ${#files[@]} pb files"
+            fi
+          else
+            echo "Found ${#files[@]} generated pb files"
+          fi
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25.1"
@@ -75,13 +115,27 @@ jobs:
           set -e
           go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
           echo "protoc-gen-go installed"
+          echo "GOPATH=$(go env GOPATH)"
+          echo "GOBIN=$(go env GOBIN)"
       - name: Run buf build and generate
         run: |
           set -e
+          # Ensure local go bin dir is on PATH so buf can find protoc-gen-go
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          echo "PATH=$PATH"
           # buf.gen.yaml is located at repo root and references 'proto' as inputs
           buf build --error-format=github-actions
           # generate will use buf.gen.yaml and the local plugins (protoc-gen-go)
           buf generate
+      - name: Show generated domain files
+        run: |
+          echo 'listing src/internal/domain after generate'
+          ls -la src/internal/domain || true
+      - name: Upload generated protobuf files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pb-go
+          path: src/internal/domain
 
   build-go:
     name: build-go
