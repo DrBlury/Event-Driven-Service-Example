@@ -46,8 +46,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Setup Go (for local fallback generation)
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "src/go.mod"
       - name: Download generated protobuf files
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: pb-go
           path: src/internal/domain
@@ -133,6 +138,7 @@ jobs:
           ls -la src/internal/domain || true
       - name: Upload generated protobuf files
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: pb-go
           path: src/internal/domain
