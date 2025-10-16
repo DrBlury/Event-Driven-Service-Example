@@ -19,9 +19,9 @@ tasks:
     silent: true
 
   ci:
-    desc: "Run the github actions locally"
+    desc: "Run all the github actions locally"
     cmds:
-      - echo "Running the github actions locally"
+      - echo "Running all the github actions locally"
       - act | grep -v '::'
     silent: true
 
