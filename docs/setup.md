@@ -44,6 +44,9 @@ This guide explains how to set up the Event-Driven Service Example.
    Use the appropriate Docker Compose file based on the pub/sub system:
    - Kafka: `docker-compose.kafka.yml`
    - RabbitMQ: `docker-compose.rabbitmq.yml`
-   - RabbitMQ: `docker-compose.aws.yml`
+   - AWS: `docker-compose.aws.yml`
    These files will override the base docker compose.
    - Default: `docker-compose.yml`
+
+  Check the taskfile for predefined tasks to start the services for different pub/sub systems.
+  And have the application configured automatically to work with the selected pub/sub system.
