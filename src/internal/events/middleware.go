@@ -28,11 +28,8 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			eventType, ok := msg.Metadata["event_message_schema"]
 			if !ok {
-				slog.Error("missing event_message_schema in metadata")
-				return nil, &UnprocessableEventError{
-					eventMessage: string(msg.Payload),
-					err:          fmt.Errorf("missing event_message_schema in metadata"),
-				}
+				slog.Warn("missing event_message_schema in metadata")
+				return h(msg) // just pass the message to the next handler - no validation
 			}
 			newProtoFunc, ok := protoTypeRegistry[eventType]
 			if !ok {
