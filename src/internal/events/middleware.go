@@ -78,20 +78,6 @@ func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) messag
 	return mw
 }
 
-// poisonMiddleware is a middleware to handle poison messages (Dead letter queue)
-func (s *Service) poisonMiddleware() message.HandlerMiddleware {
-	mw, err := middleware.PoisonQueue(
-		s.Publisher,
-		s.Conf.PoisonQueue,
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return mw
-}
-
 // logMessagesMiddleware to log all string messages being processed (json or string)
 func (s *Service) logMessagesMiddleware(logger watermill.LoggerAdapter) message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {

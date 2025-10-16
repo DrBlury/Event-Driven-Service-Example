@@ -63,7 +63,6 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *
 	s.Router.AddMiddleware(s.protoValidateMiddleware())
 	s.Router.AddMiddleware(s.outboxMiddleware())
 	s.Router.AddMiddleware(s.retryMiddleware()) // exponential backoff max 5 retries (1s, 2s, 4s, 8s, 16s)
-	// s.Router.AddMiddleware(s.poisonMiddleware()) // this is a dead letter queue
 	s.Router.AddMiddleware(s.poisonMiddlewareWithFilter(func(err error) bool {
 		// Example: filter out certain errors from going to the poison queue
 		if _, ok := err.(*UnprocessableEventError); ok {
@@ -85,19 +84,19 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *
 }
 
 func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter, ctx context.Context) {
-	switch {
-	case conf.PubSubSystem == "kafka":
+	switch conf.PubSubSystem {
+	case "kafka":
 		// Kafka setup
 		s.createKafkaPublisher(conf.KafkaBrokers, logger)
 		s.createKafkaSubscriber(conf.KafkaConsumerGroup, conf.KafkaBrokers, logger)
 		return
-	case conf.PubSubSystem == "rabbitmq":
+	case "rabbitmq":
 		// Rabbitmq setup
 		ampqConn, ampqConfig := s.setupAmpq(conf, logger)
 		s.createRabbitMQPublisher(ampqConfig, ampqConn, logger)
 		s.createRabbitMQSubscriber(ampqConfig, ampqConn, logger)
 		return
-	case conf.PubSubSystem == "aws":
+	case "aws":
 		// AWS setup
 		cfg := s.createAWSConfig(ctx)
 		logger.Info("Created AWS config",

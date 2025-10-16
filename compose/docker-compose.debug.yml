@@ -1,0 +1,15 @@
+services:
+  app-debug:
+    build:
+      context: ..
+      dockerfile: build/dockerfiles/Dockerfile.debug
+    container_name: event-driven-service-example-app-debug
+    working_dir: /build
+    # Delve listens on 2345 inside container, map it so host debuggers can attach
+    ports:
+      - "2345:2345"
+    env_file:
+      - ../env/app.env
+    depends_on:
+      mongo:
+        condition: service_healthy

@@ -106,26 +106,12 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 		region = s.Conf.AWSRegion
 	}
 
-	// trim possible quotes from env values and validate
-	accountID = strings.Trim(accountID, "\"' ")
-	if accountID == "" {
-		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-			accountID = "000000000000"
-			s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
-		}
-	}
 	if len(accountID) != 12 {
 		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
 			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
 			accountID = "000000000000"
 		}
 	}
-
-	s.Logger.Info("Create AWS Subscriber",
-		watermill.LogFields{
-			"accountID": accountID,
-			"region":    region,
-		})
 
 	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
 	if err != nil {
@@ -137,24 +123,7 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 	var snsOpts []func(*amazonsns.Options)
 	var sqsOpts []func(*amazonsqs.Options)
 	// only add endpoint resolver options when BaseEndpoint is present
-	if cfg != nil && cfg.BaseEndpoint != nil && *cfg.BaseEndpoint != "" {
-		if u := lo.Must(url.Parse(*cfg.BaseEndpoint)); u != nil {
-			snsOpts = []func(*amazonsns.Options){
-				amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
-					Endpoint: transport.Endpoint{
-						URI: *u,
-					},
-				}),
-			}
-			sqsOpts = []func(*amazonsqs.Options){
-				amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
-					Endpoint: transport.Endpoint{
-						URI: *u,
-					},
-				}),
-			}
-		}
-	}
+	snsOpts, sqsOpts = addEndpointResolver(cfg, snsOpts, sqsOpts)
 
 	subscriberConfig := sns.SubscriberConfig{
 		AWSConfig: aws.Config{
@@ -185,4 +154,26 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 	}
 
 	s.Subscriber = subscriber
+}
+
+func addEndpointResolver(cfg *aws.Config, snsOpts []func(*amazonsns.Options), sqsOpts []func(*amazonsqs.Options)) ([]func(*amazonsns.Options), []func(*amazonsqs.Options)) {
+	if cfg != nil && cfg.BaseEndpoint != nil && *cfg.BaseEndpoint != "" {
+		if u := lo.Must(url.Parse(*cfg.BaseEndpoint)); u != nil {
+			snsOpts = []func(*amazonsns.Options){
+				amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
+					Endpoint: transport.Endpoint{
+						URI: *u,
+					},
+				}),
+			}
+			sqsOpts = []func(*amazonsqs.Options){
+				amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
+					Endpoint: transport.Endpoint{
+						URI: *u,
+					},
+				}),
+			}
+		}
+	}
+	return snsOpts, sqsOpts
 }

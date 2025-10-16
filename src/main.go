@@ -13,7 +13,7 @@ import (
 var (
 	version     string
 	buildDate   string
-	description = "CPC contract facade"
+	description = "application template"
 	commitHash  string
 	commitDate  string
 )

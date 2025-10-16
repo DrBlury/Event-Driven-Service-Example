@@ -1,3 +1,5 @@
 .emqx
 _volume_data/
 .env
+.vscode/
+.idea/
