@@ -1,6 +1,7 @@
 package apihandler
 
 import (
+	server "drblury/event-driven-service/internal/server/generated"
 	_ "embed"
 	"html/template"
 	"net/http"
@@ -8,9 +9,6 @@ import (
 
 // embed the openapi JSON and HTML file into the binary
 // so we can serve them without reading from the filesystem
-
-//go:embed embedded/openapi.json
-var openapiJSON []byte
 
 //go:embed embedded/stoplight.html
 var openapiHTMLStoplight []byte
@@ -31,7 +29,17 @@ func (ah *APIHandler) GetVersion(w http.ResponseWriter, r *http.Request) {
 // (GET /info/openapi.json)
 func (ah *APIHandler) GetOpenAPIJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_, err := w.Write(openapiJSON)
+	swagger, err := server.GetSwagger()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	bytes, err := swagger.MarshalJSON()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(bytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

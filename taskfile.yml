@@ -109,19 +109,12 @@ tasks:
       - docker run --rm -v ./api/:/spec redocly/cli lint api.yml
     silent: true
 
-  gen-embedded-api:
-    desc: "Generate the embedded json for the api"
-    cmds:
-      - echo "Generating the embedded json for the api"
-      - docker run --rm -v ./api/:/spec redocly/cli bundle api.yml -o openapi.json
-      - mv ./api/openapi.json ./src/internal/server/handler/apihandler/embedded/openapi.json
-    silent: true
-
   gen-api-std:
     desc: "Generate the api wrapper interfaces for std server using oapi-codegen"
     cmds:
       - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
-      - cd ./src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ./embedded/openapi.json > ../../generated/api.gen.go
+      - docker run --rm -v ./api/:/spec redocly/cli bundle api.yml -o ./bundle.yml
+      - cd ./src/internal/server/handler/apihandler && go tool oapi-codegen -config ./server-std.cfg.yml ../../../../../api/bundle.yml > ../../generated/api.gen.go
     silent: true
 
   gen-api:
@@ -129,7 +122,6 @@ tasks:
     cmds:
       - echo "Generating the api for the server using oapi-codegen"
       - task lint-api
-      - task gen-embedded-api
       - task gen-api-std
     silent: true
 
