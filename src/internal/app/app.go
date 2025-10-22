@@ -9,6 +9,7 @@ import (
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"
+	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
 	"os"
@@ -31,6 +32,13 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	err := tracing.NewOtelTracer(ctx, logger, cfg.Tracing)
 	if err != nil {
 		logger.Error("failed to initialize tracer", "error", err)
+		return err
+	}
+
+	// ===== Metrics =====
+	err = metrics.NewOtelMetrics(ctx, cfg.Metrics, logger)
+	if err != nil {
+		logger.Error("failed to initialize metrics", "error", err)
 		return err
 	}
 

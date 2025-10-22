@@ -38,7 +38,6 @@ func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger)
 	default:
 		exporter = tracetest.NewNoopExporter()
 	}
-
 	if err != nil {
 		logger.With(
 			"exporter", config.OTELTracesExporter,
@@ -74,7 +73,8 @@ func NewOtelTracer(ctx context.Context, logger *slog.Logger, cfg *Config) error 
 }
 
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
-	return resource.Merge(resource.Default(),
+	return resource.Merge(
+		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceName(serviceName),

@@ -5,9 +5,9 @@ import (
 	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/internal/server"
 	"drblury/event-driven-service/pkg/logging"
+	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
-	"encoding/base64"
 	"time"
 
 	"drblury/event-driven-service/internal/database"
@@ -21,8 +21,9 @@ type Config struct {
 	Server   *server.Config
 	Database *database.Config
 	Logger   *logging.Config
-	Events   *events.Config
 	Tracing  *tracing.Config
+	Metrics  *metrics.Config
+	Events   *events.Config
 }
 
 func SetDefaults() {
@@ -97,6 +98,15 @@ func LoadConfig(
 		ServiceVersion:     viper.GetString("VERSION"),
 	}
 
+	metricsConfig := &metrics.Config{
+		Enabled:             viper.GetBool("METRICS_ENABLED"),
+		OtelEndpoint:        viper.GetString("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
+		Headers:             viper.GetString("OTEL_EXPORTER_OTLP_METRICS_HEADERS"),
+		OTELMetricsExporter: viper.GetString("OTEL_METRICS_EXPORTER"),
+		ServiceName:         viper.GetString("APP_NAME"),
+		ServiceVersion:      viper.GetString("VERSION"),
+	}
+
 	eventsConfig := &events.Config{
 		// PubSubSystem
 		PubSubSystem: viper.GetString("PUBSUB_SYSTEM"), // "kafka", "aws" or "rabbitmq"
@@ -141,12 +151,8 @@ func LoadConfig(
 		Server:   serverConfig,
 		Database: databaseConfig,
 		Logger:   loggerConfig,
-		Events:   eventsConfig,
 		Tracing:  tracingConfig,
+		Metrics:  metricsConfig,
+		Events:   eventsConfig,
 	}, nil
-}
-
-func b64Encode(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
