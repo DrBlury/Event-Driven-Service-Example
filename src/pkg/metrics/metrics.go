@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -32,29 +33,40 @@ func newMeterProvider(ctx context.Context, config *Config, logger *slog.Logger) 
 			return nil, err
 		}
 		metricReader = metric.NewPeriodicReader(exporter)
+		r, err := newResource(config.ServiceName, config.ServiceVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		meterProvider := metric.NewMeterProvider(
+			metric.WithReader(metricReader),
+			metric.WithResource(r),
+		)
+		return meterProvider, nil
 	case "otlp":
-		metricReader, err = autoexport.NewMetricReader(ctx)
+		reader, err := autoexport.NewMetricReader(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create auto exporter: %w", err)
+		}
+
+		r, err := newResource(config.ServiceName, config.ServiceVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		meterProvider := metric.NewMeterProvider(
+			metric.WithReader(reader),
+			metric.WithResource(r),
+		)
+
+		return meterProvider, nil
 	default:
-		// no exporter
-	}
-	if err != nil {
 		logger.With(
 			"exporter", config.OTELMetricsExporter,
-		).Error("failed to create metric exporter")
-		return nil, err
+		).Error("unsupported metrics exporter")
+		return nil, fmt.Errorf("unsupported metrics exporter: %s", config.OTELMetricsExporter)
 	}
 
-	r, err := newResource(config.ServiceName, config.ServiceVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metricReader),
-		metric.WithResource(r),
-	)
-
-	return meterProvider, nil
 }
 
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
@@ -72,6 +84,7 @@ func NewOtelMetrics(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+
 	// Set global meter provider
 	otel.SetMeterProvider(mp)
 	return nil
