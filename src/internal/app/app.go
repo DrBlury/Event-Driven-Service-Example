@@ -10,6 +10,7 @@ import (
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/router"
+	"drblury/event-driven-service/pkg/tracing"
 	"os"
 	"os/signal"
 
@@ -24,7 +25,14 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	defer stop()
 
 	// ===== Logger =====
-	logger := logging.SetLogger(cfg.Logger)
+	logger := logging.SetLogger(ctx, cfg.Logger)
+
+	// ===== Tracing =====
+	err := tracing.NewOtelTracer(ctx, logger, cfg.Tracing)
+	if err != nil {
+		logger.Error("failed to initialize tracer", "error", err)
+		return err
+	}
 
 	// ===== Database =====
 	db, err := database.NewDatabase(cfg.Database, logger, ctx)

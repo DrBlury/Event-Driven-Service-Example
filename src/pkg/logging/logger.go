@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	slogmulti "github.com/samber/slog-multi"
-	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
-func SetLogger(loggerConfig *Config) *slog.Logger {
+func SetLogger(ctx context.Context, loggerConfig *Config) *slog.Logger {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	slogLevel := getSlogLevel(loggerConfig)
 
@@ -30,10 +29,11 @@ func SetLogger(loggerConfig *Config) *slog.Logger {
 		}))
 	case "otel":
 		// ===== Open Telemetry =====
-		logger = slog.New(createOtelHandler(loggerConfig))
+		otelHandler := createOtelHandler(ctx, loggerConfig)
+		logger = slog.New(otelHandler)
 	case "otel-and-console":
 		// ===== Open Telemetry and Console =====
-		logger = createMultiLogger(loggerConfig, slogLevel)
+		logger = createMultiLogger(ctx, loggerConfig, slogLevel)
 	default:
 		slog.Warn("LOGGER environment variable not set to json, using default console logger")
 		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -47,20 +47,8 @@ func SetLogger(loggerConfig *Config) *slog.Logger {
 	return logger
 }
 
-func createOtelHandler(loggerConfig *Config) *otelslog.Handler {
-	otelLog, err := NewOtelLog(context.Background(), loggerConfig)
-	if err != nil {
-		slog.With("Error", err).Error("Error creating OpenTelemetry logger")
-		return nil
-	}
-	otelHandler := otelslog.NewHandler(loggerConfig.ServiceName,
-		otelslog.WithLoggerProvider(otelLog.logProvider),
-	)
-	return otelHandler
-}
-
-func createMultiLogger(loggerConfig *Config, slogLevel slog.Level) *slog.Logger {
-	otelHandler := createOtelHandler(loggerConfig)
+func createMultiLogger(ctx context.Context, loggerConfig *Config, slogLevel slog.Level) *slog.Logger {
+	otelHandler := createOtelHandler(ctx, loggerConfig)
 
 	prettyHandler := NewPrettyHandler(&slog.HandlerOptions{
 		Level:     slogLevel,

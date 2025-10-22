@@ -2,22 +2,19 @@ package logging
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-type OtelLog struct {
-	ctx         context.Context
-	config      *Config
-	logProvider *log.LoggerProvider
-}
-
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
-	return resource.Merge(resource.Default(),
+	return resource.Merge(
+		resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVer),
@@ -37,43 +34,31 @@ func getLogProvider(logExporter log.Exporter, res *resource.Resource) (*log.Logg
 	return logProvider, nil
 }
 
-func NewOtelLog(ctx context.Context, config *Config) (*OtelLog, error) {
-	oe := &OtelLog{
-		ctx:    ctx,
-		config: config,
-	}
-
-	logExporter, err := oe.newOtelGRPCLogExporter()
+func createOtelHandler(ctx context.Context, loggerConfig *Config) *otelslog.Handler {
+	exporter, err := autoexport.NewLogExporter(ctx)
 	if err != nil {
-		return nil, err
+		slog.With(
+			"exporter", "autoexport",
+		).Error("failed to create log exporter")
+		return nil
 	}
 
-	res, err := newResource(config.ServiceName, config.ServiceVersion)
+	res, err := newResource(loggerConfig.ServiceName, loggerConfig.ServiceVersion)
 	if err != nil {
-		return nil, err
+		slog.With(
+			"resource", "log",
+		).Error("failed to create log resource")
+		return nil
 	}
 
-	logProvider, err := getLogProvider(logExporter, res)
+	provider, err := getLogProvider(exporter, res)
 	if err != nil {
-		return nil, err
+		slog.With(
+			"provider", "log",
+		).Error("failed to create log provider")
+		return nil
 	}
 
-	oe.logProvider = logProvider
-
-	return oe, nil
-}
-
-// === LOGS ===
-func (oe *OtelLog) newOtelGRPCLogExporter() (log.Exporter, error) {
-	return otlploggrpc.New(oe.ctx,
-		otlploggrpc.WithEndpointURL(oe.config.OtelEndpoint),
-		otlploggrpc.WithHeaders(
-			map[string]string{
-				"Authorization": oe.config.OtelAuthorization,
-				"stream-name":   oe.config.ServiceName,
-				"organization":  "default",
-			},
-		),
-		otlploggrpc.WithInsecure(),
-	)
+	otelHandler := otelslog.NewHandler(loggerConfig.ServiceName, otelslog.WithLoggerProvider(provider))
+	return otelHandler
 }
