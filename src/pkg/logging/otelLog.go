@@ -17,7 +17,8 @@ type OtelLog struct {
 }
 
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
-	return resource.Merge(resource.Default(),
+	return resource.Merge(
+		resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVer),

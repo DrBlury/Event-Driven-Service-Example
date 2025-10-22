@@ -6,6 +6,7 @@ import (
 	"drblury/event-driven-service/internal/server"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/router"
+	"drblury/event-driven-service/pkg/tracing"
 	"time"
 
 	"drblury/event-driven-service/internal/database"
@@ -20,6 +21,7 @@ type Config struct {
 	Database *database.Config
 	Logger   *logging.Config
 	Events   *events.Config
+	Tracing  *tracing.Config
 }
 
 func SetDefaults() {
@@ -33,6 +35,11 @@ func SetDefaults() {
 	// Logger
 	viper.SetDefault("LOGGER", "json")
 	viper.SetDefault("LOGGER_LEVEL", "debug")
+
+	// Tracing
+	viper.SetDefault("TRACING_ENABLED", false)
+	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+	viper.SetDefault("SERVICE_NAME", "example-service")
 }
 
 // nolint: funlen
@@ -72,12 +79,21 @@ func LoadConfig(
 	}
 
 	loggerConfig := &logging.Config{
-		OtelEndpoint:      viper.GetString("LOGGER_OTEL_ENDPOINT"),
+		OtelEndpoint:      viper.GetString("OTEL_EXPORTER_OTLP_ENDPOINT_LOG"),
 		OtelAuthorization: viper.GetString("OTEL_EXPORTER_OTLP_AUTHORIZATION"),
 		ServiceName:       viper.GetString("APP_NAME"),
 		ServiceVersion:    viper.GetString("VERSION"),
 		LogLevel:          viper.GetString("LOGGER_LEVEL"),
 		Logger:            viper.GetString("LOGGER"),
+	}
+
+	tracingConfig := &tracing.Config{
+		Enabled:            viper.GetBool("TRACING_ENABLED"),
+		OtelEndpoint:       viper.GetString("OTEL_EXPORTER_OTLP_ENDPOINT_TRACE"),
+		OtelAuthorization:  viper.GetString("OTEL_EXPORTER_OTLP_AUTHORIZATION"),
+		OTELTracesExporter: viper.GetString("OTEL_TRACES_EXPORTER"),
+		ServiceName:        viper.GetString("APP_NAME"),
+		ServiceVersion:     viper.GetString("VERSION"),
 	}
 
 	eventsConfig := &events.Config{
@@ -125,5 +141,6 @@ func LoadConfig(
 		Database: databaseConfig,
 		Logger:   loggerConfig,
 		Events:   eventsConfig,
+		Tracing:  tracingConfig,
 	}, nil
 }
