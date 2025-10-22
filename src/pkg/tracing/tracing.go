@@ -8,11 +8,12 @@ import (
 
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger) (*trace.TracerProvider, error) {
@@ -28,6 +29,8 @@ func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger)
 			stdouttrace.WithWriter(os.Stdout),
 		)
 	case "otlp":
+		exporter, err = newOtelGRPCTraceExporter(ctx, config)
+	case "auto":
 		exporter, err = autoexport.NewSpanExporter(ctx)
 	default:
 		exporter = tracetest.NewNoopExporter()
@@ -69,8 +72,23 @@ func NewOtelTracer(ctx context.Context, logger *slog.Logger, cfg *Config) error 
 
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
 	return resource.Merge(resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL,
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVer),
 		))
+}
+
+func newOtelGRPCTraceExporter(ctx context.Context, config *Config) (trace.SpanExporter, error) {
+	return otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(config.OtelEndpoint),
+		otlptracegrpc.WithHeaders(
+			map[string]string{
+				"Authorization": config.OtelAuthorization,
+				"stream-name":   config.ServiceName,
+				"organization":  "default",
+			},
+		),
+		otlptracegrpc.WithInsecure(),
+	)
 }
