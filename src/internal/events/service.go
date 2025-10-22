@@ -62,6 +62,7 @@ func NewService(conf *Config, log *slog.Logger, db *database.Database, usecase *
 	s.Router.AddMiddleware(s.logMessagesMiddleware(logger)) // log all messages being processed
 	s.Router.AddMiddleware(s.protoValidateMiddleware())
 	s.Router.AddMiddleware(s.outboxMiddleware())
+	s.Router.AddMiddleware(s.tracerMiddleware())
 	s.Router.AddMiddleware(s.retryMiddleware()) // exponential backoff max 5 retries (1s, 2s, 4s, 8s, 16s)
 	s.Router.AddMiddleware(s.poisonMiddlewareWithFilter(func(err error) bool {
 		// Example: filter out certain errors from going to the poison queue

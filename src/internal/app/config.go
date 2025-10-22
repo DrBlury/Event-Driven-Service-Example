@@ -8,7 +8,6 @@ import (
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
 	"encoding/base64"
-	"fmt"
 	"time"
 
 	"drblury/event-driven-service/internal/database"
@@ -80,29 +79,19 @@ func LoadConfig(
 		BaseURL: viper.GetString("APP_SERVER_BASE_URL"),
 	}
 
-	if viper.GetString("OTEL_BASIC_AUTH_USERNAME") != "" && viper.GetString("OTEL_BASIC_AUTH_PASSWORD") != "" {
-		// set authorization env vars for logging and tracing
-		username, password := viper.GetString("OTEL_BASIC_AUTH_USERNAME"), viper.GetString("OTEL_BASIC_AUTH_PASSWORD")
-		fmt.Println("Setting OTEL authorization with username:", username, "and password:", password)
-		base64Auth := b64Encode(username, password)
-		fmt.Println("Base64 Encoded Authorization:", base64Auth)
-		viper.Set("OTEL_EXPORTER_OTLP_AUTHORIZATION_LOG", "Basic "+base64Auth)
-		viper.Set("OTEL_EXPORTER_OTLP_AUTHORIZATION_TRACE", "Basic "+base64Auth)
-	}
-
 	loggerConfig := &logging.Config{
-		OtelEndpoint:      viper.GetString("OTEL_EXPORTER_OTLP_ENDPOINT_LOG"),
-		OtelAuthorization: viper.GetString("OTEL_EXPORTER_OTLP_AUTHORIZATION_LOG"),
-		ServiceName:       viper.GetString("APP_NAME"),
-		ServiceVersion:    viper.GetString("VERSION"),
-		LogLevel:          viper.GetString("LOGGER_LEVEL"),
-		Logger:            viper.GetString("LOGGER"),
+		OtelEndpoint:   viper.GetString("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"),
+		Headers:        viper.GetString("OTEL_EXPORTER_OTLP_LOGS_HEADERS"),
+		ServiceName:    viper.GetString("APP_NAME"),
+		ServiceVersion: viper.GetString("VERSION"),
+		LogLevel:       viper.GetString("LOGGER_LEVEL"),
+		Logger:         viper.GetString("LOGGER"),
 	}
 
 	tracingConfig := &tracing.Config{
 		Enabled:            viper.GetBool("TRACING_ENABLED"),
-		OtelEndpoint:       viper.GetString("OTEL_EXPORTER_OTLP_ENDPOINT_TRACE"),
-		OtelAuthorization:  viper.GetString("OTEL_EXPORTER_OTLP_AUTHORIZATION_TRACE"),
+		OtelEndpoint:       viper.GetString("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+		Headers:            viper.GetString("OTEL_EXPORTER_OTLP_TRACES_HEADERS"),
 		OTELTracesExporter: viper.GetString("OTEL_TRACES_EXPORTER"),
 		ServiceName:        viper.GetString("APP_NAME"),
 		ServiceVersion:     viper.GetString("VERSION"),

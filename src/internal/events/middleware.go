@@ -8,6 +8,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // correlationIDMiddleware is a middleware to add correlation IDs to messages
@@ -132,4 +134,26 @@ func (s *Service) retryMiddleware() message.HandlerMiddleware {
 		InitialInterval: 1 * 1e9,  // 1s
 		MaxInterval:     16 * 1e9, // 16s
 	}.Middleware
+}
+
+// tracerMiddleware is a middleware to add OpenTelemetry tracing to message processing
+func (s *Service) tracerMiddleware() message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			tracer := otel.Tracer("events-service-tracer")
+			ctx, span := tracer.Start(
+				msg.Context(),
+				"ProcessMessage",
+			)
+			defer span.End()
+			msg.SetContext(ctx)
+
+			span.SetAttributes(
+				attribute.String("message.uuid", msg.UUID),
+				attribute.String("message.metadata", fmt.Sprintf("%v", msg.Metadata)),
+			)
+			return h(msg)
+		}
+
+	}
 }

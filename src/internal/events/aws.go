@@ -14,7 +14,6 @@ import (
 	amazonsns "github.com/aws/aws-sdk-go-v2/service/sns"
 	amazonsqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	transport "github.com/aws/smithy-go/endpoints"
-	"github.com/samber/lo"
 )
 
 func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
@@ -79,9 +78,12 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 		OptFns: []func(o *amazonsns.Options){
 			func(o *amazonsns.Options) {
 				if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-					if u := lo.Must(url.Parse(s.Conf.AWSEndpoint)); u != nil {
-						o.BaseEndpoint = aws.String(u.String())
+					parsedURL, err := url.Parse(s.Conf.AWSEndpoint)
+					if err != nil {
+						s.Logger.Error("Failed to parse AWS endpoint", err, watermill.LogFields{"endpoint": s.Conf.AWSEndpoint})
+						panic(err)
 					}
+					o.BaseEndpoint = aws.String(parsedURL.String())
 				}
 			},
 		},
@@ -158,21 +160,23 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 
 func addEndpointResolver(cfg *aws.Config, snsOpts []func(*amazonsns.Options), sqsOpts []func(*amazonsqs.Options)) ([]func(*amazonsns.Options), []func(*amazonsqs.Options)) {
 	if cfg != nil && cfg.BaseEndpoint != nil && *cfg.BaseEndpoint != "" {
-		if u := lo.Must(url.Parse(*cfg.BaseEndpoint)); u != nil {
-			snsOpts = []func(*amazonsns.Options){
-				amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
-					Endpoint: transport.Endpoint{
-						URI: *u,
-					},
-				}),
-			}
-			sqsOpts = []func(*amazonsqs.Options){
-				amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
-					Endpoint: transport.Endpoint{
-						URI: *u,
-					},
-				}),
-			}
+		parsedURL, err := url.Parse(*cfg.BaseEndpoint)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to parse BaseEndpoint: %v", err))
+		}
+		snsOpts = []func(*amazonsns.Options){
+			amazonsns.WithEndpointResolverV2(sns.OverrideEndpointResolver{
+				Endpoint: transport.Endpoint{
+					URI: *parsedURL,
+				},
+			}),
+		}
+		sqsOpts = []func(*amazonsqs.Options){
+			amazonsqs.WithEndpointResolverV2(sqs.OverrideEndpointResolver{
+				Endpoint: transport.Endpoint{
+					URI: *parsedURL,
+				},
+			}),
 		}
 	}
 	return snsOpts, sqsOpts

@@ -8,7 +8,6 @@ import (
 
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -29,9 +28,13 @@ func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger)
 			stdouttrace.WithWriter(os.Stdout),
 		)
 	case "otlp":
-		exporter, err = newOtelGRPCTraceExporter(ctx, config)
-	case "auto":
 		exporter, err = autoexport.NewSpanExporter(ctx)
+		if err != nil {
+			logger.With(
+				"exporter", "autoexport",
+			).Error("failed to create autoexport span exporter")
+			return nil, err
+		}
 	default:
 		exporter = tracetest.NewNoopExporter()
 	}
@@ -77,18 +80,4 @@ func newResource(serviceName string, serviceVer string) (*resource.Resource, err
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(serviceVer),
 		))
-}
-
-func newOtelGRPCTraceExporter(ctx context.Context, config *Config) (trace.SpanExporter, error) {
-	return otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(config.OtelEndpoint),
-		otlptracegrpc.WithHeaders(
-			map[string]string{
-				"Authorization": config.OtelAuthorization,
-				"stream-name":   config.ServiceName,
-				"organization":  "default",
-			},
-		),
-		otlptracegrpc.WithInsecure(),
-	)
 }

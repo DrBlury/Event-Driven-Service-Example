@@ -25,7 +25,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	defer stop()
 
 	// ===== Logger =====
-	logger := logging.SetLogger(cfg.Logger)
+	logger := logging.SetLogger(ctx, cfg.Logger)
 
 	// ===== Tracing =====
 	err := tracing.NewOtelTracer(ctx, logger, cfg.Tracing)
