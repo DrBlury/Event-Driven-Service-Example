@@ -42,8 +42,9 @@ services:
       localstack:
         condition: service_healthy
     volumes:
-      - ../infra/terraform:/infra/terraform
-    working_dir: /infra/terraform
+      - ../infra/terraform/environments/localstack:/infra/terraform/environments/localstack
+      - ../infra/terraform/modules:/infra/terraform/modules
+    working_dir: /infra/terraform/environments/localstack
     command: apply -auto-approve
     environment:
       AWS_ACCESS_KEY_ID: test

@@ -51,18 +51,18 @@ locals {
 }
 
 module "sns" {
-  source = "./modules/sns"
+  source = "../../modules/sns"
   topics = local.topics
 }
 
 module "sqs" {
-  source     = "./modules/sqs"
+  source     = "../../modules/sqs"
   queues     = local.queues
   topic_arns = [for t in module.sns : t.arn]
 }
 
 module "iam" {
-  source     = "./modules/iam"
+  source     = "../../modules/iam"
   topic_arns = [for t in module.sns : t.arn]
   queue_arns = [for q in module.sqs : q.arn]
 }
