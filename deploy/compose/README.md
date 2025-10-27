@@ -60,4 +60,4 @@ Volume & infra changes
 - Persistent data for services is now consolidated under the repository root
   `_volume_data/` folder. Subfolders include `mongo`, `kafka`, `rabbitmq`,
   `localstack`, and `openobserve`. Compose files mount from
-  these new paths (e.g. `../_volume_data/mongo`).
+  these new paths (e.g. `../../_volume_data/mongo`).

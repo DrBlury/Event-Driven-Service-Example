@@ -29,7 +29,7 @@ services:
     env_file:
       - ../env/mongo.env
     volumes:
-      - ../_volume_data/mongo:/data/db
+      - ../../_volume_data/mongo:/data/db
     command: mongod --quiet --logpath /dev/null
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
@@ -57,4 +57,4 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ../_volume_data/openobserve:/data
+      - ../../_volume_data/openobserve:/data

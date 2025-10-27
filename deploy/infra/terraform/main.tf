@@ -33,67 +33,57 @@ output "is_localstack" {
 }
 
 locals {
-  queues = [
-    "messages",
-    "messages-processed",
-    "messages-poison",
-    "signup",
-    "signup-processable",
-  ]
+  queues = {
+    messages           = "messages"
+    messages_processed = "messages-processed"
+    messages_poison    = "messages-poison"
+    signup             = "signup"
+    signup_processable = "signup-processable"
+  }
 
-  topics = [
-    "messages",
-    "messages-processed",
-    "messages-poison",
-    "signup",
-    "signup-processable",
-  ]
+  topics = {
+    messages           = "messages"
+    messages_processed = "messages-processed"
+    messages_poison    = "messages-poison"
+    signup             = "signup"
+    signup_processable = "signup-processable"
+  }
+}
+
+module "sns" {
+  source = "./modules/sns"
+  topics = local.topics
+}
+
+module "sqs" {
+  source     = "./modules/sqs"
+  queues     = local.queues
+  topic_arns = [for t in module.sns : t.arn]
+}
+
+module "iam" {
+  source     = "./modules/iam"
+  topic_arns = [for t in module.sns : t.arn]
+  queue_arns = [for q in module.sqs : q.arn]
 }
 
 # Create SQS queues
 resource "aws_sqs_queue" "queues" {
-  for_each = toset(local.queues)
-  name     = each.key
+  for_each = local.queues
+  name     = each.value
 }
 
 # Create SNS topics
 resource "aws_sns_topic" "topics" {
-  for_each = toset(local.topics)
-  name     = each.key
+  for_each = local.topics
+  name     = each.value
 }
 
 # Subscribe each topic to the same-named SQS queue
 resource "aws_sns_topic_subscription" "topic_subs" {
-  for_each = {
-    for t in local.topics : t => t
-  }
+  for_each = local.topics
 
   topic_arn = aws_sns_topic.topics[each.key].arn
   protocol  = "sqs"
   endpoint  = aws_sqs_queue.queues[each.key].arn
-}
-
-# Allow SNS to send messages to SQS queues (queue policy)
-resource "aws_sqs_queue_policy" "allow_sns" {
-  for_each = aws_sqs_queue.queues
-
-  queue_url = each.value.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "Allow-SNS-SendMessage"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "sqs:SendMessage"
-        Resource  = each.value.arn
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = [for t in aws_sns_topic.topics : t.arn]
-          }
-        }
-      }
-    ]
-  })
 }

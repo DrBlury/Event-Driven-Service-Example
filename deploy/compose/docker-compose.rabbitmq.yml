@@ -19,7 +19,7 @@ services:
     env_file:
       - ../env/rabbitmq.env
     volumes:
-      - ../_volume_data/rabbitmq:/var/lib/rabbitmq
+      - ../../_volume_data/rabbitmq:/var/lib/rabbitmq
       - ../infra/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "status"]

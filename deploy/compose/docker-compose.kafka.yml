@@ -19,7 +19,7 @@ services:
     env_file:
       - ../env/kafka.env
     volumes:
-      - ../_volume_data/kafka:/tmp/kraft-combined-logs
+      - ../../_volume_data/kafka:/tmp/kraft-combined-logs
     healthcheck:
       test: ["CMD", "bash", "-c", "ps aux | grep -q '[K]afka'"]
       interval: 10s
