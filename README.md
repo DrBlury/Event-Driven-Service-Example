@@ -4,6 +4,7 @@ Welcome to the documentation for the Event-Driven Service Example. This project 
 
 ## Documentation Structure
 
+- **[Project Structure and Tooling](./docs/project-structure-and-tooling.md)**: Comprehensive overview of the entire project structure, directory organization, and all development tools used (build tools, linters, code generators, Docker, Task automation, CI/CD).
 - [Setup Guide](./docs/setup.md): Steps to set up the service, including generating protobuf files and configuring the environment.
 - [Infrastructure](./docs/infrastructure.md): Details about the infrastructure setup, including Terraform and Docker Compose configurations.
 - [Protobuf and Domain Models](./docs/protobuf.md): Explanation of why Protobuf is used for domain models and its benefits.
