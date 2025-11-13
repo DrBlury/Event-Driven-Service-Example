@@ -147,3 +147,9 @@ tasks:
       - echo "Running scc to show stats"
       - docker run --rm -it -v "$PWD:/pwd"  ghcr.io/lhoupert/scc:master scc /pwd
     silent: true
+
+  git:web:
+    desc: "Open the configured git remote in a browser (defaults to origin)"
+    cmds:
+      - ./scripts/git-web {{default "origin" .REMOTE}}
+    silent: true

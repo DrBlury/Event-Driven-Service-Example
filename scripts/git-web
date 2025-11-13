@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+remote="${1:-origin}"
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Not inside a git repository." >&2
+  exit 1
+fi
+
+if ! url="$(git remote get-url "$remote" 2>/dev/null)"; then
+  echo "Remote '$remote' not found." >&2
+  exit 1
+fi
+
+case "$url" in
+  git@*:* )
+    host="${url#git@}"
+    host="${host%%:*}"
+    path="${url#*:}"
+    path="${path%.git}"
+    url="https://${host}/${path}"
+    ;;
+  http://*|https://*)
+    url="${url%.git}"
+    ;;
+  ssh://git@*)
+    trimmed="${url#ssh://git@}"
+    host="${trimmed%%/*}"
+    path="${trimmed#*/}"
+    path="${path%.git}"
+    url="https://${host}/${path}"
+    ;;
+  *)
+    url="${url%.git}"
+    ;;
+esac
+
+if [ -z "$url" ]; then
+  echo "Unable to determine remote URL." >&2
+  exit 1
+fi
+
+open_cmd=""
+
+if command -v open >/dev/null 2>&1; then
+  open_cmd="open"
+elif command -v xdg-open >/dev/null 2>&1; then
+  open_cmd="xdg-open"
+elif command -v wslview >/dev/null 2>&1; then
+  open_cmd="wslview"
+fi
+
+if [ -z "$open_cmd" ]; then
+  echo "$url"
+  exit 0
+fi
+
+if ! "$open_cmd" "$url" >/dev/null 2>&1; then
+  echo "$url"
+fi

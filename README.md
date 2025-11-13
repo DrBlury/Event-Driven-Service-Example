@@ -14,3 +14,8 @@ Welcome to the documentation for the Event-Driven Service Example. This project 
 Each section provides in-depth information about the respective topics.
 
 Use the links above to navigate through the documentation.
+
+## Developer Utilities
+
+- `task git:web` opens the repository's default remote in your browser. Override with `task git:web REMOTE=upstream` to target another remote.
+- The helper script lives in `scripts/git-web`. Add the repo's `scripts` directory to your `PATH` to invoke it as `git web` (Git picks up executables named `git-*` as custom subcommands).
