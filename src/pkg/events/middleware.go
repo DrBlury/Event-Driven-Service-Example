@@ -337,6 +337,5 @@ func (s *Service) tracerMiddleware() message.HandlerMiddleware {
 			)
 			return h(msg)
 		}
-
 	}
 }

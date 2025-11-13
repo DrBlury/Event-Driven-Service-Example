@@ -30,19 +30,19 @@ Examples
 Start Kafka mode (base + kafka override):
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.kafka.yml up
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.kafka.yml up
 ```
 
 Start RabbitMQ mode (base + rabbitmq override):
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.rabbitmq.yml up
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.rabbitmq.yml up
 ```
 
 Start AWS/localstack mode (base + aws override):
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.aws.yml up
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml up
 ```
 
 Notes

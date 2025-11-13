@@ -9,7 +9,7 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/internal/server"
-	generatedAPI "drblury/event-driven-service/internal/server/generated"
+	generatedAPI "drblury/event-driven-service/internal/server/_gen"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/events"

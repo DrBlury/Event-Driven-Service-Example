@@ -83,7 +83,6 @@ func NewService(conf *Config, log *slog.Logger, ctx context.Context, deps Servic
 	}
 
 	s.Router = router
-
 	s.Router.AddPlugin(plugin.SignalsHandler)
 
 	s.registerConfiguredMiddlewares(deps)

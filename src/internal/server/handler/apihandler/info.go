@@ -1,7 +1,7 @@
 package apihandler
 
 import (
-	server "drblury/event-driven-service/internal/server/generated"
+	server "drblury/event-driven-service/internal/server/_gen"
 	_ "embed"
 	"html/template"
 	"net/http"
