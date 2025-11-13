@@ -2,8 +2,10 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -11,6 +13,171 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+// MiddlewareBuilder constructs a handler middleware using the provided service instance.
+type MiddlewareBuilder func(*Service) (message.HandlerMiddleware, error)
+
+// MiddlewareRegistration captures how a middleware should be registered on a Service router.
+type MiddlewareRegistration struct {
+	Name       string
+	Middleware message.HandlerMiddleware
+	Builder    MiddlewareBuilder
+}
+
+// RetryMiddlewareConfig customises the retry middleware behaviour.
+type RetryMiddlewareConfig struct {
+	MaxRetries      int
+	InitialInterval time.Duration
+	MaxInterval     time.Duration
+}
+
+func (cfg RetryMiddlewareConfig) withDefaults() RetryMiddlewareConfig {
+	if cfg.MaxRetries <= 0 {
+		cfg.MaxRetries = 5
+	}
+	if cfg.InitialInterval <= 0 {
+		cfg.InitialInterval = time.Second
+	}
+	if cfg.MaxInterval <= 0 {
+		cfg.MaxInterval = 16 * time.Second
+	}
+	return cfg
+}
+
+// DefaultMiddlewares returns the standard middleware chain used by the Service constructor.
+func DefaultMiddlewares() []MiddlewareRegistration {
+	return []MiddlewareRegistration{
+		CorrelationIDMiddleware(),
+		LogMessagesMiddleware(nil),
+		ProtoValidateMiddleware(),
+		OutboxMiddleware(),
+		TracerMiddleware(),
+		RetryMiddleware(RetryMiddlewareConfig{}),
+		PoisonQueueMiddleware(nil),
+		RecovererMiddleware(),
+	}
+}
+
+// CorrelationIDMiddleware ensures each processed message carries a correlation identifier.
+func CorrelationIDMiddleware() MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "correlation_id",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			return s.correlationIDMiddleware(), nil
+		},
+	}
+}
+
+// LogMessagesMiddleware logs the full payload and metadata of handled messages.
+func LogMessagesMiddleware(logger watermill.LoggerAdapter) MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "log_messages",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			l := logger
+			if l == nil {
+				l = s.Logger
+			}
+			if l == nil {
+				return nil, errors.New("log messages middleware requires a logger")
+			}
+			return s.logMessagesMiddleware(l), nil
+		},
+	}
+}
+
+// ProtoValidateMiddleware unmarshals and validates protobuf payloads when possible.
+func ProtoValidateMiddleware() MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "proto_validate",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			return s.protoValidateMiddleware(), nil
+		},
+	}
+}
+
+// OutboxMiddleware persists outgoing messages when an OutboxStore is configured.
+func OutboxMiddleware() MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "outbox",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			return s.outboxMiddleware(), nil
+		},
+	}
+}
+
+// TracerMiddleware wraps handler execution in an OpenTelemetry span.
+func TracerMiddleware() MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "tracer",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			return s.tracerMiddleware(), nil
+		},
+	}
+}
+
+// RetryMiddleware retries handler execution using the provided configuration (defaults applied to zero values).
+func RetryMiddleware(cfg RetryMiddlewareConfig) MiddlewareRegistration {
+	normalized := cfg.withDefaults()
+	return MiddlewareRegistration{
+		Name: "retry",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			return s.retryMiddlewareWithConfig(normalized), nil
+		},
+	}
+}
+
+// PoisonQueueMiddleware publishes messages that match the supplied filter to the configured poison queue.
+func PoisonQueueMiddleware(filter func(error) bool) MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name: "poison_queue",
+		Builder: func(s *Service) (message.HandlerMiddleware, error) {
+			f := filter
+			if f == nil {
+				f = func(err error) bool {
+					_, ok := err.(*UnprocessableEventError)
+					return ok
+				}
+			}
+			return s.poisonMiddlewareWithFilter(f)
+		},
+	}
+}
+
+// RecovererMiddleware converts panics into handler errors so they can be retried or sent to the poison queue.
+func RecovererMiddleware() MiddlewareRegistration {
+	return MiddlewareRegistration{
+		Name:       "recoverer",
+		Middleware: middleware.Recoverer,
+	}
+}
+
+// RegisterMiddleware attaches the supplied middleware to the router.
+func (s *Service) RegisterMiddleware(cfg MiddlewareRegistration) error {
+	if s.Router == nil {
+		return errors.New("router is not initialised")
+	}
+
+	var mw message.HandlerMiddleware
+	switch {
+	case cfg.Middleware != nil:
+		mw = cfg.Middleware
+	case cfg.Builder != nil:
+		var err error
+		mw, err = cfg.Builder(s)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("middleware registration requires Middleware or Builder")
+	}
+
+	if mw == nil {
+		return nil
+	}
+
+	s.Router.AddMiddleware(mw)
+	return nil
+}
 
 // correlationIDMiddleware injects a correlation ID into the message metadata when missing.
 func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
@@ -72,18 +239,24 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 }
 
 // poisonMiddlewareWithFilter publishes poison messages based on the provided filter.
-func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) message.HandlerMiddleware {
+func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) (message.HandlerMiddleware, error) {
+	if s.Conf == nil {
+		return nil, errors.New("service config is required for poison queue middleware")
+	}
+	if s.Publisher == nil {
+		return nil, errors.New("publisher is required for poison queue middleware")
+	}
+
 	mw, err := middleware.PoisonQueueWithFilter(
 		s.Publisher,
 		s.Conf.PoisonQueue,
 		filter,
 	)
-
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return mw
+	return mw, nil
 }
 
 // logMessagesMiddleware logs all processed messages with their metadata.
@@ -134,10 +307,15 @@ func (s *Service) outboxMiddleware() message.HandlerMiddleware {
 
 // retryMiddleware retries message processing with exponential backoff.
 func (s *Service) retryMiddleware() message.HandlerMiddleware {
+	return s.retryMiddlewareWithConfig(RetryMiddlewareConfig{})
+}
+
+func (s *Service) retryMiddlewareWithConfig(cfg RetryMiddlewareConfig) message.HandlerMiddleware {
+	normalized := cfg.withDefaults()
 	return middleware.Retry{
-		MaxRetries:      5,
-		InitialInterval: 1 * 1e9,
-		MaxInterval:     16 * 1e9,
+		MaxRetries:      normalized.MaxRetries,
+		InitialInterval: normalized.InitialInterval,
+		MaxInterval:     normalized.MaxInterval,
 	}.Middleware
 }
 

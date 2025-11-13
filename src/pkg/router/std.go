@@ -21,7 +21,6 @@ func New(apiHandle http.Handler, cfg *Config, logger *slog.Logger, swagger *open
 	mux := http.NewServeMux()
 	handler := addMiddlewares(apiHandle, cfg, logger, swagger)
 	mux.Handle("/", handler)
-
 	return mux
 }
 

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/internal/server"
 	generatedAPI "drblury/event-driven-service/internal/server/generated"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
@@ -83,13 +84,46 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	}()
 
 	// ===== Event Handling =====
+	if cfg.Events == nil {
+		logger.Error("missing events configuration")
+		return errors.New("events configuration is required")
+	}
+
+	poisonQueueFilter := func(err error) bool {
+		var unprocessable *events.UnprocessableEventError
+		if errors.As(err, &unprocessable) {
+			return true
+		}
+		var validationErr domain.ErrValidations
+		return errors.As(err, &validationErr)
+	}
+
+	retryConfig := events.RetryMiddlewareConfig{
+		MaxRetries:      cfg.Events.RetryMaxRetries,
+		InitialInterval: cfg.Events.RetryInitialInterval,
+		MaxInterval:     cfg.Events.RetryMaxInterval,
+	}
+
+	eventMiddlewares := []events.MiddlewareRegistration{
+		events.CorrelationIDMiddleware(),
+		events.LogMessagesMiddleware(nil),
+		events.ProtoValidateMiddleware(),
+		events.OutboxMiddleware(),
+		events.TracerMiddleware(),
+		events.RetryMiddleware(retryConfig),
+		events.PoisonQueueMiddleware(poisonQueueFilter),
+		events.RecovererMiddleware(),
+	}
+
 	eventService := events.NewService(
 		cfg.Events,
 		logger,
 		ctx,
 		events.ServiceDependencies{
-			Outbox:    db,
-			Validator: appLogic,
+			Outbox:                    db,
+			Validator:                 appLogic,
+			DisableDefaultMiddlewares: true,
+			Middlewares:               eventMiddlewares,
 		},
 	)
 

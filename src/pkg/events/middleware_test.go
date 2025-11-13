@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
@@ -137,7 +138,10 @@ func TestPoisonMiddlewareWithFilter(t *testing.T) {
 		Conf:      &Config{PoisonQueue: "poison"},
 		Publisher: &testPublisher{},
 	}
-	mw := svc.poisonMiddlewareWithFilter(func(err error) bool { return true })
+	mw, err := svc.poisonMiddlewareWithFilter(func(err error) bool { return true })
+	if err != nil {
+		t.Fatalf("unexpected error creating poison middleware: %v", err)
+	}
 	msg := message.NewMessage(uuid.NewString(), nil)
 	msg.Metadata = message.Metadata{}
 	pub := svc.Publisher.(*testPublisher)
@@ -148,14 +152,11 @@ func TestPoisonMiddlewareWithFilter(t *testing.T) {
 		t.Fatalf("expected poison message to be published: %#v", pub.Topics())
 	}
 
-	t.Run("panics when middleware creation fails", func(t *testing.T) {
+	t.Run("returns error when middleware creation fails", func(t *testing.T) {
 		svc := &Service{Conf: &Config{}, Publisher: nil}
-		defer func() {
-			if r := recover(); r == nil {
-				t.Fatal("expected panic when poison queue misconfigured")
-			}
-		}()
-		svc.poisonMiddlewareWithFilter(func(error) bool { return false })
+		if _, err := svc.poisonMiddlewareWithFilter(func(error) bool { return false }); err == nil {
+			t.Fatal("expected error when poison queue misconfigured")
+		}
 	})
 }
 
@@ -321,4 +322,50 @@ func TestTracerMiddlewareSetsAttributes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestRegisterMiddlewareValidations(t *testing.T) {
+	t.Parallel()
+
+	t.Run("requires router", func(t *testing.T) {
+		svc := &Service{}
+		err := svc.RegisterMiddleware(MiddlewareRegistration{
+			Middleware: func(h message.HandlerFunc) message.HandlerFunc { return h },
+		})
+		if err == nil {
+			t.Fatal("expected error when router is missing")
+		}
+	})
+
+	t.Run("requires configuration", func(t *testing.T) {
+		router, err := message.NewRouter(message.RouterConfig{}, watermill.NewStdLogger(false, false))
+		if err != nil {
+			t.Fatalf("router init failed: %v", err)
+		}
+		svc := &Service{Router: router}
+		if err := svc.RegisterMiddleware(MiddlewareRegistration{}); err == nil {
+			t.Fatal("expected error when registration empty")
+		}
+	})
+
+	t.Run("invokes builder", func(t *testing.T) {
+		router, err := message.NewRouter(message.RouterConfig{}, watermill.NewStdLogger(false, false))
+		if err != nil {
+			t.Fatalf("router init failed: %v", err)
+		}
+		svc := &Service{Router: router}
+		called := false
+		err = svc.RegisterMiddleware(MiddlewareRegistration{
+			Builder: func(*Service) (message.HandlerMiddleware, error) {
+				called = true
+				return func(h message.HandlerFunc) message.HandlerFunc { return h }, nil
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Fatal("expected builder to be invoked")
+		}
+	})
 }

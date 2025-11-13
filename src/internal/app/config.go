@@ -43,6 +43,11 @@ func SetDefaults() {
 	viper.SetDefault("TRACING_ENABLED", false)
 	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 	viper.SetDefault("SERVICE_NAME", "example-service")
+
+	// Events / Middleware defaults
+	viper.SetDefault("EVENTS_RETRY_MAX_RETRIES", 5)
+	viper.SetDefault("EVENTS_RETRY_INITIAL_INTERVAL", time.Second)
+	viper.SetDefault("EVENTS_RETRY_MAX_INTERVAL", 16*time.Second)
 }
 
 // nolint: funlen
@@ -164,6 +169,10 @@ func LoadConfig(
 		// Signup Usecase Queues
 		ConsumeQueueSignup: viper.GetString("QUEUE_SIGNUP"),
 		PublishQueueSignup: viper.GetString("QUEUE_SIGNUP_PROCESSABLE"),
+
+		RetryMaxRetries:      viper.GetInt("EVENTS_RETRY_MAX_RETRIES"),
+		RetryInitialInterval: viper.GetDuration("EVENTS_RETRY_INITIAL_INTERVAL"),
+		RetryMaxInterval:     viper.GetDuration("EVENTS_RETRY_MAX_INTERVAL"),
 	}
 
 	databaseConfig := &database.Config{

@@ -17,6 +17,10 @@
 //		Handler:      yourHandler,
 //	})
 //
+// You can tweak the middleware chain by appending to
+// ServiceDependencies.Middlewares or by replacing it entirely with
+// DisableDefaultMiddlewares.
+//
 // The library does not ship demo handlers anymore, but you can find
 // equivalent logic inside the application package for reference.
 package events

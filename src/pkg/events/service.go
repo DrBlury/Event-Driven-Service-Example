@@ -2,12 +2,12 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"google.golang.org/protobuf/proto"
 )
@@ -36,8 +36,10 @@ type OutboxStore interface {
 // ServiceDependencies holds the optional collaborators that the Service can use.
 // Leave fields nil to skip the related middleware.
 type ServiceDependencies struct {
-	Outbox    OutboxStore
-	Validator ProtoValidator
+	Outbox                    OutboxStore
+	Validator                 ProtoValidator
+	Middlewares               []MiddlewareRegistration // Appended after the default middleware chain.
+	DisableDefaultMiddlewares bool                     // Skips registering the default middleware chain when true.
 }
 
 // Service wires a Watermill router, publisher, subscriber, and middleware chain.
@@ -84,19 +86,7 @@ func NewService(conf *Config, log *slog.Logger, ctx context.Context, deps Servic
 
 	s.Router.AddPlugin(plugin.SignalsHandler)
 
-	s.Router.AddMiddleware(s.correlationIDMiddleware())
-	s.Router.AddMiddleware(s.logMessagesMiddleware(logger))
-	s.Router.AddMiddleware(s.protoValidateMiddleware())
-	s.Router.AddMiddleware(s.outboxMiddleware())
-	s.Router.AddMiddleware(s.tracerMiddleware())
-	s.Router.AddMiddleware(s.retryMiddleware())
-	s.Router.AddMiddleware(s.poisonMiddlewareWithFilter(func(err error) bool {
-		if _, ok := err.(*UnprocessableEventError); ok {
-			return true
-		}
-		return false
-	}))
-	s.Router.AddMiddleware(middleware.Recoverer)
+	s.registerConfiguredMiddlewares(deps)
 
 	return s
 }
@@ -129,5 +119,25 @@ func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter, ctx c
 		return
 	default:
 		panic("unsupported PubSubSystem, must be 'kafka', 'aws' or 'rabbitmq'")
+	}
+}
+
+func (s *Service) registerConfiguredMiddlewares(deps ServiceDependencies) {
+	var defaults []MiddlewareRegistration
+	if !deps.DisableDefaultMiddlewares {
+		defaults = DefaultMiddlewares()
+	}
+	registrations := make([]MiddlewareRegistration, 0, len(defaults)+len(deps.Middlewares))
+	registrations = append(registrations, defaults...)
+	registrations = append(registrations, deps.Middlewares...)
+
+	for _, reg := range registrations {
+		if err := s.RegisterMiddleware(reg); err != nil {
+			name := reg.Name
+			if name == "" {
+				name = "anonymous_middleware"
+			}
+			panic(fmt.Sprintf("failed to register middleware %s: %v", name, err))
+		}
 	}
 }

@@ -1,5 +1,7 @@
 package events
 
+import "time"
+
 // Config groups the Pub/Sub settings required to initialise the
 // Service. Each transport only uses the keys that are relevant to it.
 type Config struct {
@@ -37,4 +39,9 @@ type Config struct {
 	// AWSEndpoint optionally points to a custom endpoint (for example,
 	// Localstack in local development).
 	AWSEndpoint string
+
+	// RetryMiddleware tuning. Zero values fall back to library defaults.
+	RetryMaxRetries      int
+	RetryInitialInterval time.Duration
+	RetryMaxInterval     time.Duration
 }
