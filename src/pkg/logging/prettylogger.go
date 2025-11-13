@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
 	"strconv"
 	"sync"
 )
@@ -31,9 +33,13 @@ const (
 	white        = 97
 )
 
-func NewPrettyHandler(opts *slog.HandlerOptions) *PrettyJsonHandler {
+func NewPrettyHandler(opts *slog.HandlerOptions, writers ...io.Writer) *PrettyJsonHandler {
 	if opts == nil {
 		opts = &slog.HandlerOptions{}
+	}
+	var writer io.Writer = os.Stdout
+	if len(writers) > 0 && writers[0] != nil {
+		writer = writers[0]
 	}
 	b := &bytes.Buffer{}
 	return &PrettyJsonHandler{
@@ -43,7 +49,8 @@ func NewPrettyHandler(opts *slog.HandlerOptions) *PrettyJsonHandler {
 			AddSource:   opts.AddSource,
 			ReplaceAttr: suppressDefaults(opts.ReplaceAttr),
 		}),
-		mutex: &sync.Mutex{},
+		writer: writer,
+		mutex:  &sync.Mutex{},
 	}
 }
 
@@ -55,6 +62,7 @@ type PrettyJsonHandler struct {
 	slogHandler slog.Handler
 	buf         *bytes.Buffer
 	mutex       *sync.Mutex
+	writer      io.Writer
 }
 
 func (h *PrettyJsonHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -66,6 +74,7 @@ func (h *PrettyJsonHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		slogHandler: h.slogHandler.WithAttrs(attrs),
 		buf:         h.buf,
 		mutex:       h.mutex,
+		writer:      h.writer,
 	}
 }
 
@@ -74,6 +83,7 @@ func (h *PrettyJsonHandler) WithGroup(name string) slog.Handler {
 		slogHandler: h.slogHandler.WithGroup(name),
 		buf:         h.buf,
 		mutex:       h.mutex,
+		writer:      h.writer,
 	}
 }
 
@@ -105,12 +115,16 @@ func (h *PrettyJsonHandler) Handle(ctx context.Context, r slog.Record) error {
 		return fmt.Errorf("error when marshaling attrs: %w", err)
 	}
 
-	fmt.Println(
+	_, err = fmt.Fprintln(
+		h.writer,
 		colorize(lightGray, r.Time.Format(timeFormat)),
 		level,
 		colorize(white, r.Message),
 		colorize(darkGray, string(bytes)),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to write pretty log: %w", err)
+	}
 
 	return nil
 }

@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"log/slog"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -10,6 +11,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+)
+
+var (
+	logExporterFactory = autoexport.NewLogExporter
+	resourceFactory    = newResource
+	logProviderFactory = getLogProvider
 )
 
 func newResource(serviceName string, serviceVer string) (*resource.Resource, error) {
@@ -34,8 +41,22 @@ func getLogProvider(logExporter log.Exporter, res *resource.Resource) (*log.Logg
 	return logProvider, nil
 }
 
-func createOtelHandler(ctx context.Context, loggerConfig *Config) *otelslog.Handler {
-	exporter, err := autoexport.NewLogExporter(ctx)
+func createOtelHandler(ctx context.Context, cfg *otelSettings) slog.Handler {
+	if cfg == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if cfg.endpoint != "" {
+		_ = os.Setenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", cfg.endpoint)
+	}
+	if cfg.headers != "" {
+		_ = os.Setenv("OTEL_EXPORTER_OTLP_LOGS_HEADERS", cfg.headers)
+	}
+
+	exporter, err := logExporterFactory(ctx)
 	if err != nil {
 		slog.With(
 			"exporter", "autoexport",
@@ -43,7 +64,7 @@ func createOtelHandler(ctx context.Context, loggerConfig *Config) *otelslog.Hand
 		return nil
 	}
 
-	res, err := newResource(loggerConfig.ServiceName, loggerConfig.ServiceVersion)
+	res, err := resourceFactory(cfg.serviceName, cfg.serviceVersion)
 	if err != nil {
 		slog.With(
 			"resource", "log",
@@ -51,7 +72,7 @@ func createOtelHandler(ctx context.Context, loggerConfig *Config) *otelslog.Hand
 		return nil
 	}
 
-	provider, err := getLogProvider(exporter, res)
+	provider, err := logProviderFactory(exporter, res)
 	if err != nil {
 		slog.With(
 			"provider", "log",
@@ -59,6 +80,10 @@ func createOtelHandler(ctx context.Context, loggerConfig *Config) *otelslog.Hand
 		return nil
 	}
 
-	otelHandler := otelslog.NewHandler(loggerConfig.ServiceName, otelslog.WithLoggerProvider(provider))
+	serviceName := cfg.serviceName
+	if serviceName == "" {
+		serviceName = "service"
+	}
+	otelHandler := otelslog.NewHandler(serviceName, otelslog.WithLoggerProvider(provider))
 	return otelHandler
 }

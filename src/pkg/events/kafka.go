@@ -3,11 +3,20 @@ package events
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// createKafkaPublisher is a helper function that creates a Publisher, in this case - the Kafka Publisher.
+var (
+	kafkaPublisherFactory = func(config kafka.PublisherConfig, logger watermill.LoggerAdapter) (message.Publisher, error) {
+		return kafka.NewPublisher(config, logger)
+	}
+	kafkaSubscriberFactory = func(config kafka.SubscriberConfig, logger watermill.LoggerAdapter) (message.Subscriber, error) {
+		return kafka.NewSubscriber(config, logger)
+	}
+)
+
 func (s *Service) createKafkaPublisher(brokers []string, logger watermill.LoggerAdapter) {
-	kafkaPublisher, err := kafka.NewPublisher(
+	kafkaPublisher, err := kafkaPublisherFactory(
 		kafka.PublisherConfig{
 			Brokers:   brokers,
 			Marshaler: kafka.DefaultMarshaler{},
@@ -21,13 +30,12 @@ func (s *Service) createKafkaPublisher(brokers []string, logger watermill.Logger
 	s.Publisher = kafkaPublisher
 }
 
-// createKafkaSubscriber is a helper function similar to the previous one, but in this case it creates a Subscriber.
 func (s *Service) createKafkaSubscriber(consumerGroup string, brokers []string, logger watermill.LoggerAdapter) {
-	kafkaSubscriber, err := kafka.NewSubscriber(
+	kafkaSubscriber, err := kafkaSubscriberFactory(
 		kafka.SubscriberConfig{
 			Brokers:       brokers,
 			Unmarshaler:   kafka.DefaultMarshaler{},
-			ConsumerGroup: consumerGroup, // every handler will use a separate consumer group
+			ConsumerGroup: consumerGroup,
 		},
 		logger,
 	)

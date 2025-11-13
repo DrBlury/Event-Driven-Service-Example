@@ -1,5 +1,6 @@
 package events
 
+// UnprocessableEventError wraps payloads that failed validation or unmarshalling.
 type UnprocessableEventError struct {
 	eventMessage string
 	err          error

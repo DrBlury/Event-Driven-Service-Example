@@ -2,18 +2,20 @@ package app
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/signal"
+
 	"drblury/event-driven-service/internal/database"
-	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/internal/server"
 	generatedAPI "drblury/event-driven-service/internal/server/generated"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
+	"drblury/event-driven-service/pkg/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
-	"os"
-	"os/signal"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -26,7 +28,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	defer stop()
 
 	// ===== Logger =====
-	logger := logging.SetLogger(ctx, cfg.Logger)
+	logger := logging.SetLogger(ctx, logging.WithConfig(cfg.Logger))
 
 	// ===== Tracing =====
 	err := tracing.NewOtelTracer(ctx, logger, cfg.Tracing)
@@ -81,7 +83,28 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	}()
 
 	// ===== Event Handling =====
-	eventService := events.NewService(cfg.Events, logger, db, appLogic, ctx)
+	eventService := events.NewService(
+		cfg.Events,
+		logger,
+		ctx,
+		events.ServiceDependencies{
+			Outbox:    db,
+			Validator: appLogic,
+		},
+	)
+
+	if err := registerAppEventHandlers(eventService); err != nil {
+		logger.Error("failed to register event handlers", "error", err)
+		return err
+	}
+
+	go func() {
+		if err := eventService.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			logger.Error("event service stopped", "error", err)
+		}
+	}()
+
+	go runSignupSimulation(ctx, eventService)
 
 	logger.With(
 		"brokers", eventService.Conf.KafkaBrokers,

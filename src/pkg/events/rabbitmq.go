@@ -3,18 +3,27 @@ package events
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
+	"github.com/ThreeDotsLabs/watermill/message"
+)
+
+var (
+	amqpConnectionFactory = func(config amqp.ConnectionConfig, logger watermill.LoggerAdapter) (*amqp.ConnectionWrapper, error) {
+		return amqp.NewConnection(config, logger)
+	}
+	amqpPublisherFactory = func(config amqp.Config, logger watermill.LoggerAdapter, conn *amqp.ConnectionWrapper) (message.Publisher, error) {
+		return amqp.NewPublisherWithConnection(config, logger, conn)
+	}
+	amqpSubscriberFactory = func(config amqp.Config, logger watermill.LoggerAdapter, conn *amqp.ConnectionWrapper) (message.Subscriber, error) {
+		return amqp.NewSubscriberWithConnection(config, logger, conn)
+	}
 )
 
 func (s *Service) setupAmpq(conf *Config, logger watermill.LoggerAdapter) (*amqp.ConnectionWrapper, amqp.Config) {
 	ampqConfig := amqp.NewDurablePubSubConfig(
 		conf.RabbitMQURL,
-		// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
-		// plus provided suffix.
-		// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
-		// it will also receive all messages. It will work like separate consumer groups in Kafka.
 		amqp.GenerateQueueNameTopicNameWithSuffix("-queueSuffix"),
 	)
-	ampqConn, err := amqp.NewConnection(amqp.ConnectionConfig{
+	ampqConn, err := amqpConnectionFactory(amqp.ConnectionConfig{
 		AmqpURI:   conf.RabbitMQURL,
 		TLSConfig: nil,
 		Reconnect: amqp.DefaultReconnectConfig(),
@@ -26,7 +35,7 @@ func (s *Service) setupAmpq(conf *Config, logger watermill.LoggerAdapter) (*amqp
 }
 
 func (s *Service) createRabbitMQPublisher(config amqp.Config, conn *amqp.ConnectionWrapper, logger watermill.LoggerAdapter) {
-	publisher, err := amqp.NewPublisherWithConnection(
+	publisher, err := amqpPublisherFactory(
 		config,
 		logger,
 		conn,
@@ -38,7 +47,7 @@ func (s *Service) createRabbitMQPublisher(config amqp.Config, conn *amqp.Connect
 }
 
 func (s *Service) createRabbitMQSubscriber(config amqp.Config, conn *amqp.ConnectionWrapper, logger watermill.LoggerAdapter) {
-	subscriber, err := amqp.NewSubscriberWithConnection(
+	subscriber, err := amqpSubscriberFactory(
 		config,
 		logger,
 		conn,

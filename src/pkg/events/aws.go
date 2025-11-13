@@ -9,6 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-aws/sns"
 	"github.com/ThreeDotsLabs/watermill-aws/sqs"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	amazonsns "github.com/aws/aws-sdk-go-v2/service/sns"
@@ -16,9 +17,19 @@ import (
 	transport "github.com/aws/smithy-go/endpoints"
 )
 
+var (
+	awsDefaultConfigLoader  = awsconfig.LoadDefaultConfig
+	snsTopicResolverFactory = sns.NewGenerateArnTopicResolver
+	snsPublisherFactory     = func(cfg sns.PublisherConfig, logger watermill.LoggerAdapter) (message.Publisher, error) {
+		return sns.NewPublisher(cfg, logger)
+	}
+	snsSubscriberFactory = func(cfg sns.SubscriberConfig, sqsCfg sqs.SubscriberConfig, logger watermill.LoggerAdapter) (message.Subscriber, error) {
+		return sns.NewSubscriber(cfg, sqsCfg, logger)
+	}
+)
+
 func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
-	// default SDK configuration
-	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	cfg, err := awsDefaultConfigLoader(ctx)
 	if err != nil {
 		s.Logger.Error("Failed to load AWS default config", err, watermill.LogFields{"cfg": cfg})
 		panic(err)
@@ -32,23 +43,19 @@ func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
 }
 
 func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Config) {
-	// ensure we have non-empty accountID and region for ARN generation
 	var accountID, region string
 	if s.Conf != nil {
 		accountID = s.Conf.AWSAccountID
 		region = s.Conf.AWSRegion
 	}
 
-	// trim possible quotes from env values and validate
 	accountID = strings.Trim(accountID, "\"' ")
-	// if not provided and an endpoint is set (likely LocalStack), fallback to LocalStack account id
 	if accountID == "" {
 		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
 			accountID = "000000000000"
 			s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
 		}
 	}
-	// basic validation: account id should be 12 digits; if not, fallback to LocalStack when endpoint configured
 	if len(accountID) != 12 {
 		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
 			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
@@ -62,7 +69,7 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 			"region":    region,
 		})
 
-	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
+	topicResolver, err := snsTopicResolverFactory(accountID, region)
 	if err != nil {
 		s.Logger.Error("Failed to create SNS topic resolver", err, watermill.LogFields{
 			"accountID": accountID,
@@ -89,7 +96,7 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 		},
 	}
 
-	publisher, err := sns.NewPublisher(
+	publisher, err := snsPublisherFactory(
 		publisherConfig,
 		logger,
 	)
@@ -101,7 +108,6 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 }
 
 func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.Config) {
-	// ensure we have non-empty accountID and region for ARN generation
 	var accountID, region string
 	if s.Conf != nil {
 		accountID = s.Conf.AWSAccountID
@@ -115,7 +121,7 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 		}
 	}
 
-	topicResolver, err := sns.NewGenerateArnTopicResolver(accountID, region)
+	topicResolver, err := snsTopicResolverFactory(accountID, region)
 	if err != nil {
 		panic(err)
 	}
@@ -124,7 +130,6 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 
 	var snsOpts []func(*amazonsns.Options)
 	var sqsOpts []func(*amazonsqs.Options)
-	// only add endpoint resolver options when BaseEndpoint is present
 	snsOpts, sqsOpts = addEndpointResolver(cfg, snsOpts, sqsOpts)
 
 	subscriberConfig := sns.SubscriberConfig{
@@ -143,7 +148,7 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 		},
 	}
 
-	subscriber, err := sns.NewSubscriber(
+	subscriber, err := snsSubscriberFactory(
 		subscriberConfig,
 		sqs.SubscriberConfig{
 			AWSConfig: *cfg,

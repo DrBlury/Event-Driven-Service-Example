@@ -1,16 +1,17 @@
 package app
 
 import (
+	"strings"
+	"time"
+
+	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
-	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/internal/server"
+	"drblury/event-driven-service/pkg/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
-	"time"
-
-	"drblury/event-driven-service/internal/database"
 
 	"github.com/spf13/viper"
 )
@@ -80,13 +81,40 @@ func LoadConfig(
 		BaseURL: viper.GetString("APP_SERVER_BASE_URL"),
 	}
 
+	loggerSelection := strings.ToLower(viper.GetString("LOGGER"))
+	consoleFormat := logging.ParseFormat(loggerSelection)
+	if consoleFormat == "" {
+		consoleFormat = logging.FormatJSON
+	}
+	consoleEnabled := true
+	otelEnabled := false
+	otelMirror := false
+
+	switch loggerSelection {
+	case "otel":
+		consoleEnabled = false
+		otelEnabled = true
+	case "otel-and-console":
+		consoleEnabled = true
+		otelEnabled = true
+		otelMirror = true
+		consoleFormat = logging.FormatPretty
+	}
+
 	loggerConfig := &logging.Config{
-		OtelEndpoint:   viper.GetString("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"),
-		Headers:        viper.GetString("OTEL_EXPORTER_OTLP_LOGS_HEADERS"),
-		ServiceName:    viper.GetString("APP_NAME"),
-		ServiceVersion: viper.GetString("VERSION"),
-		LogLevel:       viper.GetString("LOGGER_LEVEL"),
-		Logger:         viper.GetString("LOGGER"),
+		Level:          viper.GetString("LOGGER_LEVEL"),
+		Format:         consoleFormat,
+		AddSource:      true,
+		ConsoleEnabled: consoleEnabled,
+		SetAsDefault:   true,
+		OTel: logging.OTelConfig{
+			Enabled:         otelEnabled,
+			MirrorToConsole: otelMirror,
+			Endpoint:        viper.GetString("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"),
+			Headers:         viper.GetString("OTEL_EXPORTER_OTLP_LOGS_HEADERS"),
+			ServiceName:     viper.GetString("APP_NAME"),
+			ServiceVersion:  viper.GetString("VERSION"),
+		},
 	}
 
 	tracingConfig := &tracing.Config{
