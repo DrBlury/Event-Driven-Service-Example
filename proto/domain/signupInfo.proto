@@ -4,7 +4,7 @@ package domain;
 
 option go_package = "./domain";
 
-import "domain/signup.proto";
+import "signup.proto";
 
 message signupInfo {
   string signupId = 1;

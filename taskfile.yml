@@ -129,7 +129,8 @@ tasks:
     cmds:
       - echo "Generating the go files from the protobuf definition"
       - docker build -t drblury/protobuf-gen-go -f ./proto/Dockerfile .
-      - docker run --rm -v $(pwd):/workspace --workdir /workspace drblury/protobuf-gen-go generate
+      - docker run --rm -v $(pwd)/proto:/workspace --workdir /workspace drblury/protobuf-gen-go generate
+      - mv ./proto/_gen/* ./src/internal/domain/
     silent: true
 
   install-tools:

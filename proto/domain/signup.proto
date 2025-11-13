@@ -6,10 +6,10 @@ option go_package = "./domain";
 
 import "google/protobuf/timestamp.proto";
 import "buf/validate/validate.proto";
-import "domain/customer.proto";
-import "domain/address.proto";
-import "domain/date.proto";
-import "domain/paymentMean.proto";
+import "customer.proto";
+import "address.proto";
+import "date.proto";
+import "paymentMean.proto";
 
 message Signup {
   SignupMeta signup_meta = 1;

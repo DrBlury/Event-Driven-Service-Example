@@ -5,8 +5,8 @@ package domain;
 option go_package = "./domain";
 
 import "google/protobuf/timestamp.proto";
-import "domain/date.proto";
-import "domain/address.proto";
+import "date.proto";
+import "address.proto";
 
 message CustomerContact {
   optional string contactEmail = 1;
