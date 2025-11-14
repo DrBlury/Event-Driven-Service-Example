@@ -33,6 +33,9 @@ const (
 	white        = 97
 )
 
+// NewPrettyHandler creates a slog handler that renders coloured, formatted JSON
+// to the supplied writer. It wraps the standard JSON handler while suppressing
+// redundant attributes such as timestamp and level.
 func NewPrettyHandler(opts *slog.HandlerOptions, writers ...io.Writer) *PrettyJsonHandler {
 	if opts == nil {
 		opts = &slog.HandlerOptions{}
@@ -58,6 +61,8 @@ func colorize(colorCode int, v string) string {
 	return fmt.Sprintf("\033[%sm%s%s", strconv.Itoa(colorCode), v, reset)
 }
 
+// PrettyJsonHandler adapts a JSON slog handler into a colourful console output
+// suited for local development.
 type PrettyJsonHandler struct {
 	slogHandler slog.Handler
 	buf         *bytes.Buffer
@@ -65,10 +70,12 @@ type PrettyJsonHandler struct {
 	writer      io.Writer
 }
 
+// Enabled delegates the enabled check to the wrapped slog handler.
 func (h *PrettyJsonHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.slogHandler.Enabled(ctx, level)
 }
 
+// WithAttrs returns a new handler with the provided attributes appended.
 func (h *PrettyJsonHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &PrettyJsonHandler{
 		slogHandler: h.slogHandler.WithAttrs(attrs),
@@ -78,6 +85,7 @@ func (h *PrettyJsonHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	}
 }
 
+// WithGroup scopes subsequent attributes under the specified group name.
 func (h *PrettyJsonHandler) WithGroup(name string) slog.Handler {
 	return &PrettyJsonHandler{
 		slogHandler: h.slogHandler.WithGroup(name),
@@ -91,6 +99,8 @@ const (
 	timeFormat = "[15:04:05.000]"
 )
 
+// Handle renders a log record as pretty printed JSON with level specific
+// colours and writes it to the configured writer.
 func (h *PrettyJsonHandler) Handle(ctx context.Context, r slog.Record) error {
 	level := r.Level.String() + ":"
 

@@ -9,7 +9,8 @@ import (
 	"sync"
 )
 
-// MyWrapperHandler is a custom handler that wraps another slog.Handler.
+// MyWrapperHandler wraps another slog.Handler and flattens nested JSON payloads
+// into slog attributes so they are easier to filter in downstream exporters.
 type MyWrapperHandler struct {
 	handler     slog.Handler
 	jsonHandler slog.Handler
@@ -36,6 +37,8 @@ func (h *MyWrapperHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.handler.Enabled(ctx, level)
 }
 
+// GetJsonAttrBytes renders the wrapped handler output as JSON and returns the
+// raw bytes so they can be transformed into slog attributes.
 func (h *MyWrapperHandler) GetJsonAttrBytes(
 	ctx context.Context,
 	r slog.Record,
@@ -94,7 +97,8 @@ func mapToSlogAttrs(input map[string]any, depth int, maxDepth int) []slog.Attr {
 	return attrs
 }
 
-// Handle modifies the record and passes it to the wrapped handler.
+// Handle flattens JSON fields into slog attributes before delegating to the
+// wrapped handler.
 func (h *MyWrapperHandler) Handle(ctx context.Context, r slog.Record) error {
 	// Create a new record with the flattened JSON
 	newRecord := r

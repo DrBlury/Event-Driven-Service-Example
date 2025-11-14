@@ -79,6 +79,8 @@ func newResource(serviceName string, serviceVer string) (*resource.Resource, err
 		))
 }
 
+// NewOtelMetrics configures the global OpenTelemetry meter provider according
+// to the supplied configuration.
 func NewOtelMetrics(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	mp, err := newMeterProvider(ctx, cfg, log)
 	if err != nil {

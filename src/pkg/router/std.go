@@ -22,7 +22,7 @@ func New(apiHandle http.Handler, cfg *Config, logger *slog.Logger, swagger *open
 	return mux
 }
 
-// addMiddleware chains together all the middleware functions.
+// addMiddlewares chains together all the middleware functions.
 func addMiddlewares(handler http.Handler, cfg *Config, logger *slog.Logger, swagger *openapi3.T) http.Handler {
 	// The first handler is the last one to be called
 	handler = oapiMiddleware(handler, swagger)

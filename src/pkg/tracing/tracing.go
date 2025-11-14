@@ -61,7 +61,8 @@ func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger)
 	return tracerProvider, nil
 }
 
-// Updated NewOtelTracer to pass logger to newTracerProvider
+// NewOtelTracer initialises the global OpenTelemetry tracer provider using the
+// supplied configuration and logger.
 func NewOtelTracer(ctx context.Context, logger *slog.Logger, cfg *Config) error {
 	tp, err := newTracerProvider(ctx, cfg, logger)
 	if err != nil {
