@@ -66,6 +66,19 @@ mux.HandleFunc("/docs", infoHandler.GetOpenAPIHTML)
 mux.HandleFunc("/openapi.json", infoHandler.GetOpenAPIJSON)
 ```
 
+### Probe Helpers
+
+Readiness or liveness checks can be composed with the helper probes bundled in
+this package. For MongoDB you can reuse the existing client connection:
+
+```go
+mongoProbe := api.NewMongoPingProbe(mongoClient, nil)
+
+infoHandler := api.NewInfoHandler(
+  api.WithReadinessChecks(mongoProbe),
+)
+```
+
 ## Integration Notes
 
 - The responder is transport agnostic and can be shared across handlers to keep

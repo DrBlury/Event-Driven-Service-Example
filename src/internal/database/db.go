@@ -2,11 +2,13 @@ package database
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type Database struct {
@@ -42,4 +44,25 @@ func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Databa
 		DB:  client.Database(cfg.MongoDB),
 		Cfg: cfg,
 	}, nil
+}
+
+// Ping verifies that the MongoDB client is still reachable.
+func (db *Database) Ping(ctx context.Context) error {
+	if db == nil {
+		return errors.New("database not configured")
+	}
+	if db.DB == nil {
+		return errors.New("mongo database handle is nil")
+	}
+
+	client := db.DB.Client()
+	if client == nil {
+		return errors.New("mongo client is nil")
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	return client.Ping(ctx, readpref.Primary())
 }

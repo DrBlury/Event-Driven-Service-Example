@@ -14,6 +14,12 @@ get:
             $ref: "../../schemas/_index.yml#/ProbeStatus"
           example:
             status: ok
+    "400":
+      description: Bad request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
     "503":
       description: The service failed its liveness checks.
       content:

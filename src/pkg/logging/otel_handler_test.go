@@ -24,16 +24,12 @@ func resetOtelFactories() {
 }
 
 func TestCreateOtelHandlerNilConfig(t *testing.T) {
-	t.Parallel()
-
 	if handler := createOtelHandler(context.Background(), nil); handler != nil {
 		t.Fatal("expected nil handler when config absent")
 	}
 }
 
 func TestCreateOtelHandlerNilContext(t *testing.T) {
-	t.Parallel()
-
 	orig := logExporterFactory
 	logExporterFactory = func(ctx context.Context, _ ...autoexport.LogOption) (log.Exporter, error) {
 		return nil, errors.New("ignore")
@@ -47,8 +43,6 @@ func TestCreateOtelHandlerNilContext(t *testing.T) {
 }
 
 func TestBuildHandlersFallbackOnOtelFailure(t *testing.T) {
-	t.Parallel()
-
 	origExporter := logExporterFactory
 	t.Cleanup(func() {
 		logExporterFactory = origExporter
@@ -71,8 +65,6 @@ func TestBuildHandlersFallbackOnOtelFailure(t *testing.T) {
 }
 
 func TestBuildHandlersIncludeOtelHandler(t *testing.T) {
-	t.Parallel()
-
 	origExporter := logExporterFactory
 	origResource := resourceFactory
 	origProvider := logProviderFactory
@@ -104,8 +96,6 @@ func TestBuildHandlersIncludeOtelHandler(t *testing.T) {
 }
 
 func TestCreateOtelHandlerErrorPaths(t *testing.T) {
-	t.Parallel()
-
 	defer resetOtelFactories()
 
 	logExporterFactory = func(ctx context.Context, _ ...autoexport.LogOption) (log.Exporter, error) {
@@ -137,8 +127,6 @@ func TestCreateOtelHandlerErrorPaths(t *testing.T) {
 }
 
 func TestCreateOtelHandlerSuccess(t *testing.T) {
-	t.Parallel()
-
 	defer resetOtelFactories()
 	logExporterFactory = func(ctx context.Context, _ ...autoexport.LogOption) (log.Exporter, error) {
 		return stubLogExporter{}, nil

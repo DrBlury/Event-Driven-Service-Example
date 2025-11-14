@@ -1,10 +1,13 @@
 package usecase
 
 import (
-	"drblury/event-driven-service/internal/database"
-	"drblury/event-driven-service/internal/domain"
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+
+	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/domain"
 
 	"buf.build/go/protovalidate"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -44,4 +47,15 @@ func (a AppLogic) Validate(msg protoreflect.ProtoMessage) error {
 		return domain.ErrValidations{Errors: errMessages}
 	}
 	return nil
+}
+
+// DatabaseProbe ensures the backing database remains reachable for readiness checks.
+func (a *AppLogic) DatabaseProbe(ctx context.Context) error {
+	if a == nil {
+		return errors.New("applogic is nil")
+	}
+	if a.db == nil {
+		return errors.New("database not configured")
+	}
+	return a.db.Ping(ctx)
 }
