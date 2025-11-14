@@ -1,53 +1,79 @@
 # Message Processing Flow
 
-This section explains the process when a message is received by the service.
+Incoming events traverse a consistent pipeline that handles schema negotiation, validation, execution, and error routing. The following sections document the lifecycle so that new handlers can be built confidently and observability remains intact.
 
-## Flow Overview
+## Event Lifecycle Overview
 
 ```mermaid
-graph TD
-    A[Receive Message] --> B[Read JSON]
-    B --> C[Read Metadata]
-    C --> D[Parse JSON to Protobuf]
-    D --> E[Validate Protobuf]
-    E --> F[Send to Handler]
-    F --> G[Process Message]
-    G --> H[Send Response to Topic]
-    F -->|Validation Fails| I[Send to DLQ]
+flowchart TD
+   Broker[Message received from broker] --> Envelope[Deserialize envelope + metadata]
+   Envelope --> Schema{Protobuf descriptor found?}
+   Schema -->|No| DLQ[Publish to DLQ with error context]
+   Schema -->|Yes| Decode[Parse JSON payload into generated Protobuf]
+   Decode --> Validate[Validate business rules and required fields]
+   Validate -->|Invalid| DLQ
+   Validate --> Handler[Invoke registered domain handler]
+   Handler --> Outcome{Handler error?}
+   Outcome -->|Yes| DLQ
+   Outcome -->|No| Response[Emit response / acknowledgement]
+   Response --> Broker
 ```
 
-## Steps
+## Processing Stages
 
-1. **Receive Message**:
-   - Messages comes from a pub/sub system.
+### Envelope extraction
 
-2. **Read JSON and Metadata**:
-   - Extract the JSON payload and metadata from the message.
+- Consumer adapters normalise Kafka, RabbitMQ, or SNS/SQS records into an internal envelope that carries metadata, routing keys, and payload bytes.
+- Correlation identifiers and trace context are promoted for OpenTelemetry instrumentation.
 
-3. **Parse JSON to Protobuf**:
-   - Convert the JSON payload into the appropriate Protobuf structure given by the metadata.
+### Schema resolution and decoding
 
-4. **Validate Protobuf**:
-   - Validate the Protobuf structure. If validation fails, send the message to the DLQ (Dead Letter Queue). Use the validation errors in the Protobuf structure to log and send to DLQ.
+- Metadata drives selection of the generated Protobuf type.
+- JSON payloads are unmarshalled into the generated struct; malformed messages retain the original payload for diagnosis.
 
-5. **Send to Handler**:
-   - Pass the raw JSON to the handler for further processing.
+### Validation
 
-6. **Process Message**:
-   - The handler processes the message by performing the required business logic. It wil handle unmarshalling the JSON into the Protobuf generated struct as well as any further processing.
-   It will NOT handle validation or sending to DLQ. This is done before the handler is called.
-   If the handler encounters an error, it can return an error which will be logged and the message will be sent to the DLQ. This needs to be a UnprocessableEventError to indicate that the message is not processable and should not be retried.
+- Validation rules produced by `protoc-gen-validate` guard business constraints and required properties.
+- Failures are logged with structured context and the event is redirected to the dead-letter queue (DLQ).
 
-7. **Send Response**:
-   - Send the response to a predefined topic.
+### Handler execution
 
-## Handler Structure
+- Registered handlers are invoked with a strongly typed request and a Watermill context that exposes logging, metrics, and tracing helpers.
+- Returning an `UnprocessableEventError` signals that retries should stop and the DLQ path should be followed.
 
-- Handlers are defined in the `src/internal/events/handlers.go` file.
-- Prefer the use of the addHandlerWithType function to define handlers. (This will ensure that the handler is properly registered with the correct input and will perform protobuf validation before calling the handler function).
-- Handlers are responsible for processing messages.
-- Each handler contains the following components:
-  - **consumeEventType**: The Protobuf structure.
-  - **consumeQueue**: The topic from which the handler receives messages.
-  - **produceQueue**: The topic to which the handler sends responses.
-  - **handlerFunc**: The function that processes the message.
+### Response emission
+
+- Successful handlers can either publish to a response topic or perform side effects such as persisting to the database.
+- Acknowledgements are propagated back to the original broker to advance offsets safely.
+
+## Sample Handler Implementation
+
+```go
+package handlers
+
+import (
+    "context"
+
+    "github.com/ThreeDotsLabs/watermill/message"
+    "drblury/event-driven-service/internal/domain/signup"
+    "drblury/event-driven-service/internal/usecase"
+)
+
+func NewSignupHandler(service usecase.SignupService) message.HandlerFunc {
+    return func(ctx context.Context, msg *message.Message) error {
+        payload, err := signup.UnmarshalMessage(ctx, msg)
+        if err != nil {
+            return signup.NewUnprocessableErr("decode failure", err)
+        }
+
+        if err := service.Process(ctx, payload); err != nil {
+            return signup.NewUnprocessableErr("business rule violation", err)
+        }
+
+        msg.Metadata.Set("status", "processed")
+        return nil
+    }
+}
+```
+
+The helper `signup.UnmarshalMessage` wraps Protobuf decoding and validation, while the `SignupService` encapsulates business rules and side effects. Metadata updates improve downstream observability without mutating the validated payload.
