@@ -109,12 +109,20 @@ tasks:
       - docker run --rm -v ./api/:/spec redocly/cli lint api.yml
     silent: true
 
+  build-oapi-codegen-image:
+    desc: "Build the local oapi-codegen docker image"
+    cmds:
+      - docker build -t drblury/oapi-codegen -f infra/build/dockerfiles/oapi-codegen.Dockerfile infra/build/dockerfiles
+    silent: true
+
   gen-api-std:
     desc: "Generate the api wrapper interfaces for std server using oapi-codegen"
+    deps:
+      - build-oapi-codegen-image
     cmds:
       - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
       - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
-      - cd src && go tool oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
       - rm src/internal/server/_gen/openapi.json
       - echo "API server Interfaces and types generated successfully"
       - echo "Now start your implementation in src/internal/server/<your_implementation>.go"
@@ -141,7 +149,6 @@ tasks:
     desc: "Install the local tools globally"
     cmds:
       - echo "Installing go based tools"
-      - go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
       - npm install -g @stoplight/prism-cli
 

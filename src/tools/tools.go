@@ -1,7 +1,3 @@
-//go:build tools
-
 package tools
 
-import (
-	_ "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
-)
+// This package intentionally left without dependencies; see oapi_codegen.go for go:generate directives.
