@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func (ah APIHandler) SignupNewCustomer(w http.ResponseWriter, r *http.Request) {
+func (ah *APIHandler) SignupNewCustomer(w http.ResponseWriter, r *http.Request) {
 	// token := r.Header.Get("Authorization")
 
 	// signupRequest := server.SignupRequest{}
