@@ -1,166 +1,215 @@
 ---
 version: 3
 
-dotenv: ["./infra/env/app.env"]
+dotenv:
+  - ./infra/env/app.env
+
+vars:
+  compose_base_file: infra/compose/docker-compose.yml
+  compose_debug_file: infra/compose/docker-compose.debug.yml
+  compose_kafka_file: infra/compose/docker-compose.kafka.yml
+  compose_rabbitmq_file: infra/compose/docker-compose.rabbitmq.yml
+  compose_aws_file: infra/compose/docker-compose.aws.yml
+  env_dir: infra/env
+  env_example_dir: infra/env/example
+  proto_dir: proto
+  src_dir: src
 
 tasks:
-  gen-env-files:
-    desc: "Generate all .env files from example folder into infra/env folder"
+  default:
+    desc: "List available tasks with their summaries"
+    summary: |
+      Shows the curated list of project automations so you can quickly discover useful entry points.
     cmds:
-      - echo "Generating all .env files from example folder into infra/env folder"
-      - cp infra/env/example/app.env.example infra/env/app.env
-      - cp infra/env/example/kafdrop.env.example infra/env/kafdrop.env
-      - cp infra/env/example/kafka.env.example infra/env/kafka.env
-      - cp infra/env/example/mongo-express.env.example infra/env/mongo-express.env
-      - cp infra/env/example/mongo.env.example infra/env/mongo.env
-      - cp infra/env/example/openobserve.env.example infra/env/openobserve.env
-      - cp infra/env/example/rabbitmq.env.example infra/env/rabbitmq.env
-      - cp infra/env/example/localstack.env.example infra/env/localstack.env
+      - task --summary
     silent: true
+
+  gen-env-files:
+    desc: "Generate .env files from the example templates"
+    summary: |
+      Copies the example environment files into {{.env_dir}} so local tooling and compose stacks have the expected configuration.
+    cmds:
+      - echo "Preparing environment configuration in {{.env_dir}}"
+      - mkdir -p {{.env_dir}}
+      - cp {{.env_example_dir}}/app.env.example {{.env_dir}}/app.env
+      - cp {{.env_example_dir}}/kafdrop.env.example {{.env_dir}}/kafdrop.env
+      - cp {{.env_example_dir}}/kafka.env.example {{.env_dir}}/kafka.env
+      - cp {{.env_example_dir}}/mongo-express.env.example {{.env_dir}}/mongo-express.env
+      - cp {{.env_example_dir}}/mongo.env.example {{.env_dir}}/mongo.env
+      - cp {{.env_example_dir}}/openobserve.env.example {{.env_dir}}/openobserve.env
+      - cp {{.env_example_dir}}/rabbitmq.env.example {{.env_dir}}/rabbitmq.env
+      - cp {{.env_example_dir}}/localstack.env.example {{.env_dir}}/localstack.env
 
   ci:
-    desc: "Run all the github actions locally"
+    desc: "Run the full GitHub Actions workflow locally"
+    summary: |
+      Uses nektos/act to execute every job defined in the repository workflows for a quick pre-flight CI check.
     cmds:
-      - echo "Running all the github actions locally"
+      - echo "Running all GitHub Actions locally via act"
       - act | grep -v '::'
-    silent: true
 
   act-test:
-    desc: "Run the github action locally for some specific job"
+    desc: "Run a specific GitHub Actions job via act"
+    summary: |
+      Executes a single workflow job locally. Pass JOB=<name> when invoking.
     cmds:
-      - echo "Running the github action locally for a specific job"
+      - echo "Running GitHub Action job '${JOB}' locally"
       - act --job ${JOB} | grep -v '::'
-    silent: true
 
-  debug:
-    desc: "Start the app in debug mode using Delve (requires a running pubsub system)"
+  lint-go:
+    desc: "Lint the Go sources with golangci-lint"
+    summary: |
+      Runs golangci-lint inside its official container against the {{.src_dir}} module.
     cmds:
-      - |
-        echo "Starting the app in debug mode using Delve (requires a running pubsub system)"
-        echo "Reading PUBSUB_SYSTEM from .env file! ${PUBSUB_SYSTEM}"
-        if [ "${PUBSUB_SYSTEM}" = "kafka" ]; then
-          echo "Using Kafka as pubsub system"
-          docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.kafka.yml -f infra/compose/docker-compose.debug.yml up --build
-        elif [ "${PUBSUB_SYSTEM}" = "rabbitmq" ]; then
-          echo "Using RabbitMQ as pubsub system"
-          docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.rabbitmq.yml -f infra/compose/docker-compose.debug.yml up --build
-        elif [ "${PUBSUB_SYSTEM}" = "aws" ]; then
-          echo "Using AWS/localstack as pubsub system"
-          docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml -f infra/compose/docker-compose.debug.yml up --build
-        else
-          echo "PUBSUB_SYSTEM is not set to a valid value (kafka, rabbitmq, aws) in .env file"
-          exit 1
-        fi
-    silent: false
-
-  up-rabbitmq:
-    desc: "Start RabbitMQ runmode (app + mongo + rabbitmq)"
-    cmds:
-      - echo "Starting RabbitMQ mode (infra/compose/docker-compose.rabbitmq.yaml)"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.rabbitmq.yml up --build
-    silent: true
-
-  down-rabbitmq:
-    desc: "Stop RabbitMQ runmode"
-    cmds:
-      - echo "Stopping RabbitMQ mode"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.rabbitmq.yml down
-    silent: true
-
-  up-kafka:
-    desc: "Start Kafka runmode (app + mongo + kafka + kafdrop)"
-    cmds:
-      - echo "Starting Kafka mode (infra/compose/docker-compose.kafka.yaml)"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.kafka.yml up --build
-    silent: true
-
-  down-kafka:
-    desc: "Stop Kafka runmode"
-    cmds:
-      - echo "Stopping Kafka mode"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.kafka.yml down
-    silent: true
-
-  up-aws:
-    desc: "Start AWS/localstack runmode (app + mongo + localstack + openobserve)"
-    cmds:
-      - echo "Starting AWS/localstack mode (infra/compose/docker-compose.aws.yaml)"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml up --build
-    silent: true
-
-  down-aws:
-    desc: "Stop AWS/localstack runmode"
-    cmds:
-      - echo "Stopping AWS/localstack mode"
-      - docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml down
-    silent: true
-
-  lint:
-    desc: "Lint the project using golangci-lint"
-    cmds:
-      - echo "linting the project"
-      - docker run --rm -v "./src:/code" golangci/golangci-lint:latest /bin/sh -c "cd /code && golangci-lint run"
-    silent: true
+      - echo "Linting Go sources under {{.src_dir}}"
+      - docker run --rm -v "./{{.src_dir}}:/code" golangci/golangci-lint:latest /bin/sh -c "cd /code && golangci-lint run"
 
   lint-api:
-    desc: "Lint the api using redocly"
+    desc: "Lint the OpenAPI definition with Redocly"
+    summary: |
+      Ensures the API contract at api/api.yml is valid and consistent.
     cmds:
-      - echo "Linting the api"
+      - echo "Linting OpenAPI specification"
       - docker run --rm -v ./api/:/spec redocly/cli lint api.yml
-    silent: true
+
+  lint-proto:
+    desc: "Lint protobuf specs with buf"
+    summary: |
+      Validates the protobuf definitions in {{.proto_dir}} using buf lint.
+    cmds:
+      - echo "Linting protobuf specifications"
+      - docker run --rm -v "$(pwd)/{{.proto_dir}}:/workspace" -w /workspace bufbuild/buf:latest lint
 
   build-oapi-codegen-image:
-    desc: "Build the local oapi-codegen docker image"
+    desc: "Build the local oapi-codegen helper image"
+    summary: |
+      Produces the drblury/oapi-codegen image used for generating server interfaces.
     cmds:
       - docker build -t drblury/oapi-codegen -f infra/build/dockerfiles/oapi-codegen.Dockerfile infra/build/dockerfiles
     silent: true
 
   gen-api-std:
-    desc: "Generate the api wrapper interfaces for std server using oapi-codegen"
+    desc: "Generate Go server interfaces from the OpenAPI spec"
+    summary: |
+      Bundles the OpenAPI spec with Redocly, runs oapi-codegen against the generated JSON, and removes intermediate artifacts.
     deps:
       - build-oapi-codegen-image
     cmds:
-      - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
+      - echo "Bundling OpenAPI spec and generating server interfaces"
       - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
       - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
       - rm src/internal/server/_gen/openapi.json
-      - echo "API server Interfaces and types generated successfully"
-      - echo "Now start your implementation in src/internal/server/<your_implementation>.go"
+      - echo "Server interfaces generated under src/internal/server/_gen"
     silent: true
 
   gen-api:
-    desc: "Generate the api for the server using oapi-codegen"
+    desc: "Lint and regenerate the OpenAPI-driven server bindings"
+    summary: |
+      Runs the OpenAPI linter followed by oapi-codegen to refresh server stubs.
+    deps:
+      - lint-api
+      - gen-api-std
     cmds:
-      - echo "Generating the api for the server using oapi-codegen"
-      - task lint-api
-      - task gen-api-std
+      - echo "OpenAPI assets linted and regenerated"
     silent: true
 
   gen-buf:
-    desc: "Generate the go files from the protobuf definition using buf"
+    desc: "Generate Go code from protobuf definitions"
+    summary: |
+      Builds the protobuf generator image, runs buf generate, and moves the results into src/internal/domain.
     cmds:
-      - echo "Generating the go files from the protobuf definition"
+      - echo "Building protobuf generator image"
       - docker build -t drblury/protobuf-gen-go -f ./proto/Dockerfile .
-      - docker run --rm -v $(pwd)/proto:/workspace --workdir /workspace drblury/protobuf-gen-go generate
+      - echo "Running buf generate"
+      - docker run --rm -v $(pwd)/{{.proto_dir}}:/workspace --workdir /workspace drblury/protobuf-gen-go generate
+      - echo "Moving generated sources into src/internal/domain"
       - mv ./proto/_gen/* ./src/internal/domain/
     silent: true
 
-  install-tools:
-    desc: "Install the local tools globally"
-    cmds:
-      - echo "Installing go based tools"
-      - go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-      - npm install -g @stoplight/prism-cli
-
   scc:
-    desc: "Run scc to show stats"
+    desc: "Show source code statistics using scc"
+    summary: |
+      Provides a language-level breakdown of the repository.
     cmds:
-      - echo "Running scc to show stats"
-      - docker run --rm -it -v "$PWD:/pwd"  ghcr.io/lhoupert/scc:master scc /pwd
-    silent: true
+      - echo "Gathering source code statistics"
+      - docker run --rm -it -v "$PWD:/pwd" ghcr.io/lhoupert/scc:master scc /pwd
 
   git:web:
-    desc: "Open the configured git remote in a browser (defaults to origin)"
+    desc: "Open the configured git remote in a browser"
+    summary: |
+      Invokes scripts/git-web with the provided REMOTE (defaults to origin).
     cmds:
       - ./scripts/git-web {{default "origin" .REMOTE}}
     silent: true
+
+  debug:
+    desc: "Start the app in debug mode with the selected pubsub backend"
+    summary: |
+      Reads PUBSUB_SYSTEM from your environment and boots the matching docker-compose stack layered with the debug configuration.
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Starting debug stack using PUBSUB_SYSTEM='${PUBSUB_SYSTEM}'"
+        case "${PUBSUB_SYSTEM}" in
+          kafka)
+            docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} -f {{.compose_debug_file}} up --build
+            ;;
+          rabbitmq)
+            docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} -f {{.compose_debug_file}} up --build
+            ;;
+          aws)
+            docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} -f {{.compose_debug_file}} up --build
+            ;;
+          *)
+            echo "PUBSUB_SYSTEM must be set to 'kafka', 'rabbitmq', or 'aws'" >&2
+            exit 1
+            ;;
+        esac
+
+  up-rabbitmq:
+    desc: "Start the RabbitMQ docker-compose stack"
+    summary: |
+      Boots the core services plus the RabbitMQ dependencies.
+    cmds:
+      - echo "Starting RabbitMQ stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} up --build
+
+  down-rabbitmq:
+    desc: "Stop and remove the RabbitMQ stack"
+    summary: |
+      Tears down containers started by up-rabbitmq.
+    cmds:
+      - echo "Stopping RabbitMQ stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} down
+
+  up-kafka:
+    desc: "Start the Kafka docker-compose stack"
+    summary: |
+      Boots the core services plus Kafka and Kafdrop.
+    cmds:
+      - echo "Starting Kafka stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} up --build
+
+  down-kafka:
+    desc: "Stop and remove the Kafka stack"
+    summary: |
+      Tears down containers started by up-kafka.
+    cmds:
+      - echo "Stopping Kafka stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} down
+
+  up-aws:
+    desc: "Start the AWS/localstack docker-compose stack"
+    summary: |
+      Boots the core services plus LocalStack and OpenObserve.
+    cmds:
+      - echo "Starting AWS/LocalStack stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} up --build
+
+  down-aws:
+    desc: "Stop and remove the AWS/localstack stack"
+    summary: |
+      Tears down containers started by up-aws.
+    cmds:
+      - echo "Stopping AWS/LocalStack stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} down

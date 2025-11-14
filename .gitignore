@@ -1,6 +1,5 @@
 .emqx
 _volume_data/
 .env
-.vscode/
 .idea/
 .DS_Store
