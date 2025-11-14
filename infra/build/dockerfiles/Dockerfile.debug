@@ -2,81 +2,19 @@
 ARG GOLANG_VERSION=1.25.4
 ARG ALPINE_VERSION=3.22
 
-############################################################
-####                Stage 1: Build binary               ####
-############################################################
-FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS builder
+FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
 
 RUN apk update && \
   apk upgrade && \
   apk add --no-cache \
   ca-certificates \
-  gcc \
-  git \
-  musl-dev \
-  openssh-client
+  build-base \
+  git
 
-ARG GOPROXY=https://proxy.golang.org,direct
-ARG VERSION
+RUN GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
 
-RUN git config --global url."ssh://git@github.com".insteadOf "https://github.com" \
-  && mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+WORKDIR /app
 
-WORKDIR /service/src
+ENTRYPOINT ["dlv", "debug", "./", "--headless=true", "--listen=:40000", "--api-version=2", "--accept-multiclient", "--continue", "--log", "--check-go-version=false", "--"]
 
-# Prime module cache using files from src/ so later COPY of the full repo keeps layer caching efficient.
-COPY src/go.mod src/go.sum ./
-ENV GOPROXY=${GOPROXY}
-RUN --mount=type=ssh go mod download
-
-WORKDIR /service
-COPY . .
-WORKDIR /service/src
-
-RUN go build -gcflags "all=-N -l" -o /service/main -ldflags "\
-  -linkmode=external \
-  -X main.version=${VERSION} \
-  -X main.buildDate=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-  -X main.commitHash=$(git log -n 1 --pretty=format:"%H") \
-  -X main.commitDate=$(git log -1 --format=%cI) \
-  -X main.buildBranch=$(git branch --show-current)" \
-  . && go version -m /service/main
-
-############################################################
-####              Stage 2: Build dlv binary            ####
-############################################################
-FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION} AS dlv-builder
-
-RUN apk update && apk add --no-cache git
-
-RUN GOBIN=/tmp/bin go install github.com/go-delve/delve/cmd/dlv@latest
-
-############################################################
-####               Stage 3: Final image                ####
-############################################################
-FROM alpine:${ALPINE_VERSION}
-
-RUN apk update && \
-  apk add --no-cache libxml2 \
-  tzdata \
-  libc6-compat
-
-COPY --from=builder /service/main /service/main
-COPY --from=dlv-builder /tmp/bin/dlv /usr/local/bin/dlv
-
-RUN adduser \
-  --disabled-password \
-  --gecos "" \
-  --home "$(pwd)" \
-  --no-create-home \
-  --uid 1001 \
-  "service"
-
-RUN chown -R service /service
-
-USER service
-WORKDIR /service
-
-ENTRYPOINT ["dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "--continue", "--log", "--check-go-version=false", "exec", "/service/main", "--"]
-
-EXPOSE 5000 40000
+EXPOSE 8080 40000

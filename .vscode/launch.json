@@ -9,11 +9,11 @@
       "host": "127.0.0.1",
       "port": 40000,
       "apiVersion": 2,
-      "remotePath": "/service/src",
+      "remotePath": "/app",
       "substitutePath": [
         {
           "from": "${workspaceFolder}/src",
-          "to": "/service/src"
+          "to": "/app"
         }
       ],
       "showLog": true
