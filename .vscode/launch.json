@@ -7,13 +7,13 @@
       "request": "attach",
       "mode": "remote",
       "host": "127.0.0.1",
-      "port": 2345,
+      "port": 40000,
       "apiVersion": 2,
-      "remotePath": "/build",
+      "remotePath": "/service/src",
       "substitutePath": [
         {
           "from": "${workspaceFolder}/src",
-          "to": "/build"
+          "to": "/service/src"
         }
       ],
       "showLog": true

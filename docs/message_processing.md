@@ -24,26 +24,26 @@ flowchart TD
 ### Envelope extraction
 
 - Consumer adapters normalise Kafka, RabbitMQ, or SNS/SQS records into an internal envelope that carries metadata, routing keys, and payload bytes.
-- Correlation identifiers and trace context are promoted for OpenTelemetry instrumentation.
 
 ### Schema resolution and decoding
 
 - Metadata drives selection of the generated Protobuf type.
-- JSON payloads are unmarshalled into the generated struct; malformed messages retain the original payload for diagnosis.
+- JSON payloads are unmarshalled into the generated struct; malformed messages retain the original payload for diagnosis and will be sent to the DLQ.
 
 ### Validation
 
-- Validation rules produced by `protoc-gen-validate` guard business constraints and required properties.
+- Validation rules produced by `buf.validate` guard business constraints and required properties.
+- CEL is used to express complex invariants that go beyond basic field checks.
 - Failures are logged with structured context and the event is redirected to the dead-letter queue (DLQ).
 
 ### Handler execution
 
-- Registered handlers are invoked with a strongly typed request and a Watermill context that exposes logging, metrics, and tracing helpers.
+- Registered (typed) handlers need to be invoked with a strongly typed request struct.
 - Returning an `UnprocessableEventError` signals that retries should stop and the DLQ path should be followed.
 
 ### Response emission
 
-- Successful handlers can either publish to a response topic or perform side effects such as persisting to the database.
+- Handlers can either publish to a response topic and perform side effects such as persisting to the database or calling external APIs.
 - Acknowledgements are propagated back to the original broker to advance offsets safely.
 
 ## Sample Handler Implementation
@@ -75,5 +75,3 @@ func NewSignupHandler(service usecase.SignupService) message.HandlerFunc {
     }
 }
 ```
-
-The helper `signup.UnmarshalMessage` wraps Protobuf decoding and validation, while the `SignupService` encapsulates business rules and side effects. Metadata updates improve downstream observability without mutating the validated payload.
