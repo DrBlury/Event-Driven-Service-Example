@@ -1,10 +1,8 @@
 package router
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -28,7 +26,6 @@ func New(apiHandle http.Handler, cfg *Config, logger *slog.Logger, swagger *open
 func addMiddlewares(handler http.Handler, cfg *Config, logger *slog.Logger, swagger *openapi3.T) http.Handler {
 	// The first handler is the last one to be called
 	handler = oapiMiddleware(handler, swagger)
-	// handler = tokenMiddleware(handler)
 	handler = corsMiddleware(handler, cfg.CORS)
 	handler = timeoutMiddleware(handler, cfg.Timeout)
 	logger.With("QuietdownRoutes", cfg.QuietdownRoutes, "HideHeaders", cfg.HideHeaders).Debug("Config for logging middleware")
@@ -55,47 +52,23 @@ func oapiMiddleware(handler http.Handler, swagger *openapi3.T) http.Handler {
 
 func loggingMiddleware(next http.Handler, logger *slog.Logger, quietdownRoutes []string, hideHeaders []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if the request path is in the excludedPaths list
-		shouldExclude := false
-		for _, path := range quietdownRoutes {
-			if r.URL.Path == path {
-				shouldExclude = true
-				break
-			}
-		}
+		if !shouldQuietRoute(r.URL.Path, quietdownRoutes) {
+			headers := cloneHeaders(r.Header)
+			redactHeaders(headers, hideHeaders)
 
-		// Log the request if it's not in the excluded list
-		if !shouldExclude {
-			var buf bytes.Buffer
-			tee := io.TeeReader(r.Body, &buf)
-			body, err := io.ReadAll(tee)
-			if err != nil {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			r.Body = io.NopCloser(&buf)
-			// create duplicate of header map
-			headers := make(http.Header)
-			for k, v := range r.Header {
-				headers[k] = v
-			}
-			// hide sensitive headers
-			for _, header := range hideHeaders {
-				// read the header value length
-				length := len(strings.Join(headers[header], ""))
-				redactedText := fmt.Sprintf("[REDACTED - %d bytes]", length)
-				headers[header] = []string{redactedText}
-			}
-
-			logger.With(
+			attrs := []any{
 				"Path", r.URL.Path,
 				"Method", r.Method,
 				"Header", headers,
-				"Body", string(body),
-			).Debug("Request")
+			}
+
+			if r.ContentLength > 0 {
+				attrs = append(attrs, "ContentLength", r.ContentLength)
+			}
+
+			logger.With(attrs...).Debug("Request")
 		}
 
-		// Call the next handler in the chain
 		next.ServeHTTP(w, r)
 	})
 }
@@ -140,35 +113,40 @@ func timeoutMiddleware(next http.Handler, timeout time.Duration) http.Handler {
 	return http.TimeoutHandler(next, timeout, "Timeout")
 }
 
-// tokenMiddleware checks if the request has an authorization token on some routes.
-// nolint: unused
-func tokenMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if the request path is in the excludedPaths list
-		shouldExclude := false
-		for _, path := range []string{
-			"/info/version",
-			"/info/status",
-			"/info/openapi.json",
-			"/info/openapi.html",
-			"/auth/login",
-		} {
-			if r.URL.Path == path {
-				shouldExclude = true
-				break
-			}
+func shouldQuietRoute(path string, quietdownRoutes []string) bool {
+	for _, quietPath := range quietdownRoutes {
+		if path == quietPath {
+			return true
+		}
+	}
+
+	return false
+}
+
+func cloneHeaders(src http.Header) http.Header {
+	headers := make(http.Header, len(src))
+	for k, v := range src {
+		copied := make([]string, len(v))
+		copy(copied, v)
+		headers[k] = copied
+	}
+
+	return headers
+}
+
+func redactHeaders(headers http.Header, hideHeaders []string) {
+	for _, header := range hideHeaders {
+		canonical := http.CanonicalHeaderKey(header)
+		values, exists := headers[canonical]
+		if !exists {
+			continue
 		}
 
-		if !shouldExclude {
-			// Check if the request has a valid token
-			token := r.Header.Get("Authorization")
-			if token == "" {
-				http.Error(w, "Unauthorized, add a valid Authorization header", http.StatusUnauthorized)
-				return
-			}
+		redactedLen := 0
+		for _, value := range values {
+			redactedLen += len(value)
 		}
 
-		// Call the next handler in the chain
-		next.ServeHTTP(w, r)
-	})
+		headers[canonical] = []string{fmt.Sprintf("[REDACTED - %d bytes]", redactedLen)}
+	}
 }

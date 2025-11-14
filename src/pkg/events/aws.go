@@ -28,6 +28,11 @@ var (
 	}
 )
 
+const (
+	localstackAccountID = "000000000000"
+	awsAccountIDLength  = 12
+)
+
 func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
 	cfg, err := awsDefaultConfigLoader(ctx)
 	if err != nil {
@@ -43,25 +48,7 @@ func (s *Service) createAWSConfig(ctx context.Context) *aws.Config {
 }
 
 func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Config) {
-	var accountID, region string
-	if s.Conf != nil {
-		accountID = s.Conf.AWSAccountID
-		region = s.Conf.AWSRegion
-	}
-
-	accountID = strings.Trim(accountID, "\"' ")
-	if accountID == "" {
-		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-			accountID = "000000000000"
-			s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
-		}
-	}
-	if len(accountID) != 12 {
-		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
-			accountID = "000000000000"
-		}
-	}
+	accountID, region := s.resolveAccountAndRegion()
 
 	s.Logger.Info("Create AWS Publisher",
 		watermill.LogFields{
@@ -69,62 +56,15 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 			"region":    region,
 		})
 
-	topicResolver, err := snsTopicResolverFactory(accountID, region)
-	if err != nil {
-		s.Logger.Error("Failed to create SNS topic resolver", err, watermill.LogFields{
-			"accountID": accountID,
-			"region":    region,
-		})
-		panic(err)
-	}
-
-	publisherConfig := sns.PublisherConfig{
-		TopicResolver: topicResolver,
-		AWSConfig:     *cfg,
-		Marshaler:     sns.DefaultMarshalerUnmarshaler{},
-		OptFns: []func(o *amazonsns.Options){
-			func(o *amazonsns.Options) {
-				if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-					parsedURL, err := url.Parse(s.Conf.AWSEndpoint)
-					if err != nil {
-						s.Logger.Error("Failed to parse AWS endpoint", err, watermill.LogFields{"endpoint": s.Conf.AWSEndpoint})
-						panic(err)
-					}
-					o.BaseEndpoint = aws.String(parsedURL.String())
-				}
-			},
-		},
-	}
-
-	publisher, err := snsPublisherFactory(
-		publisherConfig,
-		logger,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	s.Publisher = publisher
+	topicResolver := s.mustCreateTopicResolver(accountID, region)
+	publisherConfig := s.buildPublisherConfig(cfg, topicResolver)
+	s.Publisher = s.mustCreatePublisher(publisherConfig, logger)
 }
 
 func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.Config) {
-	var accountID, region string
-	if s.Conf != nil {
-		accountID = s.Conf.AWSAccountID
-		region = s.Conf.AWSRegion
-	}
+	accountID, region := s.resolveAccountAndRegion()
 
-	if len(accountID) != 12 {
-		if s.Conf != nil && s.Conf.AWSEndpoint != "" {
-			s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
-			accountID = "000000000000"
-		}
-	}
-
-	topicResolver, err := snsTopicResolverFactory(accountID, region)
-	if err != nil {
-		panic(err)
-	}
+	topicResolver := s.mustCreateTopicResolver(accountID, region)
 
 	name := "subscriber"
 
@@ -185,4 +125,85 @@ func addEndpointResolver(cfg *aws.Config, snsOpts []func(*amazonsns.Options), sq
 		}
 	}
 	return snsOpts, sqsOpts
+}
+
+func (s *Service) resolveAccountAndRegion() (string, string) {
+	if s.Conf == nil {
+		return "", ""
+	}
+
+	accountID := strings.Trim(s.Conf.AWSAccountID, "\"' ")
+	region := s.Conf.AWSRegion
+
+	if accountID == "" && s.useLocalstackEndpoint() {
+		accountID = localstackAccountID
+		s.Logger.Info("AWS account ID empty; using LocalStack default", watermill.LogFields{"accountID": accountID})
+		return accountID, region
+	}
+
+	if accountID != "" && len(accountID) != awsAccountIDLength && s.useLocalstackEndpoint() {
+		s.Logger.Info("Invalid AWS account ID; falling back to LocalStack default", watermill.LogFields{"accountID": accountID})
+		accountID = localstackAccountID
+	}
+
+	return accountID, region
+}
+
+func (s *Service) useLocalstackEndpoint() bool {
+	return s.Conf != nil && s.Conf.AWSEndpoint != ""
+}
+
+func (s *Service) mustCreateTopicResolver(accountID, region string) sns.TopicResolver {
+	topicResolver, err := snsTopicResolverFactory(accountID, region)
+	if err != nil {
+		s.Logger.Error("Failed to create SNS topic resolver", err, watermill.LogFields{
+			"accountID": accountID,
+			"region":    region,
+		})
+		panic(err)
+	}
+
+	return topicResolver
+}
+
+func (s *Service) buildPublisherConfig(cfg *aws.Config, topicResolver sns.TopicResolver) sns.PublisherConfig {
+	publisherConfig := sns.PublisherConfig{
+		TopicResolver: topicResolver,
+		AWSConfig:     *cfg,
+		Marshaler:     sns.DefaultMarshalerUnmarshaler{},
+	}
+
+	if endpoint := s.awsEndpointURL(); endpoint != nil {
+		endpointStr := endpoint.String()
+		publisherConfig.OptFns = []func(*amazonsns.Options){
+			func(o *amazonsns.Options) {
+				o.BaseEndpoint = aws.String(endpointStr)
+			},
+		}
+	}
+
+	return publisherConfig
+}
+
+func (s *Service) awsEndpointURL() *url.URL {
+	if s.Conf == nil || s.Conf.AWSEndpoint == "" {
+		return nil
+	}
+
+	parsedURL, err := url.Parse(s.Conf.AWSEndpoint)
+	if err != nil {
+		s.Logger.Error("Failed to parse AWS endpoint", err, watermill.LogFields{"endpoint": s.Conf.AWSEndpoint})
+		panic(err)
+	}
+
+	return parsedURL
+}
+
+func (s *Service) mustCreatePublisher(cfg sns.PublisherConfig, logger watermill.LoggerAdapter) message.Publisher {
+	publisher, err := snsPublisherFactory(cfg, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	return publisher
 }

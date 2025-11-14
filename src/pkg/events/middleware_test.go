@@ -57,78 +57,91 @@ func TestCorrelationIDMiddleware(t *testing.T) {
 func TestProtoValidateMiddleware(t *testing.T) {
 	t.Parallel()
 
-	t.Run("skips when validator unset", func(t *testing.T) {
-		svc := &Service{}
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
-		msg.Metadata = message.Metadata{}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
+	t.Run("skips when validator unset", testProtoValidateMiddlewareSkipsWhenValidatorUnset)
+	t.Run("warns when schema missing", testProtoValidateMiddlewareWarnsWhenSchemaMissing)
+	t.Run("fails for unknown schema", testProtoValidateMiddlewareFailsForUnknownSchema)
+	t.Run("fails for invalid payload", testProtoValidateMiddlewareFailsForInvalidPayload)
+	t.Run("fails validation", testProtoValidateMiddlewareFailsValidation)
+	t.Run("passes on success", testProtoValidateMiddlewarePassesOnSuccess)
+}
 
-	t.Run("warns when schema missing", func(t *testing.T) {
-		svc := &Service{validator: &testValidator{}}
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
-		msg.Metadata = message.Metadata{}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
+func testProtoValidateMiddlewareSkipsWhenValidatorUnset(t *testing.T) {
+	t.Helper()
+	svc := &Service{}
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
+	msg.Metadata = message.Metadata{}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
 
-	t.Run("fails for unknown schema", func(t *testing.T) {
-		svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
-		msg.Metadata = message.Metadata{"event_message_schema": "unknown"}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
-			t.Fatal("expected error for unknown schema")
-		} else if _, ok := err.(*UnprocessableEventError); !ok {
-			t.Fatalf("unexpected error type: %T", err)
-		}
-	})
+func testProtoValidateMiddlewareWarnsWhenSchemaMissing(t *testing.T) {
+	t.Helper()
+	svc := &Service{validator: &testValidator{}}
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
+	msg.Metadata = message.Metadata{}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
 
-	t.Run("fails for invalid payload", func(t *testing.T) {
-		svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
-		svc.registerProtoType(&structpb.Struct{})
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte("not json"))
-		msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
-			t.Fatal("expected error for invalid payload")
-		}
-	})
+func testProtoValidateMiddlewareFailsForUnknownSchema(t *testing.T) {
+	t.Helper()
+	svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
+	msg.Metadata = message.Metadata{"event_message_schema": "unknown"}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
+		t.Fatal("expected error for unknown schema")
+	} else if _, ok := err.(*UnprocessableEventError); !ok {
+		t.Fatalf("unexpected error type: %T", err)
+	}
+}
 
-	t.Run("fails validation", func(t *testing.T) {
-		svc := &Service{validator: &testValidator{err: errors.New("bad")}, protoRegistry: make(map[string]func() proto.Message)}
-		svc.registerProtoType(&structpb.Struct{})
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
-		msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
-			t.Fatal("expected validation error")
-		}
-	})
+func testProtoValidateMiddlewareFailsForInvalidPayload(t *testing.T) {
+	t.Helper()
+	svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
+	svc.registerProtoType(&structpb.Struct{})
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte("not json"))
+	msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
+		t.Fatal("expected error for invalid payload")
+	}
+}
 
-	t.Run("passes on success", func(t *testing.T) {
-		svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
-		svc.registerProtoType(&structpb.Struct{})
-		mw := svc.protoValidateMiddleware()
-		msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
-		msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
-		called := false
-		_, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			called = true
-			return nil, nil
-		})(msg)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if !called {
-			t.Fatal("handler not invoked")
-		}
-	})
+func testProtoValidateMiddlewareFailsValidation(t *testing.T) {
+	t.Helper()
+	svc := &Service{validator: &testValidator{err: errors.New("bad")}, protoRegistry: make(map[string]func() proto.Message)}
+	svc.registerProtoType(&structpb.Struct{})
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
+	msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) { return nil, nil })(msg); err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func testProtoValidateMiddlewarePassesOnSuccess(t *testing.T) {
+	t.Helper()
+	svc := &Service{validator: &testValidator{}, protoRegistry: make(map[string]func() proto.Message)}
+	svc.registerProtoType(&structpb.Struct{})
+	mw := svc.protoValidateMiddleware()
+	msg := message.NewMessage(uuid.NewString(), []byte(`{"foo":"bar"}`))
+	msg.Metadata = message.Metadata{"event_message_schema": "*structpb.Struct"}
+	called := false
+	_, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		called = true
+		return nil, nil
+	})(msg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("handler not invoked")
+	}
 }
 
 func TestPoisonMiddlewareWithFilter(t *testing.T) {
@@ -180,87 +193,98 @@ func TestLogMessagesMiddleware(t *testing.T) {
 func TestOutboxMiddleware(t *testing.T) {
 	t.Parallel()
 
-	t.Run("skips when outbox missing", func(t *testing.T) {
-		svc := &Service{}
-		mw := svc.outboxMiddleware()
-		msg := message.NewMessage(uuid.NewString(), nil)
-		msg.Metadata = message.Metadata{}
-		msgs, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			return []*message.Message{message.NewMessage(uuid.NewString(), []byte("ok"))}, nil
-		})(msg)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(msgs) != 1 {
-			t.Fatalf("expected message passthrough")
-		}
-	})
+	t.Run("skips when outbox missing", testOutboxMiddlewareSkipsWhenOutboxMissing)
+	t.Run("propagates handler error", testOutboxMiddlewarePropagatesHandlerError)
+	t.Run("stores outgoing messages", testOutboxMiddlewareStoresOutgoingMessages)
+	t.Run("uses fallback event type", testOutboxMiddlewareUsesFallbackEventType)
+	t.Run("returns on outbox failure", testOutboxMiddlewareReturnsOnOutboxFailure)
+}
 
-	t.Run("propagates handler error", func(t *testing.T) {
-		svc := &Service{outbox: &testOutbox{}}
-		mw := svc.outboxMiddleware()
-		msg := message.NewMessage(uuid.NewString(), nil)
-		msg.Metadata = message.Metadata{}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			return nil, errors.New("fail")
-		})(msg); err == nil {
-			t.Fatal("expected handler error to propagate")
-		}
-	})
+func testOutboxMiddlewareSkipsWhenOutboxMissing(t *testing.T) {
+	t.Helper()
+	svc := &Service{}
+	mw := svc.outboxMiddleware()
+	msg := message.NewMessage(uuid.NewString(), nil)
+	msg.Metadata = message.Metadata{}
+	msgs, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		return []*message.Message{message.NewMessage(uuid.NewString(), []byte("ok"))}, nil
+	})(msg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected message passthrough")
+	}
+}
 
-	t.Run("stores outgoing messages", func(t *testing.T) {
-		svc := &Service{outbox: &testOutbox{}}
-		mw := svc.outboxMiddleware()
-		msg := message.NewMessage(uuid.NewString(), nil)
-		msg.Metadata = message.Metadata{}
-		out := message.NewMessage(uuid.NewString(), []byte("ok"))
-		out.Metadata = message.Metadata{"event_message_schema": "OrderCreated"}
-		msgs, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			return []*message.Message{out}, nil
-		})(msg)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(msgs) != 1 {
-			t.Fatalf("expected outgoing message")
-		}
-		records := svc.outbox.(*testOutbox).Records()
-		if len(records) != 1 || records[0].eventType != "OrderCreated" {
-			t.Fatalf("unexpected outbox records: %#v", records)
-		}
-	})
+func testOutboxMiddlewarePropagatesHandlerError(t *testing.T) {
+	t.Helper()
+	svc := &Service{outbox: &testOutbox{}}
+	mw := svc.outboxMiddleware()
+	msg := message.NewMessage(uuid.NewString(), nil)
+	msg.Metadata = message.Metadata{}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		return nil, errors.New("fail")
+	})(msg); err == nil {
+		t.Fatal("expected handler error to propagate")
+	}
+}
 
-	t.Run("uses fallback event type", func(t *testing.T) {
-		svc := &Service{outbox: &testOutbox{}}
-		mw := svc.outboxMiddleware()
-		msg := message.NewMessage(uuid.NewString(), nil)
-		msg.Metadata = message.Metadata{}
-		out := message.NewMessage(uuid.NewString(), []byte("ok"))
-		out.Metadata = message.Metadata{}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			return []*message.Message{out}, nil
-		})(msg); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		records := svc.outbox.(*testOutbox).Records()
-		if len(records) != 1 || records[0].eventType != "unknown_event" {
-			t.Fatalf("expected fallback event type, got %#v", records)
-		}
-	})
+func testOutboxMiddlewareStoresOutgoingMessages(t *testing.T) {
+	t.Helper()
+	svc := &Service{outbox: &testOutbox{}}
+	mw := svc.outboxMiddleware()
+	msg := message.NewMessage(uuid.NewString(), nil)
+	msg.Metadata = message.Metadata{}
+	out := message.NewMessage(uuid.NewString(), []byte("ok"))
+	out.Metadata = message.Metadata{"event_message_schema": "OrderCreated"}
+	msgs, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		return []*message.Message{out}, nil
+	})(msg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected outgoing message")
+	}
+	records := svc.outbox.(*testOutbox).Records()
+	if len(records) != 1 || records[0].eventType != "OrderCreated" {
+		t.Fatalf("unexpected outbox records: %#v", records)
+	}
+}
 
-	t.Run("returns on outbox failure", func(t *testing.T) {
-		svc := &Service{outbox: &testOutbox{err: errors.New("store fail")}}
-		mw := svc.outboxMiddleware()
-		msg := message.NewMessage(uuid.NewString(), nil)
-		msg.Metadata = message.Metadata{}
-		out := message.NewMessage(uuid.NewString(), []byte("ok"))
-		out.Metadata = message.Metadata{}
-		if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
-			return []*message.Message{out}, nil
-		})(msg); err == nil {
-			t.Fatal("expected outbox error to bubble up")
-		}
-	})
+func testOutboxMiddlewareUsesFallbackEventType(t *testing.T) {
+	t.Helper()
+	svc := &Service{outbox: &testOutbox{}}
+	mw := svc.outboxMiddleware()
+	msg := message.NewMessage(uuid.NewString(), nil)
+	msg.Metadata = message.Metadata{}
+	out := message.NewMessage(uuid.NewString(), []byte("ok"))
+	out.Metadata = message.Metadata{}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		return []*message.Message{out}, nil
+	})(msg); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	records := svc.outbox.(*testOutbox).Records()
+	if len(records) != 1 || records[0].eventType != "unknown_event" {
+		t.Fatalf("expected fallback event type, got %#v", records)
+	}
+}
+
+func testOutboxMiddlewareReturnsOnOutboxFailure(t *testing.T) {
+	t.Helper()
+	svc := &Service{outbox: &testOutbox{err: errors.New("store fail")}}
+	mw := svc.outboxMiddleware()
+	msg := message.NewMessage(uuid.NewString(), nil)
+	msg.Metadata = message.Metadata{}
+	out := message.NewMessage(uuid.NewString(), []byte("ok"))
+	out.Metadata = message.Metadata{}
+	if _, err := mw(func(m *message.Message) ([]*message.Message, error) {
+		return []*message.Message{out}, nil
+	})(msg); err == nil {
+		t.Fatal("expected outbox error to bubble up")
+	}
 }
 
 func TestRetryMiddleware(t *testing.T) {

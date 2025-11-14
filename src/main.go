@@ -9,7 +9,6 @@ import (
 )
 
 // Application metadata that is set at compile time.
-// nolint
 var (
 	version     string
 	buildDate   string

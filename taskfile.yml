@@ -115,6 +115,9 @@ tasks:
       - echo "Generate the api wrapper interfaces for std server using oapi-codegen"
       - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
       - cd src && go tool oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
+      - rm src/internal/server/_gen/openapi.json
+      - echo "API server Interfaces and types generated successfully"
+      - echo "Now start your implementation in src/internal/server/<your_implementation>.go"
     silent: true
 
   gen-api:

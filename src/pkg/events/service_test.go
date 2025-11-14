@@ -227,85 +227,93 @@ func TestServiceStartReturnsWhenContextCancelled(t *testing.T) {
 
 func TestRegisterHandlerValidations(t *testing.T) {
 
-	newService := func() *Service {
-		logger := watermill.NewSlogLoggerWithLevelMapping(newTestLogger(), logLevelMapping)
-		router, err := message.NewRouter(message.RouterConfig{}, logger)
-		if err != nil {
-			t.Fatalf("router init failed: %v", err)
-		}
-		return &Service{
-			Router:        router,
-			Publisher:     &testPublisher{},
-			Subscriber:    &testSubscriber{},
-			protoRegistry: make(map[string]func() proto.Message),
-		}
+	t.Run("missing handler", testRegisterHandlerValidationsMissingHandler)
+	t.Run("missing queue", testRegisterHandlerValidationsMissingQueue)
+	t.Run("missing name", testRegisterHandlerValidationsMissingName)
+	t.Run("autoname from proto", testRegisterHandlerValidationsAutonameFromProto)
+	t.Run("explicit name", testRegisterHandlerValidationsExplicitName)
+}
+
+func testRegisterHandlerValidationsMissingHandler(t *testing.T) {
+	t.Helper()
+	svc := newTestService(t)
+	if err := svc.RegisterHandler(HandlerRegistration{ConsumeQueue: "queue"}); err == nil {
+		t.Fatal("expected error when handler nil")
 	}
+}
 
-	t.Run("missing handler", func(t *testing.T) {
-		svc := newService()
-		err := svc.RegisterHandler(HandlerRegistration{ConsumeQueue: "queue"})
-		if err == nil {
-			t.Fatal("expected error when handler nil")
-		}
-	})
+func testRegisterHandlerValidationsMissingQueue(t *testing.T) {
+	t.Helper()
+	svc := newTestService(t)
+	err := svc.RegisterHandler(HandlerRegistration{Handler: func(msg *message.Message) ([]*message.Message, error) {
+		return nil, nil
+	}})
+	if err == nil {
+		t.Fatal("expected error when queue missing")
+	}
+}
 
-	t.Run("missing queue", func(t *testing.T) {
-		svc := newService()
-		err := svc.RegisterHandler(HandlerRegistration{Handler: func(msg *message.Message) ([]*message.Message, error) {
+func testRegisterHandlerValidationsMissingName(t *testing.T) {
+	t.Helper()
+	svc := newTestService(t)
+	if err := svc.RegisterHandler(HandlerRegistration{
+		ConsumeQueue: "queue",
+		Handler: func(msg *message.Message) ([]*message.Message, error) {
 			return nil, nil
-		}})
-		if err == nil {
-			t.Fatal("expected error when queue missing")
-		}
-	})
+		},
+	}); err == nil {
+		t.Fatal("expected error when name missing")
+	}
+}
 
-	t.Run("missing name", func(t *testing.T) {
-		svc := newService()
-		err := svc.RegisterHandler(HandlerRegistration{
-			ConsumeQueue: "queue",
-			Handler: func(msg *message.Message) ([]*message.Message, error) {
-				return nil, nil
-			},
-		})
-		if err == nil {
-			t.Fatal("expected error when name missing")
-		}
-	})
+func testRegisterHandlerValidationsAutonameFromProto(t *testing.T) {
+	t.Helper()
+	svc := newTestService(t)
+	msg := &structpb.Struct{}
+	if err := svc.RegisterHandler(HandlerRegistration{
+		ConsumeQueue:     "queue",
+		Handler:          func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
+		MessagePrototype: msg,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := svc.protoRegistry["*structpb.Struct"]; !ok {
+		t.Fatalf("message prototype not registered")
+	}
+	handlers := svc.Router.Handlers()
+	if _, ok := handlers["*structpb.Struct-Handler"]; !ok {
+		t.Fatalf("handler not registered with generated name")
+	}
+}
 
-	t.Run("autoname from proto", func(t *testing.T) {
-		svc := newService()
-		msg := &structpb.Struct{}
-		err := svc.RegisterHandler(HandlerRegistration{
-			ConsumeQueue:     "queue",
-			Handler:          func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
-			MessagePrototype: msg,
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if _, ok := svc.protoRegistry["*structpb.Struct"]; !ok {
-			t.Fatalf("message prototype not registered")
-		}
-		handlers := svc.Router.Handlers()
-		if _, ok := handlers["*structpb.Struct-Handler"]; !ok {
-			t.Fatalf("handler not registered with generated name")
-		}
-	})
+func testRegisterHandlerValidationsExplicitName(t *testing.T) {
+	t.Helper()
+	svc := newTestService(t)
+	if err := svc.RegisterHandler(HandlerRegistration{
+		Name:         "custom",
+		ConsumeQueue: "queue",
+		Handler:      func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := svc.Router.Handlers()["custom"]; !ok {
+		t.Fatalf("handler not registered with explicit name")
+	}
+}
 
-	t.Run("explicit name", func(t *testing.T) {
-		svc := newService()
-		err := svc.RegisterHandler(HandlerRegistration{
-			Name:         "custom",
-			ConsumeQueue: "queue",
-			Handler:      func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if _, ok := svc.Router.Handlers()["custom"]; !ok {
-			t.Fatalf("handler not registered with explicit name")
-		}
-	})
+func newTestService(t *testing.T) *Service {
+	t.Helper()
+	logger := watermill.NewSlogLoggerWithLevelMapping(newTestLogger(), logLevelMapping)
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	if err != nil {
+		t.Fatalf("router init failed: %v", err)
+	}
+	return &Service{
+		Router:        router,
+		Publisher:     &testPublisher{},
+		Subscriber:    &testSubscriber{},
+		protoRegistry: make(map[string]func() proto.Message),
+	}
 }
 
 func TestRegisterProtoMessageAndCloning(t *testing.T) {
