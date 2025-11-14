@@ -1,19 +1,21 @@
 ---
 get:
   tags:
-    - APIInfo
-  summary: Get status of the service
-  description: Retrieve the status of the service
-  operationId: getStatus
+    - Probes
+  summary: Kubernetes liveness probe
+  description: Reports whether the service process is running.
+  operationId: getHealthz
   responses:
     "200":
-      description: The status of the service
+      description: The service is alive.
       content:
         application/json:
           schema:
             $ref: "../../schemas/_index.yml#/ProbeStatus"
-    "400":
-      description: The status request was malformed
+          example:
+            status: ok
+    "503":
+      description: The service failed its liveness checks.
       content:
         application/problem+json:
           schema:

@@ -1,12 +1,18 @@
 ---
 /info/version:
-  $ref: './info/version.yml'
+  $ref: "./info/version.yml"
 
 /info/status:
-  $ref: './info/status.yml'
+  $ref: "./info/status.yml"
 
 /info/openapi.json:
-  $ref: './info/openapi_json.yml'
+  $ref: "./info/openapi_json.yml"
 
 /info/openapi.html:
-  $ref: './info/openapi_html.yml'
+  $ref: "./info/openapi_html.yml"
+
+/healthz:
+  $ref: "./probes/healthz.yml"
+
+/readyz:
+  $ref: "./probes/readyz.yml"

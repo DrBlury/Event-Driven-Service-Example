@@ -1,0 +1,17 @@
+---
+type: object
+description: Outcome payload for service health probes.
+properties:
+  status:
+    type: string
+    description: Summary of the overall probe state.
+    example: ready
+  details:
+    type: array
+    description: Optional messages emitted by individual probe checks.
+    items:
+      type: string
+required:
+  - status
+example:
+  status: ok

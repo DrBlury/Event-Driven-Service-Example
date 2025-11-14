@@ -35,6 +35,7 @@ func SetDefaults() {
 	viper.SetDefault("APP_SERVER_CORS_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("APP_SERVER_CORS_ORIGINS", []string{"*"})
 	viper.SetDefault("APP_SERVER_HIDE_HEADERS", []string{"Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie"})
+	viper.SetDefault("APP_SERVER_QUIETDOWN_ROUTES", []string{"/healthz", "/readyz", "/info/status"})
 
 	// Logger
 	viper.SetDefault("LOGGER", "json")

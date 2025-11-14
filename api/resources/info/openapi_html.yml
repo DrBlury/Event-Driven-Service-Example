@@ -6,19 +6,19 @@ get:
   description: Retrieve the OpenAPI spec as HTML
   operationId: getOpenAPIHTML
   responses:
-    '200':
+    "200":
       description: The rendered HTML for the OpenAPI spec
       content:
         text/html:
           schema:
             type: string
-            example: '<html>...</html>'
-    '400':
-      description: You somehow managed to mess up the oapi html request
+            example: "<html>...</html>"
+    "400":
+      description: The OpenAPI HTML request was malformed
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '../../schemas/_index.yml#/Error'
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
 
   # This API has no security
   security: []

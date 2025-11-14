@@ -6,19 +6,19 @@ get:
   description: Retrieve the OpenAPI spec as JSON
   operationId: getOpenAPIJSON
   responses:
-    '200':
+    "200":
       description: The OpenAPI spec as JSON
       content:
         application/json:
           schema:
             type: object
           example: {}
-    '400':
-      description: You somehow managed to mess up the oapi json request
+    "400":
+      description: The OpenAPI request was malformed
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '../../schemas/_index.yml#/Error'
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
 
   # This API has no security
   security: []

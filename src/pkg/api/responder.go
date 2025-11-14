@@ -1,12 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ErrorClassifierFunc inspects an error and returns the HTTP status that should
@@ -15,17 +15,19 @@ import (
 type ErrorClassifierFunc func(err error) (status int, handled bool)
 
 type statusMeta struct {
-	typeLabel string
-	logLevel  slog.Level
-	logMsg    string
+	typeURI  string
+	title    string
+	logLevel slog.Level
+	logMsg   string
 }
 
 // StatusMetadata allows callers to customise how particular HTTP status codes
 // are logged and represented in error payloads.
 type StatusMetadata struct {
-	ErrorType string
-	LogLevel  slog.Level
-	LogMsg    string
+	TypeURI  string
+	Title    string
+	LogLevel slog.Level
+	LogMsg   string
 }
 
 // ResponderOption follows the functional options pattern used by NewResponder
@@ -86,23 +88,28 @@ func WithStatusMetadata(status int, meta StatusMetadata) ResponderOption {
 		if level == 0 {
 			level = slog.LevelError
 		}
+		title := meta.Title
+		if title == "" {
+			title = http.StatusText(status)
+		}
 		msg := meta.LogMsg
 		if msg == "" {
-			msg = http.StatusText(status)
+			msg = title
 		}
 		r.statusMetadata[status] = statusMeta{
-			typeLabel: meta.ErrorType,
-			logLevel:  level,
-			logMsg:    msg,
+			typeURI:  meta.TypeURI,
+			title:    title,
+			logLevel: level,
+			logMsg:   msg,
 		}
 	}
 }
 
 func defaultStatusMetadata() map[int]statusMeta {
 	return map[int]statusMeta{
-		http.StatusInternalServerError: {typeLabel: "InternalServerError", logLevel: slog.LevelError, logMsg: "Internal Server Error"},
-		http.StatusBadRequest:          {typeLabel: "BadRequest", logLevel: slog.LevelWarn, logMsg: "Bad Request Error"},
-		http.StatusUnauthorized:        {typeLabel: "Unauthorized", logLevel: slog.LevelWarn, logMsg: "Unauthorized Error"},
+		http.StatusInternalServerError: {title: http.StatusText(http.StatusInternalServerError), logLevel: slog.LevelError, logMsg: "Internal Server Error"},
+		http.StatusBadRequest:          {title: http.StatusText(http.StatusBadRequest), logLevel: slog.LevelWarn, logMsg: "Bad Request"},
+		http.StatusUnauthorized:        {title: http.StatusText(http.StatusUnauthorized), logLevel: slog.LevelWarn, logMsg: "Unauthorized"},
 	}
 }
 
@@ -118,13 +125,15 @@ func (r *Responder) Logger() *slog.Logger {
 	return r.logger()
 }
 
-// ErrorPayload is the structured JSON response produced for handled errors.
-type ErrorPayload struct {
-	ErrorID   string `json:"errorId"`
-	Code      int    `json:"code"`
-	Error     string `json:"error"`
-	ErrorType string `json:"errorType"`
-	Timestamp string `json:"timestamp"`
+// ProblemDetails aligns HTTP error responses with RFC 9457 problem documents.
+type ProblemDetails struct {
+	Type      string `json:"type,omitempty"`
+	Title     string `json:"title"`
+	Status    int    `json:"status"`
+	Detail    string `json:"detail,omitempty"`
+	Instance  string `json:"instance,omitempty"`
+	TraceID   string `json:"traceId,omitempty"`
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // HandleAPIError renders a structured JSON response for the supplied HTTP
@@ -136,25 +145,48 @@ func (r *Responder) HandleAPIError(w http.ResponseWriter, req *http.Request, sta
 
 	meta, ok := r.statusMetadata[status]
 	if !ok {
-		meta = statusMeta{
-			typeLabel: "UnknownError",
-			logLevel:  slog.LevelError,
-			logMsg:    "Unknown Error",
-		}
+		meta = statusMeta{}
 	}
 
-	apiError := ErrorPayload{
-		ErrorID:   uuid.New().String(),
-		Code:      status,
-		Error:     err.Error(),
-		ErrorType: meta.typeLabel,
-		Timestamp: time.Now().Format(time.RFC3339),
+	if meta.logLevel == 0 {
+		meta.logLevel = slog.LevelError
 	}
 
-	logger := r.logger().With("error", err.Error()).With("logMessages", logMsg)
+	if meta.title == "" {
+		meta.title = http.StatusText(status)
+	}
+
+	if meta.logMsg == "" {
+		meta.logMsg = meta.title
+	}
+
+	traceID := CreateULID()
+	problem := ProblemDetails{
+		Type:      meta.typeURI,
+		Title:     meta.title,
+		Status:    status,
+		Detail:    err.Error(),
+		TraceID:   traceID,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if problem.Type == "" {
+		problem.Type = fmt.Sprintf("https://httpstatuses.io/%d", status)
+	}
+
+	if req != nil && req.URL != nil {
+		problem.Instance = req.URL.RequestURI()
+	}
+
+	logger := r.logger().With(
+		"error", err.Error(),
+		"traceId", traceID,
+		"status", status,
+		"logMessages", logMsg,
+	)
 	logger.Log(req.Context(), meta.logLevel, meta.logMsg)
 
-	r.RespondWithJSON(w, req, status, apiError)
+	r.respondWithJSON(w, req, status, problem, "application/problem+json")
 }
 
 // HandleInternalServerError is a shortcut that reports a 500 status code.
@@ -175,10 +207,31 @@ func (r *Responder) HandleUnauthorizedError(w http.ResponseWriter, req *http.Req
 // RespondWithJSON serialises the provided value and writes it to the response
 // using the supplied status code.
 func (r *Responder) RespondWithJSON(w http.ResponseWriter, req *http.Request, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
+	r.respondWithJSON(w, req, status, v, "application/json")
+}
+
+func (r *Responder) respondWithJSON(w http.ResponseWriter, req *http.Request, status int, payload any, contentType string) {
+	if w == nil {
+		return
+	}
+
+	if contentType == "" {
+		contentType = "application/json"
+	}
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(payload); err != nil {
+		r.logger().Error("failed to encode response", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		r.HandleInternalServerError(w, req, err, "failed to encode response")
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		r.logger().Error("failed to write response", "error", err)
 	}
 }
 

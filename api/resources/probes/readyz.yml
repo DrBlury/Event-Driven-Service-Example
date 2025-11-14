@@ -1,19 +1,21 @@
 ---
 get:
   tags:
-    - APIInfo
-  summary: Get status of the service
-  description: Retrieve the status of the service
-  operationId: getStatus
+    - Probes
+  summary: Kubernetes readiness probe
+  description: Reports whether the service is ready to handle traffic.
+  operationId: getReadyz
   responses:
     "200":
-      description: The status of the service
+      description: The service is ready to accept traffic.
       content:
         application/json:
           schema:
             $ref: "../../schemas/_index.yml#/ProbeStatus"
-    "400":
-      description: The status request was malformed
+          example:
+            status: ready
+    "503":
+      description: The service failed its readiness checks.
       content:
         application/problem+json:
           schema:

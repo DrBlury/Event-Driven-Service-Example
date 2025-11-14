@@ -12,7 +12,6 @@ import (
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/pkg/events"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"google.golang.org/protobuf/proto"
 )
@@ -128,7 +127,7 @@ func demoHandler(svc *events.Service) message.HandlerFunc {
 			return nil, err
 		}
 
-		newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
+		newMessage := message.NewMessage(events.CreateULID(), newPayload)
 		newMessage.Metadata = msg.Metadata
 		newMessage.Metadata["handler"] = "demoHandler"
 		newMessage.Metadata["next_queue"] = svc.Conf.PublishQueue
@@ -189,7 +188,7 @@ func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([
 	if err != nil {
 		return nil, err
 	}
-	newMessage := message.NewMessage(watermill.NewUUID(), jsonPayload)
+	newMessage := message.NewMessage(events.CreateULID(), jsonPayload)
 	if metadata == nil {
 		metadata = map[string]string{}
 	}

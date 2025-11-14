@@ -184,7 +184,7 @@ func (s *Service) correlationIDMiddleware() message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			if _, ok := msg.Metadata["correlation_id"]; !ok {
-				msg.Metadata["correlation_id"] = watermill.NewUUID()
+				msg.Metadata["correlation_id"] = CreateULID()
 			}
 			return h(msg)
 		}

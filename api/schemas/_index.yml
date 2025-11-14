@@ -1,131 +1,132 @@
 ---
 # Enums
 Status:
-  $ref: './enum/Status.yml'
-ErrorType:
-  $ref: './enum/ErrorType.yml'
+  $ref: "./enum/Status.yml"
 UserType:
-  $ref: './enum/UserType.yml'
+  $ref: "./enum/UserType.yml"
 ReadingOrigin:
-  $ref: './enum/ReadingOrigin.yml'
+  $ref: "./enum/ReadingOrigin.yml"
 ReadingStatus:
-  $ref: './enum/ReadingStatus.yml'
+  $ref: "./enum/ReadingStatus.yml"
 PowerReadingType:
-  $ref: './enum/PowerReadingType.yml'
+  $ref: "./enum/PowerReadingType.yml"
 PaymentMeanType:
-  $ref: './enum/PaymentMeanType.yml'
+  $ref: "./enum/PaymentMeanType.yml"
 TransactionType:
-  $ref: './enum/TransactionType.yml'
+  $ref: "./enum/TransactionType.yml"
 MeterType:
-  $ref: './enum/MeterType.yml'
+  $ref: "./enum/MeterType.yml"
 OpenAPIRenderer:
-  $ref: './enum/OpenAPIRenderer.yml'
+  $ref: "./enum/OpenAPIRenderer.yml"
 SignupReason:
-  $ref: './enum/SignupReason.yml'
+  $ref: "./enum/SignupReason.yml"
 SignupServiceType:
-  $ref: './enum/SignupServiceType.yml'
+  $ref: "./enum/SignupServiceType.yml"
 TerminationReason:
-  $ref: './enum/TerminationReason.yml'
+  $ref: "./enum/TerminationReason.yml"
 TerminationChannel:
-  $ref: './enum/TerminationChannel.yml'
+  $ref: "./enum/TerminationChannel.yml"
 TerminationTransactionReason:
-  $ref: './enum/TerminationTransactionReason.yml'
+  $ref: "./enum/TerminationTransactionReason.yml"
 
 # Requests
 TerminateContractRequest:
-  $ref: './requests/TerminateContractRequest.yml'
+  $ref: "./requests/TerminateContractRequest.yml"
 NewAbschlagRequest:
-  $ref: './requests/NewAbschlagRequest.yml'
+  $ref: "./requests/NewAbschlagRequest.yml"
 NewAbschlagWithCalculationWasteWaterRequest:
-  $ref: './requests/NewAbschlagWithCalculationWasteWaterRequest.yml'
+  $ref: "./requests/NewAbschlagWithCalculationWasteWaterRequest.yml"
 NewMeterReadingRequest:
-  $ref: './requests/NewMeterReadingRequest.yml'
+  $ref: "./requests/NewMeterReadingRequest.yml"
 AuthRequest:
-  $ref: './requests/AuthRequest.yml'
+  $ref: "./requests/AuthRequest.yml"
 CreateGasMeterReadingRequest:
-  $ref: './requests/CreateGasMeterReadingRequest.yml'
+  $ref: "./requests/CreateGasMeterReadingRequest.yml"
 CreateWaterMeterReadingRequest:
-  $ref: './requests/CreateWaterMeterReadingRequest.yml'
+  $ref: "./requests/CreateWaterMeterReadingRequest.yml"
 CreatePowerMeterReadingRequest:
-  $ref: './requests/CreatePowerMeterReadingRequest.yml'
+  $ref: "./requests/CreatePowerMeterReadingRequest.yml"
 UpdateCustomerContactRequest:
-  $ref: './requests/UpdateCustomerContactRequest.yml'
+  $ref: "./requests/UpdateCustomerContactRequest.yml"
 UpdateCustomerPersonalRequest:
-  $ref: './requests/UpdateCustomerPersonalRequest.yml'
+  $ref: "./requests/UpdateCustomerPersonalRequest.yml"
 CreatePaymentMeanRequest:
-  $ref: './requests/CreatePaymentMeanRequest.yml'
+  $ref: "./requests/CreatePaymentMeanRequest.yml"
 UpdatePaymentMeanRequest:
-  $ref: './requests/UpdatePaymentMeanRequest.yml'
+  $ref: "./requests/UpdatePaymentMeanRequest.yml"
 SignupRequest:
-  $ref: './requests/SignupRequest.yml'
+  $ref: "./requests/SignupRequest.yml"
 AddAServiceRequest:
-  $ref: './requests/AddAServiceRequest.yml'
+  $ref: "./requests/AddAServiceRequest.yml"
 MoveRequest:
-  $ref: './requests/MoveRequest.yml'
+  $ref: "./requests/MoveRequest.yml"
 TerminateContract:
-  $ref: './requests/TerminateContractRequest.yml'
-
+  $ref: "./requests/TerminateContractRequest.yml"
 
 # Responses
 AuthResponse:
-  $ref: './responses/AuthResponse.yml'
+  $ref: "./responses/AuthResponse.yml"
 NewAbschlagResponse:
-  $ref: './responses/NewAbschlagResponse.yml'
+  $ref: "./responses/NewAbschlagResponse.yml"
 PaymentMeanList:
-  $ref: './responses/PaymentMeanList.yml'
+  $ref: "./responses/PaymentMeanList.yml"
 
 # Schemas
 Version:
-  $ref: './types/Version.yml'
+  $ref: "./types/Version.yml"
 TokenInfo:
-  $ref: './types/TokenInfo.yml'
+  $ref: "./types/TokenInfo.yml"
 MeterReading:
-  $ref: './types/MeterReading.yml'
+  $ref: "./types/MeterReading.yml"
 MeterReadingList:
-  $ref: './types/MeterReadingList.yml'
+  $ref: "./types/MeterReadingList.yml"
 Contract:
-  $ref: './types/Contract.yml'
+  $ref: "./types/Contract.yml"
 Abschlag:
-  $ref: './types/Abschlag.yml'
+  $ref: "./types/Abschlag.yml"
 Address:
-  $ref: './types/Address.yml'
+  $ref: "./types/Address.yml"
 Document:
-  $ref: './types/Document.yml'
+  $ref: "./types/Document.yml"
 DocumentList:
-  $ref: './types/DocumentList.yml'
+  $ref: "./types/DocumentList.yml"
 Customer:
-  $ref: './types/Customer.yml'
+  $ref: "./types/Customer.yml"
 CustomerContact:
-  $ref: './types/CustomerContact.yml'
+  $ref: "./types/CustomerContact.yml"
 CustomerPersonal:
-  $ref: './types/CustomerPersonal.yml'
+  $ref: "./types/CustomerPersonal.yml"
 PaymentMean:
-  $ref: './types/PaymentMean.yml'
+  $ref: "./types/PaymentMean.yml"
 RawPaymentMean:
-  $ref: './types/RawPaymentMean.yml'
+  $ref: "./types/RawPaymentMean.yml"
 BillCycle:
-  $ref: './types/BillCycle.yml'
+  $ref: "./types/BillCycle.yml"
 Lock:
-  $ref: './types/Lock.yml'
+  $ref: "./types/Lock.yml"
 BillingAccount:
-  $ref: './types/BillingAccount.yml'
+  $ref: "./types/BillingAccount.yml"
 NetworkEntity:
-  $ref: './types/NetworkEntity.yml'
+  $ref: "./types/NetworkEntity.yml"
 BillingDetails:
-  $ref: './types/BillingDetails.yml'
+  $ref: "./types/BillingDetails.yml"
 CommunicationOptIns:
-  $ref: './types/CommunicationOptIns.yml'
+  $ref: "./types/CommunicationOptIns.yml"
 PaymentBankTransfer:
-  $ref: './types/PaymentBankTransfer.yml'
+  $ref: "./types/PaymentBankTransfer.yml"
 PaymentCreditCard:
-  $ref: './types/PaymentCreditCard.yml'
+  $ref: "./types/PaymentCreditCard.yml"
 PaymentIBan:
-  $ref: './types/PaymentIBan.yml'
+  $ref: "./types/PaymentIBan.yml"
 SignupMeta:
-  $ref: './types/SignupMeta.yml'
+  $ref: "./types/SignupMeta.yml"
 SubscriptionInfo:
-  $ref: './types/SubscriptionInfo.yml'
+  $ref: "./types/SubscriptionInfo.yml"
 
 # Errors
-Error:
-  $ref: './errors/Error.yml'
+ProblemDetails:
+  $ref: "./errors/ProblemDetails.yml"
+
+# Health
+ProbeStatus:
+  $ref: "./types/ProbeStatus.yml"

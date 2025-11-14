@@ -19,7 +19,7 @@ optional collaborators without juggling long parameter lists.
 ### Responder
 
 `Responder` wraps common HTTP tasks such as rendering JSON, decoding request
-bodies, and emitting structured error payloads. Errors are enriched with a UUID,
+bodies, and emitting structured error payloads. Errors are enriched with a ULID,
 category, timestamp, and log metadata so they remain traceable across systems.
 `WithStatusMetadata` lets you override the logging level or error labels for
 individual HTTP status codes.
