@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Predefined errors used throughout the application
 var (
 	ErrorNotFound        = errors.New("not found")
 	ErrorBadRequest      = errors.New("something you provided was wrong")

@@ -17,7 +17,12 @@ type APIHandler struct {
 	log      *slog.Logger
 }
 
-func NewAPIHandler(appLogic *usecase.AppLogic, info *domain.Info, logger *slog.Logger, baseURL string) *APIHandler {
+func NewAPIHandler(
+	appLogic *usecase.AppLogic,
+	info *domain.Info,
+	logger *slog.Logger,
+	baseURL string,
+) *APIHandler {
 	responder := api.NewResponder(
 		api.WithLogger(logger),
 		api.WithErrorClassifier(func(err error) (int, bool) {

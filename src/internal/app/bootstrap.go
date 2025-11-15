@@ -9,6 +9,7 @@ import (
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/usecase"
+	"drblury/event-driven-service/pkg/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/tracing"
@@ -77,6 +78,6 @@ func connectToDatabase(ctx context.Context, cfg *Config, logger *slog.Logger) (*
 }
 
 // initializeAppLogic constructs the core application use cases.
-func initializeAppLogic(db *database.Database, logger *slog.Logger) *usecase.AppLogic {
-	return usecase.NewAppLogic(db, logger)
+func initializeAppLogic(db *database.Database, logger *slog.Logger, eventsCfg *events.Config) *usecase.AppLogic {
+	return usecase.NewAppLogic(db, logger, eventsCfg)
 }

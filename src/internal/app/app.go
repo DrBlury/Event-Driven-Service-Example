@@ -22,7 +22,13 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		return err
 	}
 
-	appLogic := initializeAppLogic(db, logger)
+	appLogic := initializeAppLogic(db, logger, cfg.Events)
+
+	eventService, err := buildEventService(ctx, cfg, logger, db, appLogic)
+	if err != nil {
+		return err
+	}
+	appLogic.SetEventProducer(eventService)
 
 	httpServer, err := buildHTTPServer(cfg, appLogic, logger)
 	if err != nil {
@@ -32,11 +38,6 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	srvErr := make(chan error, 1)
 	runHTTPServer(httpServer, cfg, logger, srvErr)
 	monitorHTTPServerErrors(ctx, srvErr, logger)
-
-	eventService, err := buildEventService(ctx, cfg, logger, db, appLogic)
-	if err != nil {
-		return err
-	}
 
 	go startEventService(ctx, eventService, logger)
 	go runSignupSimulation(ctx, eventService)

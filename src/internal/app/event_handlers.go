@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"time"
@@ -184,15 +183,9 @@ func readMessageToStruct(msg *message.Message, v interface{}) error {
 }
 
 func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([]*message.Message, error) {
-	jsonPayload, err := json.Marshal(event)
+	msg, err := events.NewMessageFromProto(event, metadata)
 	if err != nil {
 		return nil, err
 	}
-	newMessage := message.NewMessage(events.CreateULID(), jsonPayload)
-	if metadata == nil {
-		metadata = map[string]string{}
-	}
-	metadata["event_message_schema"] = fmt.Sprintf("%T", event)
-	newMessage.Metadata = metadata
-	return []*message.Message{newMessage}, nil
+	return []*message.Message{msg}, nil
 }
