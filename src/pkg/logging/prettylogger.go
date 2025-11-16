@@ -3,13 +3,14 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"strconv"
 	"sync"
+
+	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 const (
@@ -120,7 +121,7 @@ func (h *PrettyJsonHandler) Handle(ctx context.Context, r slog.Record) error {
 		return err
 	}
 
-	bytes, err := json.MarshalIndent(attrs, "", "  ")
+	bytes, err := marshalIndent(attrs)
 	if err != nil {
 		return fmt.Errorf("error when marshaling attrs: %w", err)
 	}
@@ -169,7 +170,7 @@ func (h *PrettyJsonHandler) computeAttrs(
 	}
 
 	var attrs map[string]any
-	err := json.Unmarshal(h.buf.Bytes(), &attrs)
+	err := jsonutil.Unmarshal(h.buf.Bytes(), &attrs)
 	if err != nil {
 		return nil, fmt.Errorf("error when unmarshaling inner handler's Handle result: %w", err)
 	}

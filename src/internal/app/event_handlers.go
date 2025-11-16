@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"math/rand/v2"
@@ -10,6 +9,7 @@ import (
 
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/pkg/events"
+	"drblury/event-driven-service/pkg/jsonutil"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"google.golang.org/protobuf/proto"
@@ -105,7 +105,7 @@ func demoHandler(svc *events.Service) message.HandlerFunc {
 		}
 
 		consumedPayload := &demoEvent{}
-		if err := json.Unmarshal(msg.Payload, consumedPayload); err != nil {
+		if err := jsonutil.Unmarshal(msg.Payload, consumedPayload); err != nil {
 			return nil, err
 		}
 
@@ -115,7 +115,7 @@ func demoHandler(svc *events.Service) message.HandlerFunc {
 			"day", consumedPayload.Date.Day,
 		)
 
-		newPayload, err := json.Marshal(
+		newPayload, err := jsonutil.Marshal(
 			processedDemoEvent{
 				ID:   consumedPayload.ID,
 				Time: time.Now(),
@@ -179,7 +179,7 @@ func signupStepTwoHandler() message.HandlerFunc {
 }
 
 func readMessageToStruct(msg *message.Message, v interface{}) error {
-	return json.Unmarshal(msg.Payload, v)
+	return jsonutil.Unmarshal(msg.Payload, v)
 }
 
 func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([]*message.Message, error) {

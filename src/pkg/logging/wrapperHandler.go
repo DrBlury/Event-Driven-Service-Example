@@ -3,10 +3,11 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
+
+	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 // MyWrapperHandler wraps another slog.Handler and flattens nested JSON payloads
@@ -14,7 +15,7 @@ import (
 type MyWrapperHandler struct {
 	handler     slog.Handler
 	jsonHandler slog.Handler
-	buf         *bytes.Buffer // Changed to a pointer
+	buf         *bytes.Buffer
 	mutex       *sync.Mutex
 }
 
@@ -42,7 +43,7 @@ func (h *MyWrapperHandler) Enabled(ctx context.Context, level slog.Level) bool {
 func (h *MyWrapperHandler) GetJsonAttrBytes(
 	ctx context.Context,
 	r slog.Record,
-) ([]byte, error) {
+) ([]byte, func(), error) {
 	h.mutex.Lock()
 	defer func() {
 		h.buf.Reset()
@@ -53,10 +54,11 @@ func (h *MyWrapperHandler) GetJsonAttrBytes(
 	h.buf.Reset()
 
 	if err := h.jsonHandler.Handle(ctx, r); err != nil {
-		return nil, fmt.Errorf("error when calling inner handler's Handle: %w", err)
+		return nil, nil, fmt.Errorf("error when calling inner handler's Handle: %w", err)
 	}
 
-	return h.buf.Bytes(), nil
+	cloned := bytes.Clone(h.buf.Bytes())
+	return cloned, func() {}, nil
 }
 
 // mapToSlogAttrs converts a map to a slice of slog.Attr.
@@ -66,17 +68,15 @@ func (h *MyWrapperHandler) GetJsonAttrBytes(
 func mapToSlogAttrs(input map[string]any, depth int, maxDepth int) []slog.Attr {
 	// flatten the map if the depth is greater than maxDepth
 	if depth > maxDepth {
-		// Serialize the entire map as JSON string
-		jsonBytes, err := json.Marshal(input)
+		indented, err := marshalIndent(input)
 		if err != nil {
-			return []slog.Attr{slog.String("data", fmt.Sprintf("error marshalling to JSON: %v", err))}
+			raw, rawErr := jsonutil.Marshal(input)
+			if rawErr != nil {
+				return []slog.Attr{slog.String("data", fmt.Sprintf("error marshalling to JSON: %v", err))}
+			}
+			return []slog.Attr{slog.String("data", string(raw))}
 		}
-		// do identation
-		identedJSON, err := json.MarshalIndent(input, "", "  ")
-		if err != nil {
-			return []slog.Attr{slog.String("data", string(jsonBytes))}
-		}
-		return []slog.Attr{slog.String("data", string(identedJSON))}
+		return []slog.Attr{slog.String("data", string(indented))}
 	}
 
 	var attrs []slog.Attr
@@ -103,13 +103,14 @@ func (h *MyWrapperHandler) Handle(ctx context.Context, r slog.Record) error {
 	// Create a new record with the flattened JSON
 	newRecord := r
 	// Get the JSON bytes from the inner handler
-	jsonBytes, err := h.GetJsonAttrBytes(ctx, r)
+	jsonBytes, release, err := h.GetJsonAttrBytes(ctx, r)
 	if err != nil {
 		return err
 	}
+	defer release()
 
 	var attrs map[string]any
-	err = json.Unmarshal(jsonBytes, &attrs)
+	err = jsonutil.Unmarshal(jsonBytes, &attrs)
 	if err != nil {
 		return fmt.Errorf("error when unmarshaling json bytes: %w", err)
 	}

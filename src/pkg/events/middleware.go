@@ -1,7 +1,6 @@
 package events
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +11,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 // MiddlewareBuilder constructs a handler middleware using the provided service instance.
@@ -219,7 +220,7 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 			}
 
 			protoMsg := newProtoFunc()
-			if err := json.Unmarshal(msg.Payload, protoMsg); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, protoMsg); err != nil {
 				slog.Error("failed to unmarshal protobuf message", "error", err, "event_message_schema", eventType)
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),

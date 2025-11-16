@@ -62,7 +62,7 @@ func TestMyWrapperHandlerGetJsonAttrBytesError(t *testing.T) {
 		mutex:       &sync.Mutex{},
 	}
 
-	_, err := h.GetJsonAttrBytes(context.Background(), slog.NewRecord(time.Now(), slog.LevelInfo, "msg", 0))
+	_, _, err := h.GetJsonAttrBytes(context.Background(), slog.NewRecord(time.Now(), slog.LevelInfo, "msg", 0))
 	if err == nil {
 		t.Fatal("expected error from json handler to propagate")
 	}
