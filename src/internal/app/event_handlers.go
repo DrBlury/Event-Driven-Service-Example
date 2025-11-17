@@ -28,7 +28,7 @@ func registerAppEventHandlers(svc *events.Service) error {
 		return err
 	}
 
-	if err := svc.RegisterHandler(events.HandlerRegistration{
+	if err := events.RegisterProtoHandler(svc, events.ProtoHandlerRegistration[*domain.Signup]{
 		ConsumeQueue:     svc.Conf.ConsumeQueueSignup,
 		PublishQueue:     svc.Conf.PublishQueueSignup,
 		Handler:          signupHandler(),
@@ -37,7 +37,7 @@ func registerAppEventHandlers(svc *events.Service) error {
 		return err
 	}
 
-	if err := svc.RegisterHandler(events.HandlerRegistration{
+	if err := events.RegisterProtoHandler(svc, events.ProtoHandlerRegistration[*domain.BillingAddress]{
 		ConsumeQueue:     svc.Conf.PublishQueueSignup,
 		PublishQueue:     "signup_step_2_processed",
 		Handler:          signupStepTwoHandler(),
@@ -134,13 +134,8 @@ func demoHandler(svc *events.Service) message.HandlerFunc {
 	}
 }
 
-func signupHandler() message.HandlerFunc {
-	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := &domain.Signup{}
-		if err := readMessageToStruct(msg, consumedPayload); err != nil {
-			return nil, err
-		}
-
+func signupHandler() events.ProtoMessageHandler[*domain.Signup] {
+	return func(ctx context.Context, e events.ProtoMessageContext[*domain.Signup]) ([]events.ProtoMessageOutput, error) {
 		postOfficeBox := "POB 1234"
 		newEvent := &domain.BillingAddress{
 			City:          "Cologne",
@@ -153,17 +148,17 @@ func signupHandler() message.HandlerFunc {
 			return nil, errors.New("fatal error processing signup event")
 		}
 
-		return createNewProcessedEvent(newEvent, msg.Metadata)
+		// This will clone the existing metadata and add new entries
+		newMetadata := e.CloneMetadata()
+		newMetadata["processed_by"] = "signupHandler"
+		newMetadata["some_extra_info"] = "additional_value"
+
+		return []events.ProtoMessageOutput{{Message: newEvent, Metadata: newMetadata}}, nil
 	}
 }
 
-func signupStepTwoHandler() message.HandlerFunc {
-	return func(msg *message.Message) ([]*message.Message, error) {
-		consumedPayload := &domain.BillingAddress{}
-		if err := readMessageToStruct(msg, consumedPayload); err != nil {
-			return nil, err
-		}
-
+func signupStepTwoHandler() events.ProtoMessageHandler[*domain.BillingAddress] {
+	return func(_ context.Context, _ events.ProtoMessageContext[*domain.BillingAddress]) ([]events.ProtoMessageOutput, error) {
 		newEvent := &domain.Date{
 			Year:  int32(time.Now().Year()),
 			Month: int32(time.Now().Month()),
@@ -174,12 +169,8 @@ func signupStepTwoHandler() message.HandlerFunc {
 			return nil, errors.New("fatal error processing signup event")
 		}
 
-		return createNewProcessedEvent(newEvent, msg.Metadata)
+		return []events.ProtoMessageOutput{{Message: newEvent}}, nil
 	}
-}
-
-func readMessageToStruct(msg *message.Message, v interface{}) error {
-	return jsonutil.Unmarshal(msg.Payload, v)
 }
 
 func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([]*message.Message, error) {
