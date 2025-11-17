@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"drblury/event-driven-service/pkg/api"
+
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
