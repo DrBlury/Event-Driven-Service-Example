@@ -1,4 +1,4 @@
-package api
+package probe
 
 import (
 	"context"
@@ -8,11 +8,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// Func represents a health check that returns an error when the resource is unavailable.
+type Func func(ctx context.Context) error
+
 // PingFunc represents a health check that returns an error when the resource is unavailable.
 type PingFunc func(ctx context.Context) error
 
 // NewPingProbe wraps a PingFunc with standardised error handling suitable for InfoHandler probes.
-func NewPingProbe(name string, fn PingFunc) ProbeFunc {
+func NewPingProbe(name string, fn PingFunc) Func {
 	return func(ctx context.Context) error {
 		if fn == nil {
 			return fmt.Errorf("%s probe: ping function is nil", name)
@@ -33,9 +36,9 @@ type MongoPinger interface {
 	Ping(ctx context.Context, rp *readpref.ReadPref) error
 }
 
-// NewMongoPingProbe creates a ProbeFunc that pings MongoDB using the provided client.
+// NewMongoPingProbe creates a Func that pings MongoDB using the provided client.
 // If readPref is nil it defaults to readpref.Primary.
-func NewMongoPingProbe(client MongoPinger, readPref *readpref.ReadPref) ProbeFunc {
+func NewMongoPingProbe(client MongoPinger, readPref *readpref.ReadPref) Func {
 	return func(ctx context.Context) error {
 		if client == nil {
 			return errors.New("mongo probe: client is nil")

@@ -1,4 +1,4 @@
-package api_test
+package probe_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"drblury/event-driven-service/pkg/api"
+	"drblury/event-driven-service/pkg/api/probe"
 
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
@@ -25,15 +25,15 @@ func (s *stubMongoPinger) Ping(ctx context.Context, rp *readpref.ReadPref) error
 
 func TestNewPingProbe(t *testing.T) {
 	t.Run("nil function", func(t *testing.T) {
-		probe := api.NewPingProbe("db", nil)
-		if err := probe(context.Background()); err == nil {
+		probeFunc := probe.NewPingProbe("db", nil)
+		if err := probeFunc(context.Background()); err == nil {
 			t.Fatal("expected error when ping function is nil")
 		}
 	})
 
 	t.Run("success", func(t *testing.T) {
 		called := false
-		probe := api.NewPingProbe("db", func(ctx context.Context) error {
+		probeFunc := probe.NewPingProbe("db", func(ctx context.Context) error {
 			if ctx == nil {
 				t.Fatal("expected non-nil context")
 			}
@@ -41,7 +41,7 @@ func TestNewPingProbe(t *testing.T) {
 			return nil
 		})
 
-		if err := probe(context.Background()); err != nil {
+		if err := probeFunc(context.Background()); err != nil {
 			t.Fatalf("expected nil error, got %v", err)
 		}
 		if !called {
@@ -51,10 +51,10 @@ func TestNewPingProbe(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		sentinel := errors.New("boom")
-		probe := api.NewPingProbe("db", func(ctx context.Context) error {
+		probeFunc := probe.NewPingProbe("db", func(ctx context.Context) error {
 			return sentinel
 		})
-		err := probe(context.Background())
+		err := probeFunc(context.Background())
 		if !errors.Is(err, sentinel) {
 			t.Fatalf("expected error to wrap sentinel, got %v", err)
 		}
@@ -63,16 +63,16 @@ func TestNewPingProbe(t *testing.T) {
 
 func TestNewMongoPingProbe(t *testing.T) {
 	t.Run("nil client", func(t *testing.T) {
-		probe := api.NewMongoPingProbe(nil, nil)
-		if err := probe(context.Background()); err == nil {
+		probeFunc := probe.NewMongoPingProbe(nil, nil)
+		if err := probeFunc(context.Background()); err == nil {
 			t.Fatal("expected error when client is nil")
 		}
 	})
 
 	t.Run("success", func(t *testing.T) {
 		stub := &stubMongoPinger{}
-		probe := api.NewMongoPingProbe(stub, nil)
-		if err := probe(context.Background()); err != nil {
+		probeFunc := probe.NewMongoPingProbe(stub, nil)
+		if err := probeFunc(context.Background()); err != nil {
 			t.Fatalf("expected nil error, got %v", err)
 		}
 		if stub.lastCtx == nil {
@@ -89,8 +89,8 @@ func TestNewMongoPingProbe(t *testing.T) {
 	t.Run("failure", func(t *testing.T) {
 		sentinel := errors.New("unreachable")
 		stub := &stubMongoPinger{err: sentinel}
-		probe := api.NewMongoPingProbe(stub, readpref.Secondary())
-		err := probe(context.Background())
+		probeFunc := probe.NewMongoPingProbe(stub, readpref.Secondary())
+		err := probeFunc(context.Background())
 		if !errors.Is(err, sentinel) {
 			t.Fatalf("expected wrapped sentinel, got %v", err)
 		}
@@ -101,9 +101,9 @@ func TestNewMongoPingProbe(t *testing.T) {
 }
 
 func ExampleNewPingProbe() {
-	probe := api.NewPingProbe("noop", func(ctx context.Context) error {
+	probeFunc := probe.NewPingProbe("noop", func(ctx context.Context) error {
 		return nil
 	})
-	fmt.Println(probe(context.Background()))
+	fmt.Println(probeFunc(context.Background()))
 	// Output: <nil>
 }

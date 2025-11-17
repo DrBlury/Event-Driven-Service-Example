@@ -171,6 +171,14 @@ tasks:
       - echo "Gathering source code statistics"
       - docker run --rm -it -v "$PWD:/pwd" {{.scc_image}} scc /pwd
 
+  scc-files:
+    desc: "Show per-file complexity stats using scc"
+    summary: |
+      Highlights the most complex files so you can focus refactoring where it matters.
+    cmds:
+      - echo "Gathering per-file complexity statistics"
+      - docker run --rm -it -v "$PWD:/pwd" {{.scc_image}} scc --by-file --sort complexity /pwd
+
   git:web:
     desc: "Open the configured git remote in a browser"
     summary: |

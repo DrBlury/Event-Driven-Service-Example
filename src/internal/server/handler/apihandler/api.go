@@ -7,12 +7,13 @@ import (
 	"drblury/event-driven-service/internal/domain"
 	generator "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/usecase"
-	"drblury/event-driven-service/pkg/api"
+	infohandler "drblury/event-driven-service/pkg/api/info"
+	"drblury/event-driven-service/pkg/api/responder"
 	"log/slog"
 )
 
 type APIHandler struct {
-	*api.InfoHandler
+	*infohandler.InfoHandler
 	AppLogic *usecase.AppLogic
 	log      *slog.Logger
 }
@@ -23,9 +24,9 @@ func NewAPIHandler(
 	logger *slog.Logger,
 	baseURL string,
 ) *APIHandler {
-	responder := api.NewResponder(
-		api.WithLogger(logger),
-		api.WithErrorClassifier(func(err error) (int, bool) {
+	resp := responder.NewResponder(
+		responder.WithLogger(logger),
+		responder.WithErrorClassifier(func(err error) (int, bool) {
 			switch {
 			case errors.Is(err, domain.ErrorUpstreamService):
 				return http.StatusInternalServerError, true
@@ -53,11 +54,11 @@ func NewAPIHandler(
 		return info
 	}
 
-	infoHandler := api.NewInfoHandler(
-		api.WithInfoResponder(responder),
-		api.WithBaseURL(baseURL),
-		api.WithInfoProvider(infoProvider),
-		api.WithSwaggerProvider(swaggerProvider),
+	infoHandler := infohandler.NewInfoHandler(
+		infohandler.WithInfoResponder(resp),
+		infohandler.WithBaseURL(baseURL),
+		infohandler.WithInfoProvider(infoProvider),
+		infohandler.WithSwaggerProvider(swaggerProvider),
 	)
 
 	return &APIHandler{

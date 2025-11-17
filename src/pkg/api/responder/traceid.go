@@ -1,4 +1,4 @@
-package api
+package responder
 
 import (
 	mathrand "math/rand"
@@ -13,8 +13,7 @@ var (
 	entropy   = ulid.Monotonic(mathrand.New(mathrand.NewSource(time.Now().UnixNano())), 0)
 )
 
-// CreateULID returns a time-sortable ULID encoded as a 26-character string.
-func CreateULID() string {
+func newTraceID() string {
 	entropyMu.Lock()
 	defer entropyMu.Unlock()
 
