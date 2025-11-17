@@ -11,22 +11,22 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../../schemas/_index.yml#/SignupRequest'
+          $ref: "../../schemas/_index.yml#/SignupRequest"
   responses:
-    '201':
+    "201":
       description: Created a new customer
-    '400':
+    "400":
       description: You somehow managed to mess up the signup request
       content:
         application/problem+json:
           schema:
-            $ref: '../../schemas/_index.yml#/ProblemDetails'
-    '401':
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
+    "401":
       description: You are not authorized to access this resource
       content:
         application/problem+json:
           schema:
-            $ref: '../../schemas/_index.yml#/ProblemDetails'
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
   # This API uses jwt authentication
   security:
     - bearerAuth: []

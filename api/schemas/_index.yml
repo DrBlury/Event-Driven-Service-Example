@@ -20,4 +20,3 @@ Version:
 # Errors
 ProblemDetails:
   $ref: "./errors/ProblemDetails.yml"
-
