@@ -1,9 +1,4 @@
 ---
-version: 3
-
-dotenv:
-  - ./infra/env/app.env
-
 vars:
   compose_base_file: infra/compose/docker-compose.yml
   compose_debug_file: infra/compose/docker-compose.debug.yml
@@ -14,6 +9,15 @@ vars:
   env_example_dir: infra/env/example
   proto_dir: proto
   src_dir: src
+  golang_image: golang:1.25.4
+  redocly_cli_image: redocly/cli:2.11.1
+  buf_image: bufbuild/buf:1.60.0
+  scc_image: ghcr.io/lhoupert/scc:v0.0.2
+
+version: 3
+
+dotenv:
+  - ./infra/env/app.env
 
 tasks:
   default:
@@ -61,12 +65,12 @@ tasks:
     deps:
       - gen-buf
     summary: |
-      Builds a Go {{.src_dir}} workspace inside a Go 1.25 container, installs golangci-lint v2.6.2 with the same toolchain, and executes the linter so the binary matches the module's target version.
+      Builds a Go {{.src_dir}} workspace inside a Go 1.25.4 container, installs golangci-lint v2.6.2 with the same toolchain, and executes the linter so the binary matches the module's target version.
     cmds:
       - |
         set -euo pipefail
-        echo "Linting Go sources under {{.src_dir}} with Go 1.25"
-        docker run --rm -v "$(pwd)/{{.src_dir}}:/workspace" -w /workspace golang:1.25.1 bash -c '
+        echo "Linting Go sources under {{.src_dir}} with Go 1.25.4"
+        docker run --rm -v "$(pwd)/{{.src_dir}}:/workspace" -w /workspace {{.golang_image}} bash -c '
           set -euo pipefail
           export PATH=$PATH:/usr/local/go/bin
           mkdir -p /tmp/bin
@@ -96,7 +100,7 @@ tasks:
       Ensures the API contract at api/api.yml is valid and consistent.
     cmds:
       - echo "Linting OpenAPI specification"
-      - docker run --rm -v ./api/:/spec redocly/cli lint api.yml
+      - docker run --rm -v ./api/:/spec {{.redocly_cli_image}} lint api.yml
 
   lint-proto:
     desc: "Lint protobuf specs with buf"
@@ -104,7 +108,7 @@ tasks:
       Validates the protobuf definitions in {{.proto_dir}} using buf lint.
     cmds:
       - echo "Linting protobuf specifications"
-      - docker run --rm -v "$(pwd)/{{.proto_dir}}:/workspace" -w /workspace bufbuild/buf:latest lint
+      - docker run --rm -v "$(pwd)/{{.proto_dir}}:/workspace" -w /workspace {{.buf_image}} lint
 
   build-oapi-codegen-image:
     desc: "Build the local oapi-codegen helper image"
@@ -123,7 +127,7 @@ tasks:
       - gen-schema-index
     cmds:
       - echo "Bundling OpenAPI spec and generating server interfaces"
-      - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/gen/openapi.json --ext json
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace {{.redocly_cli_image}} bundle api/api.yml --output src/internal/server/gen/openapi.json --ext json
       - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/gen/openapi.json
       - rm src/internal/server/gen/openapi.json
       - echo "Server interfaces generated under src/internal/server/gen"
@@ -155,7 +159,7 @@ tasks:
       - echo "Ensuring protobuf output directory exists"
       - mkdir -p ./src/internal/domain
       - echo "Generating protobuf code with buf"
-      - docker run --rm -u "$(id -u):$(id -g)" -e BUF_CACHE_DIR=/tmp/buf-cache -v "$(pwd):/workspace" -w /workspace/proto bufbuild/buf:1.45.0 generate
+      - docker run --rm -u "$(id -u):$(id -g)" -e BUF_CACHE_DIR=/tmp/buf-cache -v "$(pwd):/workspace" -w /workspace/proto {{.buf_image}} generate
       - echo "Protobuf code generated under ./src/internal/domain"
     silent: true
 
@@ -165,7 +169,7 @@ tasks:
       Provides a language-level breakdown of the repository.
     cmds:
       - echo "Gathering source code statistics"
-      - docker run --rm -it -v "$PWD:/pwd" ghcr.io/lhoupert/scc:master scc /pwd
+      - docker run --rm -it -v "$PWD:/pwd" {{.scc_image}} scc /pwd
 
   git:web:
     desc: "Open the configured git remote in a browser"
