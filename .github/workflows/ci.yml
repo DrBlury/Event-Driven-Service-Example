@@ -1,0 +1,86 @@
+name: Service CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GO_VERSION_FILE: src/go.mod
+
+jobs:
+  lint_api:
+    name: Lint OpenAPI Specification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Install Task
+        run: |
+          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Lint API definition
+        run: task lint-api
+
+  build_api:
+    name: Build OpenAPI Artifacts
+    runs-on: ubuntu-latest
+    needs: lint_api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Install Task
+        run: |
+          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Generate server bindings
+        run: task gen-api-std
+
+  generate_protobuf:
+    name: Generate Protobuf Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Install Task
+        run: |
+          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Generate protobuf artifacts
+        run: task gen-buf
+      - name: Ensure protobuf output committed
+        run: |
+          git status --short
+          git diff --quiet
+
+  lint_go:
+    name: Lint Go Sources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Install Task
+        run: |
+          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Run golangci-lint via Task
+        run: task lint-go
+
+  build_go:
+    name: Build Go Module
+    runs-on: ubuntu-latest
+    needs: lint_go
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+      - name: Set up Go
+        uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+      - name: Download modules
+        working-directory: src
+        run: go mod download
+      - name: Build
+        working-directory: src
+        run: go build ./...
