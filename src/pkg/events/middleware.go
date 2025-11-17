@@ -1,7 +1,6 @@
 package events
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +11,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 // MiddlewareBuilder constructs a handler middleware using the provided service instance.
@@ -153,7 +154,7 @@ func RecovererMiddleware() MiddlewareRegistration {
 
 // RegisterMiddleware attaches the supplied middleware to the router.
 func (s *Service) RegisterMiddleware(cfg MiddlewareRegistration) error {
-	if s.Router == nil {
+	if s.router == nil {
 		return errors.New("router is not initialised")
 	}
 
@@ -175,7 +176,7 @@ func (s *Service) RegisterMiddleware(cfg MiddlewareRegistration) error {
 		return nil
 	}
 
-	s.Router.AddMiddleware(mw)
+	s.router.AddMiddleware(mw)
 	return nil
 }
 
@@ -219,7 +220,7 @@ func (s *Service) protoValidateMiddleware() message.HandlerMiddleware {
 			}
 
 			protoMsg := newProtoFunc()
-			if err := json.Unmarshal(msg.Payload, protoMsg); err != nil {
+			if err := jsonutil.Unmarshal(msg.Payload, protoMsg); err != nil {
 				slog.Error("failed to unmarshal protobuf message", "error", err, "event_message_schema", eventType)
 				return nil, &UnprocessableEventError{
 					eventMessage: string(msg.Payload),
@@ -243,12 +244,12 @@ func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) (messa
 	if s.Conf == nil {
 		return nil, errors.New("service config is required for poison queue middleware")
 	}
-	if s.Publisher == nil {
+	if s.publisher == nil {
 		return nil, errors.New("publisher is required for poison queue middleware")
 	}
 
 	mw, err := middleware.PoisonQueueWithFilter(
-		s.Publisher,
+		s.publisher,
 		s.Conf.PoisonQueue,
 		filter,
 	)

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/pkg/events"
 )
 
 func (a *AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {
@@ -31,7 +32,7 @@ func (a *AppLogic) EmitSignupEvent(ctx context.Context, signup *domain.Signup) e
 		return errors.New("signup topic not configured")
 	}
 
-	metadata := map[string]string{
+	metadata := events.Metadata{
 		"source": "api.signup",
 	}
 

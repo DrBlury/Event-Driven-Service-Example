@@ -58,7 +58,7 @@ func (s *Service) createAwsPublisher(logger watermill.LoggerAdapter, cfg *aws.Co
 
 	topicResolver := s.mustCreateTopicResolver(accountID, region)
 	publisherConfig := s.buildPublisherConfig(cfg, topicResolver)
-	s.Publisher = s.mustCreatePublisher(publisherConfig, logger)
+	s.publisher = s.mustCreatePublisher(publisherConfig, logger)
 }
 
 func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.Config) {
@@ -100,7 +100,7 @@ func (s *Service) createAwsSubscriber(logger watermill.LoggerAdapter, cfg *aws.C
 		panic(err)
 	}
 
-	s.Subscriber = subscriber
+	s.subscriber = subscriber
 }
 
 func addEndpointResolver(cfg *aws.Config, snsOpts []func(*amazonsns.Options), sqsOpts []func(*amazonsqs.Options)) ([]func(*amazonsns.Options), []func(*amazonsqs.Options)) {

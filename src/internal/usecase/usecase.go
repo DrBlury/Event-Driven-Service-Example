@@ -55,7 +55,7 @@ func (a *AppLogic) SetEventProducer(producer events.Producer) {
 }
 
 // PublishEvent emits the supplied payload to the configured topic with optional metadata.
-func (a *AppLogic) PublishEvent(ctx context.Context, topic string, payload proto.Message, metadata map[string]string) error {
+func (a *AppLogic) PublishEvent(ctx context.Context, topic string, payload proto.Message, metadata events.Metadata) error {
 	if a == nil {
 		return errors.New("applogic is nil")
 	}

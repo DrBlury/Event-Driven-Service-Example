@@ -16,12 +16,12 @@ var protoJSONMarshalOptions = protojson.MarshalOptions{
 
 // Producer emits proto-based events onto the configured transport.
 type Producer interface {
-	PublishProto(ctx context.Context, topic string, event proto.Message, metadata map[string]string) error
+	PublishProto(ctx context.Context, topic string, event proto.Message, metadata Metadata) error
 }
 
 // NewMessageFromProto converts the provided proto message into a Watermill message with
 // the standard metadata required by the event pipeline.
-func NewMessageFromProto(event proto.Message, metadata map[string]string) (*message.Message, error) {
+func NewMessageFromProto(event proto.Message, metadata Metadata) (*message.Message, error) {
 	if event == nil {
 		return nil, errors.New("event payload is required")
 	}
@@ -32,13 +32,13 @@ func NewMessageFromProto(event proto.Message, metadata map[string]string) (*mess
 	}
 
 	msg := message.NewMessage(CreateULID(), payload)
-	msg.Metadata = cloneMetadata(metadata)
+	msg.Metadata = metadataToWatermill(metadata)
 	msg.Metadata["event_message_schema"] = fmt.Sprintf("%T", event)
 	return msg, nil
 }
 
 // PublishProto marshals the proto payload and publishes it to the provided topic.
-func PublishProto(ctx context.Context, publisher message.Publisher, topic string, event proto.Message, metadata map[string]string) error {
+func PublishProto(ctx context.Context, publisher message.Publisher, topic string, event proto.Message, metadata Metadata) error {
 	if publisher == nil {
 		return errors.New("publisher is required")
 	}
@@ -60,22 +60,21 @@ func PublishProto(ctx context.Context, publisher message.Publisher, topic string
 
 // PublishProto emits the event using the Service publisher so HTTP handlers can
 // create events without touching the internal Watermill APIs directly.
-func (s *Service) PublishProto(ctx context.Context, topic string, event proto.Message, metadata map[string]string) error {
+func (s *Service) PublishProto(ctx context.Context, topic string, event proto.Message, metadata Metadata) error {
 	if s == nil {
 		return errors.New("event service is nil")
 	}
-	return PublishProto(ctx, s.Publisher, topic, event, metadata)
+	return PublishProto(ctx, s.publisher, topic, event, metadata)
 }
 
-func cloneMetadata(metadata map[string]string) message.Metadata {
+func metadataToWatermill(metadata Metadata) message.Metadata {
 	if len(metadata) == 0 {
 		return message.Metadata{}
 	}
 
-	cloned := make(message.Metadata, len(metadata))
+	wm := make(message.Metadata, len(metadata))
 	for k, v := range metadata {
-		cloned[k] = v
+		wm[k] = v
 	}
-
-	return cloned
+	return wm
 }

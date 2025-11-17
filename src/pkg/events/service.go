@@ -45,9 +45,9 @@ type ServiceDependencies struct {
 // Service wires a Watermill router, publisher, subscriber, and middleware chain.
 type Service struct {
 	Conf       *Config
-	Publisher  message.Publisher
-	Subscriber message.Subscriber
-	Router     *message.Router
+	publisher  message.Publisher
+	subscriber message.Subscriber
+	router     *message.Router
 	Logger     watermill.LoggerAdapter
 
 	validator ProtoValidator
@@ -82,8 +82,8 @@ func NewService(conf *Config, log *slog.Logger, ctx context.Context, deps Servic
 		panic(err)
 	}
 
-	s.Router = router
-	s.Router.AddPlugin(plugin.SignalsHandler)
+	s.router = router
+	s.router.AddPlugin(plugin.SignalsHandler)
 
 	s.registerConfiguredMiddlewares(deps)
 
@@ -92,7 +92,7 @@ func NewService(conf *Config, log *slog.Logger, ctx context.Context, deps Servic
 
 // Start runs the underlying Watermill router until the provided context is cancelled.
 func (s *Service) Start(ctx context.Context) error {
-	return routerRun(s.Router, ctx)
+	return routerRun(s.router, ctx)
 }
 
 func setupPubSub(s *Service, conf *Config, logger watermill.LoggerAdapter, ctx context.Context) {

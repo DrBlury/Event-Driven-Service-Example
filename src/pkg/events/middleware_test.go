@@ -148,7 +148,7 @@ func TestPoisonMiddlewareWithFilter(t *testing.T) {
 
 	svc := &Service{
 		Conf:      &Config{PoisonQueue: "poison"},
-		Publisher: &testPublisher{},
+		publisher: &testPublisher{},
 	}
 	mw, err := svc.poisonMiddlewareWithFilter(func(err error) bool { return true })
 	if err != nil {
@@ -156,7 +156,7 @@ func TestPoisonMiddlewareWithFilter(t *testing.T) {
 	}
 	msg := message.NewMessage(CreateULID(), nil)
 	msg.Metadata = message.Metadata{}
-	pub := svc.Publisher.(*testPublisher)
+	pub := svc.publisher.(*testPublisher)
 	_, _ = mw(func(m *message.Message) ([]*message.Message, error) {
 		return nil, errors.New("boom")
 	})(msg)
@@ -165,7 +165,7 @@ func TestPoisonMiddlewareWithFilter(t *testing.T) {
 	}
 
 	t.Run("returns error when middleware creation fails", func(t *testing.T) {
-		svc := &Service{Conf: &Config{}, Publisher: nil}
+		svc := &Service{Conf: &Config{}, publisher: nil}
 		if _, err := svc.poisonMiddlewareWithFilter(func(error) bool { return false }); err == nil {
 			t.Fatal("expected error when poison queue misconfigured")
 		}
@@ -365,7 +365,7 @@ func TestRegisterMiddlewareValidations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("router init failed: %v", err)
 		}
-		svc := &Service{Router: router}
+		svc := &Service{router: router}
 		if err := svc.RegisterMiddleware(MiddlewareRegistration{}); err == nil {
 			t.Fatal("expected error when registration empty")
 		}
@@ -376,7 +376,7 @@ func TestRegisterMiddlewareValidations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("router init failed: %v", err)
 		}
-		svc := &Service{Router: router}
+		svc := &Service{router: router}
 		called := false
 		err = svc.RegisterMiddleware(MiddlewareRegistration{
 			Builder: func(*Service) (message.HandlerMiddleware, error) {

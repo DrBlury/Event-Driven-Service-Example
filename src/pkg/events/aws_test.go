@@ -98,7 +98,7 @@ func TestCreateAwsPublisherAccountFallbacks(t *testing.T) {
 	if recordedAccountIDs[1] != "000000000000" {
 		t.Fatalf("expected fallback account id, got %s", recordedAccountIDs[1])
 	}
-	if svc.Publisher != pub {
+	if svc.publisher != pub {
 		t.Fatal("publisher not assigned")
 	}
 }
@@ -169,7 +169,7 @@ func TestCreateAwsSubscriberFallbacks(t *testing.T) {
 	if recordedAccountIDs[0] != "000000000000" {
 		t.Fatalf("expected default account id, got %s", recordedAccountIDs[0])
 	}
-	if svc.Subscriber != sub {
+	if svc.subscriber != sub {
 		t.Fatal("subscriber not assigned")
 	}
 }

@@ -1,12 +1,14 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 // ErrorClassifierFunc inspects an error and returns the HTTP status that should
@@ -219,18 +221,19 @@ func (r *Responder) respondWithJSON(w http.ResponseWriter, req *http.Request, st
 		contentType = "application/json"
 	}
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(payload); err != nil {
+	data, err := jsonutil.Marshal(payload)
+	if err != nil {
 		r.logger().Error("failed to encode response", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if len(data) == 0 || data[len(data)-1] != '\n' {
+		data = append(data, '\n')
+	}
 
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
-	if _, err := w.Write(buf.Bytes()); err != nil {
+	if _, err := w.Write(data); err != nil {
 		r.logger().Error("failed to write response", "error", err)
 	}
 }
@@ -238,7 +241,14 @@ func (r *Responder) respondWithJSON(w http.ResponseWriter, req *http.Request, st
 // ReadRequestBody parses the request body into the provided value and handles
 // malformed content by returning a JSON error response.
 func (r *Responder) ReadRequestBody(w http.ResponseWriter, req *http.Request, v any) bool {
-	if err := json.NewDecoder(req.Body).Decode(v); err != nil {
+	if req == nil || req.Body == nil {
+		r.HandleBadRequestError(w, req, errors.New("request body is required"), "failed to parse request body")
+		return false
+	}
+	if err := jsonutil.Decode(req.Body, v); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
 		r.HandleBadRequestError(w, req, err, "failed to parse request body")
 		return false
 	}
