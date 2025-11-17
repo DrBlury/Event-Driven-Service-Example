@@ -121,7 +121,7 @@ tasks:
       - echo "Building protobuf generator image"
       - docker build -t drblury/protobuf-gen-go -f ./proto/Dockerfile .
       - echo "Running buf generate"
-      - docker run --rm -v $(pwd)/{{.proto_dir}}:/workspace --workdir /workspace drblury/protobuf-gen-go generate
+      - docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)/{{.proto_dir}}:/workspace" --workdir /workspace drblury/protobuf-gen-go generate
       - echo "Protobuf code generated under ./proto/_gen"
       - echo "Cleaning up existing generated .pb.go files in src/internal/domain"
       - find ./src/internal/domain -name "*.pb.go" -type f -delete
