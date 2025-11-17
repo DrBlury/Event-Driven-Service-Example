@@ -58,11 +58,26 @@ tasks:
 
   lint-go:
     desc: "Lint the Go sources with golangci-lint"
+    deps:
+      - gen-buf
     summary: |
       Runs golangci-lint inside its official container against the {{.src_dir}} module.
     cmds:
       - echo "Linting Go sources under {{.src_dir}}"
       - docker run --rm -v "./{{.src_dir}}:/code" golangci/golangci-lint:latest /bin/sh -c "cd /code && golangci-lint run"
+
+  build-go:
+    desc: "Build the Go module"
+    deps:
+      - gen-buf
+    summary: |
+      Regenerates protobuf bindings and compiles the Go module to ensure local builds match CI expectations.
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Building Go module under {{.src_dir}}"
+        cd ./{{.src_dir}}
+        go build ./...
 
   lint-api:
     desc: "Lint the OpenAPI definition with Redocly"
@@ -116,19 +131,13 @@ tasks:
   gen-buf:
     desc: "Generate Go code from protobuf definitions"
     summary: |
-      Builds the protobuf generator image, runs buf generate, and moves the results into src/internal/domain.
+      Runs buf generate inside the official container, writing Go sources straight into src/internal/domain.
     cmds:
-      - echo "Building protobuf generator image"
-      - docker build -t drblury/protobuf-gen-go -f ./proto/Dockerfile .
-      - echo "Running buf generate"
-      - docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)/{{.proto_dir}}:/workspace" --workdir /workspace drblury/protobuf-gen-go generate
-      - echo "Protobuf code generated under ./proto/_gen"
-      - echo "Cleaning up existing generated .pb.go files in src/internal/domain"
-      - find ./src/internal/domain -name "*.pb.go" -type f -delete
-      - echo "Moving generated sources into src/internal/domain"
-      - mv ./proto/_gen/* ./src/internal/domain/
-      - echo "Removing temporary generated directory"
-      - rm -rf ./proto/_gen
+      - echo "Ensuring protobuf output directory exists"
+      - mkdir -p ./src/internal/domain
+      - echo "Generating protobuf code with buf"
+      - docker run --rm -u "$(id -u):$(id -g)" -e BUF_CACHE_DIR=/tmp/buf-cache -v "$(pwd):/workspace" -w /workspace/proto bufbuild/buf:1.45.0 generate
+      - echo "Protobuf code generated under ./src/internal/domain"
     silent: true
 
   scc:

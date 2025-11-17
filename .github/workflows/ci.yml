@@ -38,22 +38,6 @@ jobs:
       - name: Generate server bindings
         run: task gen-api-std
 
-  generate_protobuf:
-    name: Generate Protobuf Code
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.0
-      - name: Install Task
-        run: |
-          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
-      - name: Generate protobuf artifacts
-        run: task gen-buf
-      - name: Ensure protobuf output committed
-        run: |
-          git status --short
-          git diff --quiet
-
   lint_go:
     name: Lint Go Sources
     runs-on: ubuntu-latest
@@ -78,9 +62,11 @@ jobs:
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
+      - name: Install Task
+        run: |
+          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
       - name: Download modules
         working-directory: src
         run: go mod download
       - name: Build
-        working-directory: src
-        run: go build ./...
+        run: task build-go
