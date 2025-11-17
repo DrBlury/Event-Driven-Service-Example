@@ -3,9 +3,6 @@
 # Run `go run ./scripts/update-schema-index.go` after adding schemas.
 
 # Enums
-ErrorType:
-  $ref: "./enum/ErrorType.yml"
-
 Status:
   $ref: "./enum/Status.yml"
 
@@ -21,9 +18,6 @@ Version:
   $ref: "./types/Version.yml"
 
 # Errors
-Error:
-  $ref: "./errors/Error.yml"
-
 ProblemDetails:
   $ref: "./errors/ProblemDetails.yml"
 

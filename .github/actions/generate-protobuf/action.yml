@@ -1,0 +1,22 @@
+name: Generate protobuf stubs
+description: Installs Buf tooling and regenerates protobuf assets.
+inputs:
+  github_token:
+    description: Token used by buf-setup-action when downloading plugins.
+    required: true
+  working_directory:
+    description: Directory containing buf.yaml / buf.gen.yaml files.
+    required: false
+    default: proto
+runs:
+  using: composite
+  steps:
+    - name: Set up Buf
+      uses: bufbuild/buf-setup-action@v1
+      with:
+        github_token: ${{ inputs.github_token }}
+
+    - name: Generate protobuf stubs
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: buf generate

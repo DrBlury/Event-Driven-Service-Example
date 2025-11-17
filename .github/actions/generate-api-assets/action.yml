@@ -1,0 +1,59 @@
+name: Generate API assets
+description: Bundles the OpenAPI spec and regenerates the Go server bindings.
+inputs:
+  openapi_spec:
+    description: Path to the root OpenAPI document to bundle.
+    required: false
+    default: api/api.yml
+  generated_dir:
+    description: Directory where intermediate bundled assets are placed.
+    required: false
+    default: src/internal/server/_gen
+  src_dir:
+    description: Go module directory that contains pkg/api config and generated output.
+    required: false
+    default: src
+  server_config:
+    description: Relative path (from src_dir) to the oapi-codegen config file.
+    required: false
+    default: pkg/api/server-std.cfg.yml
+runs:
+  using: composite
+  steps:
+    - name: Install API tooling
+      shell: bash
+      run: |
+        set -euo pipefail
+        npm install --global @redocly/cli@1
+        go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
+
+    - name: Regenerate schema index
+      shell: bash
+      run: go run ./scripts/update-schema-index.go
+
+    - name: Ensure schema index is committed
+      shell: bash
+      run: git diff --exit-code api/schemas/_index.yml
+
+    - name: Lint OpenAPI definition
+      shell: bash
+      run: redocly lint "${{ inputs.openapi_spec }}"
+
+    - name: Prepare generated directory
+      shell: bash
+      run: mkdir -p "${{ inputs.generated_dir }}"
+
+    - name: Bundle OpenAPI spec
+      shell: bash
+      run: |
+        set -euo pipefail
+        redocly bundle "${{ inputs.openapi_spec }}" --output "${{ inputs.generated_dir }}/openapi.json" --ext json
+
+    - name: Generate server bindings
+      shell: bash
+      run: |
+        set -euo pipefail
+        pushd "${{ inputs.src_dir }}" >/dev/null
+        oapi-codegen -config "./${{ inputs.server_config }}" ./internal/server/_gen/openapi.json
+        rm ./internal/server/_gen/openapi.json
+        popd >/dev/null

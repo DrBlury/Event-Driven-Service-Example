@@ -30,32 +30,8 @@ jobs:
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
 
-      - name: Install API tooling
-        run: |
-          npm install --global @redocly/cli@1
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
-
-      - name: Regenerate schema index
-        run: go run ./scripts/update-schema-index.go
-
-      - name: Ensure schema index is committed
-        run: git diff --exit-code api/schemas/_index.yml
-
-      - name: Lint OpenAPI definition
-        run: redocly lint api/api.yml
-
-      - name: Prepare generated directory
-        run: mkdir -p src/internal/server/_gen
-
-      - name: Bundle OpenAPI spec
-        run: redocly bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
-
-      - name: Generate server bindings
-        working-directory: src
-        run: |
-          set -euo pipefail
-          oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
-          rm ./internal/server/_gen/openapi.json
+      - name: Generate API assets
+        uses: ./.github/actions/generate-api-assets
 
   go_module:
     name: Lint & Build Go Module
@@ -70,25 +46,25 @@ jobs:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
 
-      - name: Set up Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate protobuf stubs
+        uses: ./.github/actions/generate-protobuf
         with:
           github_token: ${{ github.token }}
 
-      - name: Generate protobuf stubs
-        working-directory: proto
-        run: buf generate
+      - name: Generate API assets
+        uses: ./.github/actions/generate-api-assets
 
       - name: Download modules
         working-directory: src
         run: go mod download
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.2
-
       - name: Run golangci-lint
-        working-directory: src
-        run: golangci-lint run ./...
+        uses: ./.github/actions/run-golangci-lint
 
       - name: Build Go module
         working-directory: src
