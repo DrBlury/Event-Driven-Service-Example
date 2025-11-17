@@ -1,6 +1,7 @@
----
+$id: "https://csr.sh/schemas/types/Version"
+title: Version Metadata
 type: object
-description: This object holds the API version data.
+description: Machine-readable build information served by the info endpoints.
 properties:
   version:
     type: string
@@ -17,7 +18,7 @@ properties:
   commitHash:
     type: string
     description: The hash of the commit
-    example: '0d1444adb917eacc71321f1281904f71c5e378ca'
+    example: "0d1444adb917eacc71321f1281904f71c5e378ca"
   commitDate:
     type: string
     description: The date of the commit
@@ -36,3 +37,4 @@ required:
   - details
   - commitHash
   - commitDate
+additionalProperties: false

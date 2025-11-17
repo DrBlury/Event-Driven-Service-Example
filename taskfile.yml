@@ -90,6 +90,8 @@ tasks:
 
   lint-api:
     desc: "Lint the OpenAPI definition with Redocly"
+    deps:
+      - gen-schema-index
     summary: |
       Ensures the API contract at api/api.yml is valid and consistent.
     cmds:
@@ -118,6 +120,7 @@ tasks:
       Bundles the OpenAPI spec with Redocly, runs oapi-codegen against the generated JSON, and removes intermediate artifacts.
     deps:
       - build-oapi-codegen-image
+      - gen-schema-index
     cmds:
       - echo "Bundling OpenAPI spec and generating server interfaces"
       - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/gen/openapi.json --ext json
@@ -136,6 +139,13 @@ tasks:
     cmds:
       - echo "OpenAPI assets linted and regenerated"
     silent: true
+
+  gen-schema-index:
+    desc: "Regenerate the schema index from the existing fragments"
+    summary: |
+      Walks api/schemas/** and rewrites _index.yml so every reference matches an actual schema file before linting or codegen.
+    cmds:
+      - go run ./scripts/update-schema-index.go
 
   gen-buf:
     desc: "Generate Go code from protobuf definitions"

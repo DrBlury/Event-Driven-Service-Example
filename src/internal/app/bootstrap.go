@@ -55,6 +55,10 @@ func initializeMetrics(ctx context.Context, cfg *Config, logger *slog.Logger) er
 	if cfg == nil || cfg.Metrics == nil {
 		return nil
 	}
+	if !cfg.Metrics.Enabled {
+		logger.Debug("metrics disabled, skipping initialization")
+		return nil
+	}
 	if err := metrics.NewOtelMetrics(ctx, cfg.Metrics, logger); err != nil {
 		logger.Error("failed to initialize metrics", "error", err)
 		return err

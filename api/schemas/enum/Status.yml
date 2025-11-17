@@ -1,9 +1,10 @@
----
+$id: "https://csr.sh/schemas/enum/Status"
+title: API Status
 type: string
-description: The status of the API
+description: Canonical health values reported by the info and probe endpoints.
 enum:
   - HEALTHY
   - UNHEALTHY
   - UNKNOWN
 
-example: 'HEALTHY'
+example: "HEALTHY"

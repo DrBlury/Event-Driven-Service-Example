@@ -35,6 +35,12 @@ jobs:
           npm install --global @redocly/cli@1
           go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
 
+      - name: Regenerate schema index
+        run: go run ./scripts/update-schema-index.go
+
+      - name: Ensure schema index is committed
+        run: git diff --exit-code api/schemas/_index.yml
+
       - name: Lint OpenAPI definition
         run: redocly lint api/api.yml
 

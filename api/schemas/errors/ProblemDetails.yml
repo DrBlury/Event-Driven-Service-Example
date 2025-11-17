@@ -1,4 +1,5 @@
----
+$id: "https://csr.sh/schemas/errors/ProblemDetails"
+title: Problem Details
 type: object
 description: Problem Details object as defined by RFC 9457.
 properties:
@@ -37,6 +38,7 @@ properties:
 required:
   - status
   - title
+additionalProperties: false
 example:
   type: "https://httpstatuses.io/404"
   title: Resource not found

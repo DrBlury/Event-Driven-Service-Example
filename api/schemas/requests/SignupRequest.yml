@@ -1,5 +1,7 @@
----
+$id: "https://csr.sh/schemas/requests/SignupRequest"
+title: Signup Request
 type: object
+description: Minimal payload for the example signup workflow.
 properties:
   someData:
     type: string
@@ -7,3 +9,6 @@ properties:
 
 required:
   - someData
+additionalProperties: false
+example:
+  someData: demo payload

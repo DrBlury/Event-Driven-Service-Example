@@ -1,18 +1,19 @@
 ---
-openapi: '3.0.3'
+openapi: "3.1.1"
+jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema"
 info:
   title: POC Event Signup
   description: Example API for event driven signup
   version: latest
   license:
     name: unlicense
-    url: 'http://unlicense.org/'
+    url: "http://unlicense.org/"
   contact:
-    name: LYNQTECH GmbH
-    url: https://cs.lynq.tech/
+    name: Julian Bensch
+    url: "https://csr.sh/contact"
 
 servers:
-  - url: ''
+  - url: "/"
     description: This server
 
 components:
@@ -23,4 +24,4 @@ components:
       bearerFormat: JWT
 
 paths:
-  $ref: './resources/_index.yml'
+  $ref: "./resources/_index.yml"

@@ -1,4 +1,5 @@
----
+$id: "https://csr.sh/schemas/types/ProbeStatus"
+title: Probe Status
 type: object
 description: Outcome payload for service health probes.
 properties:
@@ -13,5 +14,6 @@ properties:
       type: string
 required:
   - status
+additionalProperties: false
 example:
   status: ok

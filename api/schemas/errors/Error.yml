@@ -1,6 +1,7 @@
----
+$id: "https://csr.sh/schemas/errors/Error"
+title: Legacy Error Wrapper
 type: object
-description: This object holds the error response data.
+description: Historic error envelope used by legacy endpoints.
 properties:
   errorId:
     type: string
@@ -11,7 +12,7 @@ properties:
     description: The error message
     example: The item does not exist
   errorType:
-    $ref: '../enum/ErrorType.yml'
+    $ref: "../enum/ErrorType.yml"
   code:
     type: integer
     description: The error code
@@ -20,7 +21,7 @@ properties:
     type: string
     format: rfc3339
     description: The time the error occurred
-    example: '2020-01-01T12:00:00Z'
+    example: "2020-01-01T12:00:00Z"
 
 example:
   errorId: 123e4567-e89b-12d3-a456-426614174000
@@ -35,3 +36,4 @@ required:
   - errorType
   - code
   - timestamp
+additionalProperties: false
