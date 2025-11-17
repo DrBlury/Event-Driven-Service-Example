@@ -111,10 +111,10 @@ tasks:
       - build-oapi-codegen-image
     cmds:
       - echo "Bundling OpenAPI spec and generating server interfaces"
-      - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
-      - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
-      - rm src/internal/server/_gen/openapi.json
-      - echo "Server interfaces generated under src/internal/server/_gen"
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace redocly/cli bundle api/api.yml --output src/internal/server/gen/openapi.json --ext json
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/gen/openapi.json
+      - rm src/internal/server/gen/openapi.json
+      - echo "Server interfaces generated under src/internal/server/gen"
     silent: true
 
   gen-api:

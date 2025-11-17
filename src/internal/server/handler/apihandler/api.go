@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"drblury/event-driven-service/internal/domain"
-	generatedAPI "drblury/event-driven-service/internal/server/_gen"
+	generator "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/api"
 	"log/slog"
@@ -42,7 +42,7 @@ func NewAPIHandler(
 	)
 
 	swaggerProvider := func() ([]byte, error) {
-		swagger, err := generatedAPI.GetSwagger()
+		swagger, err := generator.GetSwagger()
 		if err != nil {
 			return nil, err
 		}

@@ -8,7 +8,7 @@ import (
 	"log/slog"
 
 	"drblury/event-driven-service/internal/server"
-	generatedAPI "drblury/event-driven-service/internal/server/_gen"
+	generator "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/router"
@@ -20,10 +20,10 @@ import (
 func buildHTTPServer(cfg *Config, appLogic *usecase.AppLogic, logger *slog.Logger) (*server.Server, error) {
 	apiHandler := apihandler.NewAPIHandler(appLogic, cfg.Info, logger, cfg.Server.BaseURL)
 
-	handler := generatedAPI.HandlerFromMux(apiHandler, nil)
+	handler := generator.HandlerFromMux(apiHandler, nil)
 	handler = otelhttp.NewHandler(handler, "/")
 
-	swagger, err := generatedAPI.GetSwagger()
+	swagger, err := generator.GetSwagger()
 	if err != nil {
 		logger.Error("failed to get swagger", "error", err)
 		return nil, err

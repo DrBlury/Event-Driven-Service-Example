@@ -13,60 +13,76 @@ env:
   GO_VERSION_FILE: src/go.mod
 
 jobs:
-  lint_api:
-    name: Lint OpenAPI Specification
+  api_assets:
+    name: Validate & Generate API Assets
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5.0.0
-      - name: Install Task
-        run: |
-          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
-      - name: Lint API definition
-        run: task lint-api
 
-  build_api:
-    name: Build OpenAPI Artifacts
-    runs-on: ubuntu-latest
-    needs: lint_api
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.0
-      - name: Install Task
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Go
+        uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+
+      - name: Install API tooling
         run: |
-          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+          npm install --global @redocly/cli@1
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
+
+      - name: Lint OpenAPI definition
+        run: redocly lint api/api.yml
+
+      - name: Prepare generated directory
+        run: mkdir -p src/internal/server/_gen
+
+      - name: Bundle OpenAPI spec
+        run: redocly bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
+
       - name: Generate server bindings
-        run: task gen-api-std
-
-  lint_go:
-    name: Lint Go Sources
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.0
-      - name: Install Task
+        working-directory: src
         run: |
-          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
-      - name: Run golangci-lint via Task
-        run: task lint-go
+          set -euo pipefail
+          oapi-codegen -config ./pkg/api/server-std.cfg.yml ./internal/server/_gen/openapi.json
+          rm ./internal/server/_gen/openapi.json
 
-  build_go:
-    name: Build Go Module
+  go_module:
+    name: Lint & Build Go Module
     runs-on: ubuntu-latest
-    needs: lint_go
     steps:
       - name: Checkout
         uses: actions/checkout@v5.0.0
+
       - name: Set up Go
         uses: actions/setup-go@v6.0.0
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
-      - name: Install Task
-        run: |
-          curl -sL https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Generate protobuf stubs
+        working-directory: proto
+        run: buf generate
+
       - name: Download modules
         working-directory: src
         run: go mod download
-      - name: Build
-        run: task build-go
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61.0
+          working-directory: src
+
+      - name: Build Go module
+        working-directory: src
+        run: go build ./...

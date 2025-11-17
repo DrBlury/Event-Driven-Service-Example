@@ -1,5 +1,5 @@
 package: server
-output: ./internal/server/_gen/api.gen.go
+output: ./internal/server/gen/api.gen.go
 generate:
   embedded-spec: true
   strict-server: true
