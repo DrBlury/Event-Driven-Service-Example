@@ -15,33 +15,47 @@ import (
 // ProtoHandlerRegistration configures a typed protobuf handler that automatically
 // unmarshals incoming payloads and marshals emitted events.
 type ProtoHandlerRegistration[T proto.Message] struct {
-	Name             string
-	ConsumeQueue     string
-	Subscriber       message.Subscriber
-	PublishQueue     string
-	Publisher        message.Publisher
-	MessagePrototype T
-	Handler          ProtoMessageHandler[T]
+	Name               string
+	ConsumeQueue       string
+	PublishQueue       string
+	ConsumeMessageType T
+	Handler            ProtoMessageHandler[T]
+	PublishMessageType proto.Message
+	Options            []ProtoHandlerOption
+	ValidateOutgoing   bool
+}
+
+// ProtoHandlerOption customises handler registration.
+type ProtoHandlerOption func(*protoHandlerOptions)
+
+type protoHandlerOptions struct {
+	additionalPublishTypes []proto.Message
+}
+
+// WithPublishMessageTypes registers extra proto schemas emitted by this handler.
+// Use this when the handler may emit multiple message types.
+func WithPublishMessageTypes(msgs ...proto.Message) ProtoHandlerOption {
+	return func(cfg *protoHandlerOptions) {
+		cfg.additionalPublishTypes = append(cfg.additionalPublishTypes, msgs...)
+	}
 }
 
 // ProtoMessageContext provides strongly typed access to the incoming message payload
-// while preserving the underlying Watermill message for advanced scenarios.
 type ProtoMessageContext[T proto.Message] struct {
 	Payload  T
-	Metadata message.Metadata
-	Message  *message.Message
+	Metadata Metadata
 }
 
 // CloneMetadata returns a copy of the current metadata map so handlers can safely
 // mutate headers for outgoing events without touching the original map.
-func (c ProtoMessageContext[T]) CloneMetadata() map[string]string {
-	return cloneMetadata(c.Metadata)
+func (c ProtoMessageContext[T]) CloneMetadata() Metadata {
+	return c.Metadata.clone()
 }
 
 // ProtoMessageOutput describes an event that should be emitted after the handler succeeds.
 type ProtoMessageOutput struct {
 	Message  proto.Message
-	Metadata map[string]string
+	Metadata Metadata
 }
 
 // ProtoMessageHandler processes a typed protobuf payload and returns the events to emit.
@@ -53,28 +67,49 @@ func RegisterProtoHandler[T proto.Message](svc *Service, cfg ProtoHandlerRegistr
 		return errors.New("event service is required")
 	}
 
-	wrapped, err := buildProtoHandler(cfg.MessagePrototype, cfg.Handler)
+	extra := protoHandlerOptions{}
+	for _, opt := range cfg.Options {
+		if opt != nil {
+			opt(&extra)
+		}
+	}
+
+	var validate func(proto.Message) error
+	if cfg.ValidateOutgoing && svc.validator != nil {
+		validate = svc.validator.Validate
+	}
+
+	wrapped, err := buildProtoHandler(cfg.ConsumeMessageType, cfg.Handler, validate)
 	if err != nil {
 		return err
 	}
 
-	return svc.RegisterHandler(HandlerRegistration{
-		Name:             cfg.Name,
-		ConsumeQueue:     cfg.ConsumeQueue,
-		Subscriber:       cfg.Subscriber,
-		PublishQueue:     cfg.PublishQueue,
-		Publisher:        cfg.Publisher,
-		Handler:          wrapped,
-		MessagePrototype: cfg.MessagePrototype,
-	})
+	if err := svc.registerHandler(handlerRegistration{
+		Name:               cfg.Name,
+		ConsumeQueue:       cfg.ConsumeQueue,
+		PublishQueue:       cfg.PublishQueue,
+		Handler:            wrapped,
+		consumeMessageType: cfg.ConsumeMessageType,
+	}); err != nil {
+		return err
+	}
+
+	if cfg.PublishMessageType != nil {
+		svc.registerProtoType(cfg.PublishMessageType)
+	}
+	for _, emitted := range extra.additionalPublishTypes {
+		svc.registerProtoType(emitted)
+	}
+
+	return nil
 }
 
-func buildProtoHandler[T proto.Message](prototype T, handler ProtoMessageHandler[T]) (message.HandlerFunc, error) {
+func buildProtoHandler[T proto.Message](prototype T, handler ProtoMessageHandler[T], validate func(proto.Message) error) (message.HandlerFunc, error) {
 	if handler == nil {
 		return nil, errors.New("proto handler function is required")
 	}
 	if isNilProto(prototype) {
-		return nil, errors.New("message prototype is required")
+		return nil, errors.New("consume message type is required")
 	}
 
 	return func(msg *message.Message) ([]*message.Message, error) {
@@ -89,13 +124,23 @@ func buildProtoHandler[T proto.Message](prototype T, handler ProtoMessageHandler
 
 		ctx := ProtoMessageContext[T]{
 			Payload:  typed,
-			Metadata: msg.Metadata,
-			Message:  msg,
+			Metadata: metadataFromWatermill(msg.Metadata),
 		}
 
 		outgoing, err := handler(msg.Context(), ctx)
 		if err != nil {
 			return nil, err
+		}
+
+		if validate != nil {
+			for _, out := range outgoing {
+				if out.Message == nil {
+					return nil, errors.New("proto handler emitted nil message")
+				}
+				if err := validate(out.Message); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		return convertProtoOutputs(outgoing, ctx.Metadata)
@@ -105,7 +150,7 @@ func buildProtoHandler[T proto.Message](prototype T, handler ProtoMessageHandler
 func clonePrototype[T proto.Message](prototype T) (T, error) {
 	if isNilProto(prototype) {
 		var zero T
-		return zero, errors.New("message prototype is required")
+		return zero, errors.New("consume message type is required")
 	}
 
 	cloned := proto.Clone(prototype)
@@ -120,17 +165,13 @@ func clonePrototype[T proto.Message](prototype T) (T, error) {
 	return typed, nil
 }
 
-func convertProtoOutputs(outputs []ProtoMessageOutput, fallback message.Metadata) ([]*message.Message, error) {
+func convertProtoOutputs(outputs []ProtoMessageOutput, fallback Metadata) ([]*message.Message, error) {
 	if len(outputs) == 0 {
 		return nil, nil
 	}
 
 	result := make([]*message.Message, len(outputs))
 	for i, out := range outputs {
-		if out.Message == nil {
-			return nil, errors.New("proto handler emitted nil message")
-		}
-
 		metadata := out.Metadata
 		if metadata == nil {
 			metadata = fallback

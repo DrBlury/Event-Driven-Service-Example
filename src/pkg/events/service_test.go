@@ -57,16 +57,16 @@ func TestNewServiceConfiguresKafka(t *testing.T) {
 	logger := newTestLogger()
 	svc := NewService(cfg, logger, context.Background(), ServiceDependencies{})
 
-	if svc.Publisher != pub {
+	if svc.publisher != pub {
 		t.Fatalf("expected kafka publisher to be assigned")
 	}
-	if svc.Subscriber != sub {
+	if svc.subscriber != sub {
 		t.Fatalf("expected kafka subscriber to be assigned")
 	}
 	if svc.Conf != cfg {
 		t.Fatalf("service config not set")
 	}
-	if svc.Router == nil {
+	if svc.router == nil {
 		t.Fatal("router should not be nil")
 	}
 	if recordedPublishConfigs == 0 || recordedSubscribeConfigs == 0 {
@@ -116,10 +116,10 @@ func TestNewServiceConfiguresRabbitMQ(t *testing.T) {
 	}
 	svc := NewService(cfg, newTestLogger(), context.Background(), ServiceDependencies{})
 
-	if svc.Publisher != pub {
+	if svc.publisher != pub {
 		t.Fatalf("expected rabbit publisher assignment")
 	}
-	if svc.Subscriber != sub {
+	if svc.subscriber != sub {
 		t.Fatalf("expected rabbit subscriber assignment")
 	}
 	if connCalls != 1 {
@@ -171,10 +171,10 @@ func TestNewServiceConfiguresAWS(t *testing.T) {
 	}
 	svc := NewService(cfg, newTestLogger(), context.Background(), ServiceDependencies{})
 
-	if svc.Publisher != pub {
+	if svc.publisher != pub {
 		t.Fatalf("expected aws publisher assignment")
 	}
-	if svc.Subscriber != sub {
+	if svc.subscriber != sub {
 		t.Fatalf("expected aws subscriber assignment")
 	}
 }
@@ -203,7 +203,7 @@ func TestServiceStartReturnsWhenContextCancelled(t *testing.T) {
 		<-runCtx.Done()
 		return runCtx.Err()
 	}
-	svc := &Service{Router: nil}
+	svc := &Service{router: nil}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
@@ -237,7 +237,7 @@ func TestRegisterHandlerValidations(t *testing.T) {
 func testRegisterHandlerValidationsMissingHandler(t *testing.T) {
 	t.Helper()
 	svc := newTestService(t)
-	if err := svc.RegisterHandler(HandlerRegistration{ConsumeQueue: "queue"}); err == nil {
+	if err := svc.registerHandler(handlerRegistration{ConsumeQueue: "queue"}); err == nil {
 		t.Fatal("expected error when handler nil")
 	}
 }
@@ -245,7 +245,7 @@ func testRegisterHandlerValidationsMissingHandler(t *testing.T) {
 func testRegisterHandlerValidationsMissingQueue(t *testing.T) {
 	t.Helper()
 	svc := newTestService(t)
-	err := svc.RegisterHandler(HandlerRegistration{Handler: func(msg *message.Message) ([]*message.Message, error) {
+	err := svc.registerHandler(handlerRegistration{Handler: func(msg *message.Message) ([]*message.Message, error) {
 		return nil, nil
 	}})
 	if err == nil {
@@ -256,7 +256,7 @@ func testRegisterHandlerValidationsMissingQueue(t *testing.T) {
 func testRegisterHandlerValidationsMissingName(t *testing.T) {
 	t.Helper()
 	svc := newTestService(t)
-	if err := svc.RegisterHandler(HandlerRegistration{
+	if err := svc.registerHandler(handlerRegistration{
 		ConsumeQueue: "queue",
 		Handler: func(msg *message.Message) ([]*message.Message, error) {
 			return nil, nil
@@ -270,17 +270,17 @@ func testRegisterHandlerValidationsAutonameFromProto(t *testing.T) {
 	t.Helper()
 	svc := newTestService(t)
 	msg := &structpb.Struct{}
-	if err := svc.RegisterHandler(HandlerRegistration{
-		ConsumeQueue:     "queue",
-		Handler:          func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
-		MessagePrototype: msg,
+	if err := svc.registerHandler(handlerRegistration{
+		ConsumeQueue:       "queue",
+		Handler:            func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
+		consumeMessageType: msg,
 	}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if _, ok := svc.protoRegistry["*structpb.Struct"]; !ok {
 		t.Fatalf("message prototype not registered")
 	}
-	handlers := svc.Router.Handlers()
+	handlers := svc.router.Handlers()
 	if _, ok := handlers["*structpb.Struct-Handler"]; !ok {
 		t.Fatalf("handler not registered with generated name")
 	}
@@ -289,14 +289,14 @@ func testRegisterHandlerValidationsAutonameFromProto(t *testing.T) {
 func testRegisterHandlerValidationsExplicitName(t *testing.T) {
 	t.Helper()
 	svc := newTestService(t)
-	if err := svc.RegisterHandler(HandlerRegistration{
+	if err := svc.registerHandler(handlerRegistration{
 		Name:         "custom",
 		ConsumeQueue: "queue",
 		Handler:      func(msg *message.Message) ([]*message.Message, error) { return nil, nil },
 	}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if _, ok := svc.Router.Handlers()["custom"]; !ok {
+	if _, ok := svc.router.Handlers()["custom"]; !ok {
 		t.Fatalf("handler not registered with explicit name")
 	}
 }
@@ -309,9 +309,9 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("router init failed: %v", err)
 	}
 	return &Service{
-		Router:        router,
-		Publisher:     &testPublisher{},
-		Subscriber:    &testSubscriber{},
+		router:        router,
+		publisher:     &testPublisher{},
+		subscriber:    &testSubscriber{},
 		protoRegistry: make(map[string]func() proto.Message),
 	}
 }

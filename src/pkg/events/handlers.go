@@ -8,21 +8,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// HandlerRegistration configures a Watermill handler before it is registered on the router.
-type HandlerRegistration struct {
-	Name             string
-	ConsumeQueue     string
-	Subscriber       message.Subscriber
-	PublishQueue     string
-	Publisher        message.Publisher
-	Handler          message.HandlerFunc
-	MessagePrototype proto.Message
+type handlerRegistration struct {
+	Name               string
+	ConsumeQueue       string
+	Subscriber         message.Subscriber
+	PublishQueue       string
+	Publisher          message.Publisher
+	Handler            message.HandlerFunc
+	consumeMessageType proto.Message
 }
 
-// RegisterHandler attaches a handler to the router. The subscriber and publisher default to the
-// Service-wide instances when omitted. Provide MessagePrototype when you want protoValidateMiddleware
-// to unmarshal and validate payloads using the supplied type.
-func (s *Service) RegisterHandler(cfg HandlerRegistration) error {
+func (s *Service) registerHandler(cfg handlerRegistration) error {
 	if cfg.Handler == nil {
 		return errors.New("handler function is required")
 	}
@@ -30,22 +26,22 @@ func (s *Service) RegisterHandler(cfg HandlerRegistration) error {
 		return errors.New("consume queue is required")
 	}
 	if cfg.Subscriber == nil {
-		cfg.Subscriber = s.Subscriber
+		cfg.Subscriber = s.subscriber
 	}
 	if cfg.Publisher == nil {
-		cfg.Publisher = s.Publisher
+		cfg.Publisher = s.publisher
 	}
-	if cfg.MessagePrototype != nil {
-		s.registerProtoType(cfg.MessagePrototype)
+	if cfg.consumeMessageType != nil {
+		s.registerProtoType(cfg.consumeMessageType)
 		if cfg.Name == "" {
-			cfg.Name = fmt.Sprintf("%T-Handler", cfg.MessagePrototype)
+			cfg.Name = fmt.Sprintf("%T-Handler", cfg.consumeMessageType)
 		}
 	}
 	if cfg.Name == "" {
 		return errors.New("handler name is required")
 	}
 
-	s.Router.AddHandler(
+	s.router.AddHandler(
 		cfg.Name,
 		cfg.ConsumeQueue,
 		cfg.Subscriber,

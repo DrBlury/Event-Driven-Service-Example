@@ -154,7 +154,7 @@ func RecovererMiddleware() MiddlewareRegistration {
 
 // RegisterMiddleware attaches the supplied middleware to the router.
 func (s *Service) RegisterMiddleware(cfg MiddlewareRegistration) error {
-	if s.Router == nil {
+	if s.router == nil {
 		return errors.New("router is not initialised")
 	}
 
@@ -176,7 +176,7 @@ func (s *Service) RegisterMiddleware(cfg MiddlewareRegistration) error {
 		return nil
 	}
 
-	s.Router.AddMiddleware(mw)
+	s.router.AddMiddleware(mw)
 	return nil
 }
 
@@ -244,12 +244,12 @@ func (s *Service) poisonMiddlewareWithFilter(filter func(err error) bool) (messa
 	if s.Conf == nil {
 		return nil, errors.New("service config is required for poison queue middleware")
 	}
-	if s.Publisher == nil {
+	if s.publisher == nil {
 		return nil, errors.New("publisher is required for poison queue middleware")
 	}
 
 	mw, err := middleware.PoisonQueueWithFilter(
-		s.Publisher,
+		s.publisher,
 		s.Conf.PoisonQueue,
 		filter,
 	)

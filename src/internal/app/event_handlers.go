@@ -9,39 +9,36 @@ import (
 
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/pkg/events"
-	"drblury/event-driven-service/pkg/jsonutil"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-	"google.golang.org/protobuf/proto"
 )
 
 // registerAppEventHandlers wires the demo handlers used by this application.
 // In your own code base you can register entirely different handlers against
 // the shared events.Service instance.
 func registerAppEventHandlers(svc *events.Service) error {
-	if err := svc.RegisterHandler(events.HandlerRegistration{
-		Name:         "demoHandler",
-		ConsumeQueue: svc.Conf.ConsumeQueue,
-		PublishQueue: svc.Conf.PublishQueue,
-		Handler:      demoHandler(svc),
+	if err := events.RegisterJSONHandler(svc, events.JSONHandlerRegistration[*demoEvent, *processedDemoEvent]{
+		Name:               "demoHandler",
+		ConsumeQueue:       svc.Conf.ConsumeQueue,
+		PublishQueue:       svc.Conf.PublishQueue,
+		ConsumeMessageType: &demoEvent{},
+		Handler:            demoHandler(svc),
 	}); err != nil {
 		return err
 	}
 
 	if err := events.RegisterProtoHandler(svc, events.ProtoHandlerRegistration[*domain.Signup]{
-		ConsumeQueue:     svc.Conf.ConsumeQueueSignup,
-		PublishQueue:     svc.Conf.PublishQueueSignup,
-		Handler:          signupHandler(),
-		MessagePrototype: &domain.Signup{},
+		ConsumeQueue:       svc.Conf.ConsumeQueueSignup,
+		PublishQueue:       svc.Conf.PublishQueueSignup,
+		Handler:            signupHandler(),
+		ConsumeMessageType: &domain.Signup{},
 	}); err != nil {
 		return err
 	}
 
 	if err := events.RegisterProtoHandler(svc, events.ProtoHandlerRegistration[*domain.BillingAddress]{
-		ConsumeQueue:     svc.Conf.PublishQueueSignup,
-		PublishQueue:     "signup_step_2_processed",
-		Handler:          signupStepTwoHandler(),
-		MessagePrototype: &domain.BillingAddress{},
+		ConsumeQueue:       svc.Conf.PublishQueueSignup,
+		PublishQueue:       "signup_step_2_processed",
+		Handler:            signupStepTwoHandler(),
+		ConsumeMessageType: &domain.BillingAddress{},
 	}); err != nil {
 		return err
 	}
@@ -75,13 +72,7 @@ func runSignupSimulation(ctx context.Context, svc *events.Service) {
 				},
 			}
 
-			msgs, err := createNewProcessedEvent(e, map[string]string{})
-			if err != nil {
-				slog.Error("could not create event", "error", err)
-				continue
-			}
-
-			if err := svc.Publisher.Publish(svc.Conf.ConsumeQueueSignup, msgs...); err != nil {
+			if err := svc.PublishProto(ctx, svc.Conf.ConsumeQueueSignup, e, events.Metadata{}); err != nil {
 				slog.Error("could not publish event", "error", err)
 				continue
 			}
@@ -91,46 +82,41 @@ func runSignupSimulation(ctx context.Context, svc *events.Service) {
 	}
 }
 
-func demoHandler(svc *events.Service) message.HandlerFunc {
-	return func(msg *message.Message) ([]*message.Message, error) {
-		type demoEvent struct {
-			ID   int          `json:"id"`
-			Date *domain.Date `json:"date"`
-		}
+type demoEvent struct {
+	ID   int          `json:"id"`
+	Date *domain.Date `json:"date"`
+}
 
-		type processedDemoEvent struct {
-			ID   int          `json:"id"`
-			Time time.Time    `json:"time"`
-			Date *domain.Date `json:"date"`
-		}
+type processedDemoEvent struct {
+	ID   int          `json:"id"`
+	Time time.Time    `json:"time"`
+	Date *domain.Date `json:"date"`
+}
 
-		consumedPayload := &demoEvent{}
-		if err := jsonutil.Unmarshal(msg.Payload, consumedPayload); err != nil {
-			return nil, err
-		}
+func demoHandler(svc *events.Service) events.JSONMessageHandler[*demoEvent, *processedDemoEvent] {
+	return func(ctx context.Context, evt events.JSONMessageContext[*demoEvent]) ([]events.JSONMessageOutput[*processedDemoEvent], error) {
+		_ = ctx
 
 		slog.Info("Received date",
-			"year", consumedPayload.Date.Year,
-			"month", consumedPayload.Date.Month,
-			"day", consumedPayload.Date.Day,
+			"year", evt.Payload.Date.Year,
+			"month", evt.Payload.Date.Month,
+			"day", evt.Payload.Date.Day,
 		)
 
-		newPayload, err := jsonutil.Marshal(
-			processedDemoEvent{
-				ID:   consumedPayload.ID,
-				Time: time.Now(),
-				Date: consumedPayload.Date,
+		metadata := evt.CloneMetadata()
+		metadata["handler"] = "demoHandler"
+		metadata["next_queue"] = svc.Conf.PublishQueue
+
+		return []events.JSONMessageOutput[*processedDemoEvent]{
+			{
+				Message: &processedDemoEvent{
+					ID:   evt.Payload.ID,
+					Time: time.Now(),
+					Date: evt.Payload.Date,
+				},
+				Metadata: metadata,
 			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		newMessage := message.NewMessage(events.CreateULID(), newPayload)
-		newMessage.Metadata = msg.Metadata
-		newMessage.Metadata["handler"] = "demoHandler"
-		newMessage.Metadata["next_queue"] = svc.Conf.PublishQueue
-		return []*message.Message{newMessage}, nil
+		}, nil
 	}
 }
 
@@ -171,12 +157,4 @@ func signupStepTwoHandler() events.ProtoMessageHandler[*domain.BillingAddress] {
 
 		return []events.ProtoMessageOutput{{Message: newEvent}}, nil
 	}
-}
-
-func createNewProcessedEvent(event proto.Message, metadata map[string]string) ([]*message.Message, error) {
-	msg, err := events.NewMessageFromProto(event, metadata)
-	if err != nil {
-		return nil, err
-	}
-	return []*message.Message{msg}, nil
 }

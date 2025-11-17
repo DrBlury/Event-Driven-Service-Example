@@ -27,7 +27,7 @@ func (s *Service) createKafkaPublisher(brokers []string, logger watermill.Logger
 		panic(err)
 	}
 
-	s.Publisher = kafkaPublisher
+	s.publisher = kafkaPublisher
 }
 
 func (s *Service) createKafkaSubscriber(consumerGroup string, brokers []string, logger watermill.LoggerAdapter) {
@@ -43,5 +43,5 @@ func (s *Service) createKafkaSubscriber(consumerGroup string, brokers []string, 
 		panic(err)
 	}
 
-	s.Subscriber = kafkaSubscriber
+	s.subscriber = kafkaSubscriber
 }

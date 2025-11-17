@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -26,7 +27,7 @@ func TestBuildProtoHandlerUnmarshalsPayload(t *testing.T) {
 		return []ProtoMessageOutput{{
 			Message: &domain.AddAService{CustomerId: "processed"},
 		}}, nil
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error building handler: %v", err)
 	}
@@ -59,7 +60,7 @@ func TestBuildProtoHandlerHonoursCustomMetadata(t *testing.T) {
 			Message:  &domain.AddAService{},
 			Metadata: md,
 		}}, nil
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error building handler: %v", err)
 	}
@@ -77,7 +78,7 @@ func TestBuildProtoHandlerHonoursCustomMetadata(t *testing.T) {
 func TestRegisterProtoHandlerValidations(t *testing.T) {
 	svc := newTestService(t)
 	err := RegisterProtoHandler[*domain.AddAService](nil, ProtoHandlerRegistration[*domain.AddAService]{
-		MessagePrototype: &domain.AddAService{},
+		ConsumeMessageType: &domain.AddAService{},
 		Handler: func(context.Context, ProtoMessageContext[*domain.AddAService]) ([]ProtoMessageOutput, error) {
 			return nil, nil
 		},
@@ -87,8 +88,8 @@ func TestRegisterProtoHandlerValidations(t *testing.T) {
 	}
 
 	err = RegisterProtoHandler(svc, ProtoHandlerRegistration[*domain.AddAService]{
-		ConsumeQueue:     "queue",
-		MessagePrototype: nil,
+		ConsumeQueue:       "queue",
+		ConsumeMessageType: nil,
 		Handler: func(context.Context, ProtoMessageContext[*domain.AddAService]) ([]ProtoMessageOutput, error) {
 			return nil, nil
 		},
@@ -98,25 +99,54 @@ func TestRegisterProtoHandlerValidations(t *testing.T) {
 	}
 
 	err = RegisterProtoHandler(svc, ProtoHandlerRegistration[*domain.AddAService]{
-		ConsumeQueue:     "queue",
-		MessagePrototype: &domain.AddAService{},
-		Handler:          nil,
+		ConsumeQueue:       "queue",
+		ConsumeMessageType: &domain.AddAService{},
+		Handler:            nil,
 	})
 	if err == nil {
 		t.Fatalf("expected error when handler nil")
 	}
 
 	if err := RegisterProtoHandler(svc, ProtoHandlerRegistration[*domain.AddAService]{
-		ConsumeQueue:     "queue",
-		PublishQueue:     "out",
-		MessagePrototype: &domain.AddAService{},
+		ConsumeQueue:       "queue",
+		PublishQueue:       "out",
+		ConsumeMessageType: &domain.AddAService{},
 		Handler: func(context.Context, ProtoMessageContext[*domain.AddAService]) ([]ProtoMessageOutput, error) {
 			return nil, nil
 		},
 	}); err != nil {
 		t.Fatalf("unexpected error registering handler: %v", err)
 	}
-	if _, ok := svc.Router.Handlers()["*domain.AddAService-Handler"]; !ok {
+	if _, ok := svc.router.Handlers()["*domain.AddAService-Handler"]; !ok {
 		t.Fatalf("typed handler not registered")
+	}
+}
+
+func TestRegisterProtoHandlerRegistersPublishTypes(t *testing.T) {
+	svc := newTestService(t)
+	primary := &domain.Signup{}
+	extra := &domain.BillingAddress{}
+
+	if err := RegisterProtoHandler(svc, ProtoHandlerRegistration[*domain.AddAService]{
+		Name:               "typed",
+		ConsumeQueue:       "queue",
+		PublishQueue:       "out",
+		ConsumeMessageType: &domain.AddAService{},
+		PublishMessageType: primary,
+		Options: []ProtoHandlerOption{
+			WithPublishMessageTypes(extra),
+		},
+		Handler: func(context.Context, ProtoMessageContext[*domain.AddAService]) ([]ProtoMessageOutput, error) {
+			return nil, nil
+		},
+	}); err != nil {
+		t.Fatalf("unexpected error registering handler: %v", err)
+	}
+
+	if _, ok := svc.protoRegistry[fmt.Sprintf("%T", primary)]; !ok {
+		t.Fatalf("primary publish type not registered")
+	}
+	if _, ok := svc.protoRegistry[fmt.Sprintf("%T", extra)]; !ok {
+		t.Fatalf("option publish type not registered")
 	}
 }

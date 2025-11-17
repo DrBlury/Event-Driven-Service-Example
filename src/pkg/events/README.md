@@ -25,14 +25,16 @@ invasive changes.
 ## Core Types
 
 - `Service`: wraps the Watermill router and exposes helper methods for registering
-  handlers, middlewares, and protobuf schemas.
+  typed handlers, middlewares, and protobuf schemas without leaking Watermill
+  primitives to the rest of the codebase.
 - `Config`: declares queue names, retry policies, and transport specific
   parameters. Only the relevant fields are read for each backend.
 - `ServiceDependencies`: optional collaborators such as outbox storage or a
   protobuf validator. Use `DisableDefaultMiddlewares` to replace the built-in
   chain entirely.
-- `HandlerRegistration`: describes how a single handler should be wired,
-  including overrides for publisher/subscriber instances and message prototypes.
+- `ProtoHandlerRegistration` / `JSONHandlerRegistration`: declarative typed
+  handlers that automatically (un)marshal payloads, propagate metadata, and
+  register emitted schemas for validation.
 
 ## Default Middleware Chain
 
@@ -71,15 +73,23 @@ svc := events.NewService(
     },
 )
 
-err := svc.RegisterHandler(events.HandlerRegistration{
-    Name:             "signup_processed",
-    ConsumeQueue:     "signup-input",
-    PublishQueue:     "signup-output",
-    MessagePrototype: &domain.Signup{},
-    Handler: func(msg *message.Message) ([]*message.Message, error) {
-        // implement domain logic
-        return nil, nil
-    },
+err := events.RegisterProtoHandler(svc, events.ProtoHandlerRegistration[*domain.Signup]{
+  Name:             "signup_processed",
+  ConsumeQueue:     "signup-input",
+  PublishQueue:     "signup-output",
+  ConsumeMessageType: &domain.Signup{},
+  PublishMessageType: &domain.BillingAddress{}, // optional convenience shorthand
+  Options: []events.ProtoHandlerOption{
+    events.WithPublishMessageTypes(&domain.SignupInfo{}), // register additional emit types when needed
+  },
+  Handler: func(ctx context.Context, evt events.ProtoMessageContext[*domain.Signup]) ([]events.ProtoMessageOutput, error) {
+    md := evt.CloneMetadata()
+    md["handler"] = "signup_processed"
+    return []events.ProtoMessageOutput{{
+      Message:  &domain.BillingAddress{},
+      Metadata: md,
+    }}, nil
+  },
 })
 if err != nil {
     log.Fatal(err)
@@ -100,7 +110,11 @@ package and are imported as `domain`.
 - Use `OutboxMiddleware()` in conjunction with `ServiceDependencies.Outbox` to
   implement the transactional outbox pattern.
 - Register standalone protobuf messages with `RegisterProtoMessage` so the
-  validator recognises events produced elsewhere.
+- `PublishMessageType` is optional—omit it if your handler builds outgoing
+  events manually, or pass `WithPublishMessageTypes` to declare any additional
+  schemas emitted for validator/outbox tracking. You can still call
+  `RegisterProtoMessage` directly for ad-hoc types produced outside these
+  helpers.
 
 ## Testing Helpers
 

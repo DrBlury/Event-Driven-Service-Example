@@ -43,7 +43,7 @@ func (s *Service) createRabbitMQPublisher(config amqp.Config, conn *amqp.Connect
 	if err != nil {
 		panic(err)
 	}
-	s.Publisher = publisher
+	s.publisher = publisher
 }
 
 func (s *Service) createRabbitMQSubscriber(config amqp.Config, conn *amqp.ConnectionWrapper, logger watermill.LoggerAdapter) {
@@ -55,5 +55,5 @@ func (s *Service) createRabbitMQSubscriber(config amqp.Config, conn *amqp.Connec
 	if err != nil {
 		panic(err)
 	}
-	s.Subscriber = subscriber
+	s.subscriber = subscriber
 }
