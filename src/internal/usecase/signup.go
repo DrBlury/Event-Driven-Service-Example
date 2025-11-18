@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"drblury/event-driven-service/internal/domain"
-	"drblury/event-driven-service/pkg/events"
+
+	events "github.com/drblury/protoflow"
 )
 
 func (a *AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {

@@ -9,10 +9,11 @@ import (
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/usecase"
-	"drblury/event-driven-service/pkg/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/tracing"
+
+	events "github.com/drblury/protoflow"
 )
 
 // createAppContext builds a cancellable context reacting to OS interrupts and optional external shutdown signals.

@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"drblury/event-driven-service/internal/domain"
-	"drblury/event-driven-service/pkg/events"
+
+	events "github.com/drblury/protoflow"
 )
 
 // registerAppEventHandlers wires the demo handlers used by this application.

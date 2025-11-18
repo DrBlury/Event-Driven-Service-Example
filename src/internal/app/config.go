@@ -7,11 +7,12 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/internal/server"
-	"drblury/event-driven-service/pkg/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/metrics"
 	"drblury/event-driven-service/pkg/router"
 	"drblury/event-driven-service/pkg/tracing"
+
+	events "github.com/drblury/protoflow"
 
 	"github.com/spf13/viper"
 )

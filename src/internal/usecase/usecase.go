@@ -8,7 +8,8 @@ import (
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
-	"drblury/event-driven-service/pkg/events"
+
+	events "github.com/drblury/protoflow"
 
 	"buf.build/go/protovalidate"
 	"google.golang.org/protobuf/proto"
