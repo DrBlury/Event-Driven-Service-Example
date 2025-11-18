@@ -1,11 +1,11 @@
 services:
   app:
     container_name: event-driven-service-example-app
-    image: golang:1.25.1-alpine
+    image: golang:1.25.4-alpine
     ports:
       - "8080:8080"
     volumes:
-      - ${PWD}/src/:/app
+      - ../../src:/app
       - .gitconfig:/root/.gitconfig
       - ~/.ssh:/root/.ssh
       - ~/go/pkg/mod/cache:/go/pkg/mod/cache

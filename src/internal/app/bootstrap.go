@@ -10,10 +10,10 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"
-	"drblury/event-driven-service/pkg/metrics"
-	"drblury/event-driven-service/pkg/tracing"
+	"drblury/event-driven-service/pkg/logging/metrics"
+	"drblury/event-driven-service/pkg/logging/tracing"
 
-	events "github.com/drblury/protoflow"
+	"github.com/drblury/protoflow"
 )
 
 // createAppContext builds a cancellable context reacting to OS interrupts and optional external shutdown signals.
@@ -83,6 +83,6 @@ func connectToDatabase(ctx context.Context, cfg *Config, logger *slog.Logger) (*
 }
 
 // initializeAppLogic constructs the core application use cases.
-func initializeAppLogic(db *database.Database, logger *slog.Logger, eventsCfg *events.Config) *usecase.AppLogic {
-	return usecase.NewAppLogic(db, logger, eventsCfg)
+func initializeAppLogic(db *database.Database, logger *slog.Logger, protoCfg *protoflow.Config) *usecase.AppLogic {
+	return usecase.NewAppLogic(db, logger)
 }

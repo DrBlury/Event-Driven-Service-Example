@@ -6,7 +6,7 @@ import (
 
 	"drblury/event-driven-service/internal/domain"
 
-	events "github.com/drblury/protoflow"
+	"github.com/drblury/protoflow"
 )
 
 func (a *AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {
@@ -33,7 +33,7 @@ func (a *AppLogic) EmitSignupEvent(ctx context.Context, signup *domain.Signup) e
 		return errors.New("signup topic not configured")
 	}
 
-	metadata := events.Metadata{
+	metadata := protoflow.Metadata{
 		"source": "api.signup",
 	}
 

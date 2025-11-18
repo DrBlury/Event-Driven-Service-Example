@@ -1,9 +1,8 @@
 ---
-openapi: "3.1.1"
-jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema"
+openapi: "3.0.3"
 info:
-  title: POC Event Signup
-  description: Example API for event driven signup
+  title: Example Event Driven Service with Protoflow and APIWeaver
+  description: Example API for an event driven service using Protoflow and APIWeaver.
   version: latest
   license:
     name: unlicense

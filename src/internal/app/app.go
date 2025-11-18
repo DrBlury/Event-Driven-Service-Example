@@ -1,6 +1,9 @@
 package app
 
-import "os"
+import (
+	"drblury/event-driven-service/internal/events"
+	"os"
+)
 
 // Run orchestrates the application lifecycle from startup to graceful shutdown.
 func Run(cfg *Config, shutdownChannel chan os.Signal) error {
@@ -22,9 +25,9 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		return err
 	}
 
-	appLogic := initializeAppLogic(db, logger, cfg.Events)
+	appLogic := initializeAppLogic(db, logger, cfg.Protoflow)
 
-	eventService, err := buildEventService(ctx, cfg, logger, db, appLogic)
+	eventService, err := events.BuildEventService(ctx, cfg.Events, logger, db, appLogic, cfg.Protoflow)
 	if err != nil {
 		return err
 	}
@@ -39,10 +42,8 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	runHTTPServer(httpServer, cfg, logger, srvErr)
 	monitorHTTPServerErrors(ctx, srvErr, logger)
 
-	go startEventService(ctx, eventService, logger)
-	go runSignupSimulation(ctx, eventService)
-
-	logEventServiceStartup(logger, eventService)
+	go events.StartEventService(ctx, eventService, logger)
+	go events.RunSignupSimulation(ctx, eventService, cfg.Events)
 
 	<-ctx.Done()
 

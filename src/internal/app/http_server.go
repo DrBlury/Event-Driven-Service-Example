@@ -8,28 +8,39 @@ import (
 	"log/slog"
 
 	"drblury/event-driven-service/internal/server"
-	generator "drblury/event-driven-service/internal/server/gen"
+	gen "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
 	"drblury/event-driven-service/internal/usecase"
-	"drblury/event-driven-service/pkg/router"
+
+	"github.com/drblury/apiweaver/router"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // buildHTTPServer assembles the HTTP handler stack and returns a configured server.
 func buildHTTPServer(cfg *Config, appLogic *usecase.AppLogic, logger *slog.Logger) (*server.Server, error) {
-	apiHandler := apihandler.NewAPIHandler(appLogic, cfg.Info, logger, cfg.Server.BaseURL)
+	apiHandler := apihandler.NewAPIHandler(appLogic, cfg.Info, logger, cfg.Server.BaseURL, cfg.Server.DocsTemplatePath)
 
-	handler := generator.HandlerFromMux(apiHandler, nil)
+	handler := gen.HandlerFromMux(apiHandler, nil)
 	handler = otelhttp.NewHandler(handler, "/")
 
-	swagger, err := generator.GetSwagger()
+	swagger, err := gen.GetSwagger()
 	if err != nil {
 		logger.Error("failed to get swagger", "error", err)
 		return nil, err
 	}
 
-	r := router.New(handler, cfg.Router, logger, swagger)
+	options := []router.Option{
+		router.WithLogger(logger),
+	}
+	if cfg.Router != nil {
+		options = append(options, router.WithConfig(*cfg.Router))
+	}
+	if swagger != nil {
+		options = append(options, router.WithSwagger(swagger))
+	}
+
+	r := router.New(handler, options...)
 	return server.NewServer(cfg.Server, r), nil
 }
 

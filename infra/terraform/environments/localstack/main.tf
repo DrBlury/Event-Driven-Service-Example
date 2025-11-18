@@ -37,16 +37,16 @@ locals {
     messages           = "messages"
     messages_processed = "messages-processed"
     messages_poison    = "messages-poison"
-    signup             = "signup"
-    signup_processable = "signup-processable"
+    some               = "some"
+    some_processed     = "some-processed"
   }
 
   topics = {
     messages           = "messages"
     messages_processed = "messages-processed"
     messages_poison    = "messages-poison"
-    signup             = "signup"
-    signup_processable = "signup-processable"
+    some               = "some"
+    some_processed     = "some-processed"
   }
 }
 

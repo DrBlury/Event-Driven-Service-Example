@@ -9,9 +9,8 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
 
-	events "github.com/drblury/protoflow"
-
 	"buf.build/go/protovalidate"
+	"github.com/drblury/protoflow"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -20,35 +19,23 @@ type AppLogic struct {
 	db            *database.Database
 	log           *slog.Logger
 	validator     protovalidate.Validator
-	eventProducer events.Producer
+	eventProducer protoflow.Producer
 	signupTopic   string
 }
 
 func NewAppLogic(
 	db *database.Database,
 	logger *slog.Logger,
-	eventsCfg *events.Config,
 ) *AppLogic {
-	v, err := protovalidate.New()
-	if err != nil {
-		slog.With("error", err).Error("failed to create validator")
-	}
-
-	signupTopic := ""
-	if eventsCfg != nil {
-		signupTopic = eventsCfg.ConsumeQueueSignup
-	}
 
 	return &AppLogic{
-		db:          db,
-		log:         logger,
-		validator:   v,
-		signupTopic: signupTopic,
+		db:  db,
+		log: logger,
 	}
 }
 
 // SetEventProducer wires the event producer used by PublishEvent.
-func (a *AppLogic) SetEventProducer(producer events.Producer) {
+func (a *AppLogic) SetEventProducer(producer protoflow.Producer) {
 	if a == nil {
 		return
 	}
@@ -56,7 +43,7 @@ func (a *AppLogic) SetEventProducer(producer events.Producer) {
 }
 
 // PublishEvent emits the supplied payload to the configured topic with optional metadata.
-func (a *AppLogic) PublishEvent(ctx context.Context, topic string, payload proto.Message, metadata events.Metadata) error {
+func (a *AppLogic) PublishEvent(ctx context.Context, topic string, payload proto.Message, metadata protoflow.Metadata) error {
 	if a == nil {
 		return errors.New("applogic is nil")
 	}

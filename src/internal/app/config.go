@@ -6,26 +6,28 @@ import (
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/internal/server"
 	"drblury/event-driven-service/pkg/logging"
-	"drblury/event-driven-service/pkg/metrics"
-	"drblury/event-driven-service/pkg/router"
-	"drblury/event-driven-service/pkg/tracing"
+	"drblury/event-driven-service/pkg/logging/metrics"
+	"drblury/event-driven-service/pkg/logging/tracing"
 
-	events "github.com/drblury/protoflow"
+	"github.com/drblury/apiweaver/router"
+	"github.com/drblury/protoflow"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Info     *domain.Info
-	Router   *router.Config
-	Server   *server.Config
-	Database *database.Config
-	Logger   *logging.Config
-	Tracing  *tracing.Config
-	Metrics  *metrics.Config
-	Events   *events.Config
+	Info      *domain.Info
+	Router    *router.Config
+	Server    *server.Config
+	Database  *database.Config
+	Logger    *logging.Config
+	Tracing   *tracing.Config
+	Metrics   *metrics.Config
+	Protoflow *protoflow.Config
+	Events    *events.Config
 }
 
 func SetDefaults() {
@@ -37,6 +39,7 @@ func SetDefaults() {
 	viper.SetDefault("APP_SERVER_CORS_ORIGINS", []string{"*"})
 	viper.SetDefault("APP_SERVER_HIDE_HEADERS", []string{"Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie"})
 	viper.SetDefault("APP_SERVER_QUIETDOWN_ROUTES", []string{"/healthz", "/readyz", "/info/status"})
+	viper.SetDefault("APP_INFO_TEMPLATE_PATH", "")
 
 	// Logger
 	viper.SetDefault("LOGGER", "json")
@@ -64,14 +67,15 @@ func LoadConfig(
 	viper.AutomaticEnv()
 
 	return &Config{
-		Info:     loadInfoConfig(version, buildDate, details, commitHash, commitDate),
-		Router:   loadRouterConfig(),
-		Server:   loadServerConfig(),
-		Database: loadDatabaseConfig(),
-		Logger:   loadLoggerConfig(),
-		Tracing:  loadTracingConfig(),
-		Metrics:  loadMetricsConfig(),
-		Events:   loadEventsConfig(),
+		Info:      loadInfoConfig(version, buildDate, details, commitHash, commitDate),
+		Router:    loadRouterConfig(),
+		Server:    loadServerConfig(),
+		Database:  loadDatabaseConfig(),
+		Logger:    loadLoggerConfig(),
+		Tracing:   loadTracingConfig(),
+		Metrics:   loadMetricsConfig(),
+		Protoflow: loadProtoflowConfig(),
+		Events:    loadEventsConfig(),
 	}, nil
 }
 
@@ -107,8 +111,9 @@ func loadRouterConfig() *router.Config {
 
 func loadServerConfig() *server.Config {
 	return &server.Config{
-		Address: "0.0.0.0:" + viper.GetString("APP_SERVER_PORT"),
-		BaseURL: viper.GetString("APP_SERVER_BASE_URL"),
+		Address:          "0.0.0.0:" + viper.GetString("APP_SERVER_PORT"),
+		BaseURL:          viper.GetString("APP_SERVER_BASE_URL"),
+		DocsTemplatePath: viper.GetString("APP_INFO_TEMPLATE_PATH"),
 	}
 }
 
@@ -173,8 +178,8 @@ func loadMetricsConfig() *metrics.Config {
 	}
 }
 
-func loadEventsConfig() *events.Config {
-	return &events.Config{
+func loadProtoflowConfig() *protoflow.Config {
+	return &protoflow.Config{
 		PubSubSystem:         viper.GetString("PUBSUB_SYSTEM"),
 		KafkaBrokers:         viper.GetStringSlice("KAFKA_BROKERS_URL"),
 		KafkaClientID:        viper.GetString("KAFKA_CLIENT_ID"),
@@ -185,14 +190,19 @@ func loadEventsConfig() *events.Config {
 		AWSSecretAccessKey:   viper.GetString("AWS_SECRET_ACCESS_KEY"),
 		AWSAccountID:         viper.GetString("AWS_ACCOUNT_ID"),
 		AWSEndpoint:          viper.GetString("AWS_ENDPOINT_URL"),
-		PoisonQueue:          viper.GetString("POISON_QUEUE"),
-		ConsumeQueue:         viper.GetString("QUEUE"),
-		PublishQueue:         viper.GetString("QUEUE_PROCESSED"),
-		ConsumeQueueSignup:   viper.GetString("QUEUE_SIGNUP"),
-		PublishQueueSignup:   viper.GetString("QUEUE_SIGNUP_PROCESSABLE"),
-		RetryMaxRetries:      viper.GetInt("EVENTS_RETRY_MAX_RETRIES"),
-		RetryInitialInterval: viper.GetDuration("EVENTS_RETRY_INITIAL_INTERVAL"),
-		RetryMaxInterval:     viper.GetDuration("EVENTS_RETRY_MAX_INTERVAL"),
+		PoisonQueue:          viper.GetString("PROTOFLOW_POISON_QUEUE"),
+		RetryMaxRetries:      viper.GetInt("PROTOFLOW_RETRY_MAX_RETRIES"),
+		RetryInitialInterval: viper.GetDuration("PROTOFLOW_RETRY_INITIAL_INTERVAL"),
+		RetryMaxInterval:     viper.GetDuration("PROTOFLOW_RETRY_MAX_INTERVAL"),
+	}
+}
+
+func loadEventsConfig() *events.Config {
+	return &events.Config{
+		DemoConsumeQueue: viper.GetString("EVENTS_DEMO_CONSUME_QUEUE"),
+		DemoPublishQueue: viper.GetString("EVENTS_DEMO_PUBLISH_QUEUE"),
+		SomeConsumeQueue: viper.GetString("EVENTS_SOME_CONSUME_QUEUE"),
+		SomePublishQueue: viper.GetString("EVENTS_SOME_PUBLISH_QUEUE"),
 	}
 }
 

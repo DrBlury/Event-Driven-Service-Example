@@ -16,7 +16,7 @@ inputs:
   server_config:
     description: Relative path (from src_dir) to the oapi-codegen config file.
     required: false
-    default: pkg/api/server-std.cfg.yml
+    default: ../server-std.cfg.yml
 runs:
   using: composite
   steps:

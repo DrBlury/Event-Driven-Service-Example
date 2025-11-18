@@ -1,4 +1,4 @@
-package app
+package events
 
 import (
 	"context"
@@ -9,29 +9,30 @@ import (
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/internal/usecase"
 
-	events "github.com/drblury/protoflow"
+	"github.com/drblury/protoflow"
 )
 
-// buildEventService wires middleware, handlers, and dependencies for the event processing pipeline.
-func buildEventService(
+// BuildEventService wires middleware, handlers, and dependencies for the event processing pipeline.
+func BuildEventService(
 	ctx context.Context,
 	cfg *Config,
 	logger *slog.Logger,
 	db *database.Database,
 	appLogic *usecase.AppLogic,
-) (*events.Service, error) {
-	if cfg == nil || cfg.Events == nil {
+	protoflowCfg *protoflow.Config,
+) (*protoflow.Service, error) {
+	if cfg == nil || protoflowCfg == nil {
 		logger.Error("missing events configuration")
 		return nil, errors.New("events configuration is required")
 	}
 
-	middlewares := composeEventMiddlewares(cfg.Events)
+	middlewares := composeEventMiddlewares(protoflowCfg)
 
-	svc := events.NewService(
-		cfg.Events,
+	svc := protoflow.NewService(
+		protoflowCfg,
 		logger,
 		ctx,
-		events.ServiceDependencies{
+		protoflow.ServiceDependencies{
 			Outbox:                    db,
 			Validator:                 appLogic,
 			DisableDefaultMiddlewares: true,
@@ -39,7 +40,7 @@ func buildEventService(
 		},
 	)
 
-	if err := registerAppEventHandlers(svc); err != nil {
+	if err := registerAppEventHandlers(svc, cfg); err != nil {
 		logger.Error("failed to register event handlers", "error", err)
 		return nil, err
 	}
@@ -48,29 +49,29 @@ func buildEventService(
 }
 
 // composeEventMiddlewares returns the middleware chain enforced by this application.
-func composeEventMiddlewares(cfg *events.Config) []events.MiddlewareRegistration {
-	retryConfig := events.RetryMiddlewareConfig{
+func composeEventMiddlewares(cfg *protoflow.Config) []protoflow.MiddlewareRegistration {
+	retryConfig := protoflow.RetryMiddlewareConfig{
 		MaxRetries:      cfg.RetryMaxRetries,
 		InitialInterval: cfg.RetryInitialInterval,
 		MaxInterval:     cfg.RetryMaxInterval,
 	}
 
-	return []events.MiddlewareRegistration{
-		events.CorrelationIDMiddleware(),
-		events.LogMessagesMiddleware(nil),
-		events.ProtoValidateMiddleware(),
-		events.OutboxMiddleware(),
-		events.TracerMiddleware(),
-		events.RetryMiddleware(retryConfig),
-		events.PoisonQueueMiddleware(poisonQueueFilter()),
-		events.RecovererMiddleware(),
+	return []protoflow.MiddlewareRegistration{
+		protoflow.CorrelationIDMiddleware(),
+		protoflow.LogMessagesMiddleware(nil),
+		protoflow.ProtoValidateMiddleware(),
+		protoflow.OutboxMiddleware(),
+		protoflow.TracerMiddleware(),
+		protoflow.RetryMiddleware(retryConfig),
+		protoflow.PoisonQueueMiddleware(poisonQueueFilter()),
+		protoflow.RecovererMiddleware(),
 	}
 }
 
 // poisonQueueFilter decides when an event should be redirected to the poison queue.
 func poisonQueueFilter() func(error) bool {
 	return func(err error) bool {
-		var unprocessable *events.UnprocessableEventError
+		var unprocessable *protoflow.UnprocessableEventError
 		if errors.As(err, &unprocessable) {
 			return true
 		}
@@ -79,11 +80,12 @@ func poisonQueueFilter() func(error) bool {
 	}
 }
 
-// startEventService runs the event consumer loop until the context is cancelled.
-func startEventService(ctx context.Context, svc *events.Service, logger *slog.Logger) {
+// StartEventService runs the event consumer loop until the context is cancelled.
+func StartEventService(ctx context.Context, svc *protoflow.Service, logger *slog.Logger) {
 	if svc == nil {
 		return
 	}
+	logEventServiceStartup(logger, svc)
 
 	if err := svc.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("event service stopped", "error", err)
@@ -91,14 +93,12 @@ func startEventService(ctx context.Context, svc *events.Service, logger *slog.Lo
 }
 
 // logEventServiceStartup records the event service configuration used at runtime.
-func logEventServiceStartup(logger *slog.Logger, svc *events.Service) {
+func logEventServiceStartup(logger *slog.Logger, svc *protoflow.Service) {
 	if svc == nil || svc.Conf == nil {
 		return
 	}
 
 	logger.With(
-		"brokers", svc.Conf.KafkaBrokers,
-		"consume_queue", svc.Conf.ConsumeQueue,
-		"publish_queue", svc.Conf.PublishQueue,
+		"config", svc.Conf,
 	).Info("starting event service")
 }

@@ -3,11 +3,10 @@ package logging
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
-
-	"drblury/event-driven-service/pkg/jsonutil"
 )
 
 // MyWrapperHandler wraps another slog.Handler and flattens nested JSON payloads
@@ -70,7 +69,7 @@ func mapToSlogAttrs(input map[string]any, depth int, maxDepth int) []slog.Attr {
 	if depth > maxDepth {
 		indented, err := marshalIndent(input)
 		if err != nil {
-			raw, rawErr := jsonutil.Marshal(input)
+			raw, rawErr := json.Marshal(input)
 			if rawErr != nil {
 				return []slog.Attr{slog.String("data", fmt.Sprintf("error marshalling to JSON: %v", err))}
 			}
@@ -110,7 +109,7 @@ func (h *MyWrapperHandler) Handle(ctx context.Context, r slog.Record) error {
 	defer release()
 
 	var attrs map[string]any
-	err = jsonutil.Unmarshal(jsonBytes, &attrs)
+	err = json.Unmarshal(jsonBytes, &attrs)
 	if err != nil {
 		return fmt.Errorf("error when unmarshaling json bytes: %w", err)
 	}
@@ -139,4 +138,8 @@ func (h *MyWrapperHandler) WithGroup(name string) slog.Handler {
 		buf:         h.buf,
 		mutex:       h.mutex,
 	}
+}
+
+func marshalIndent(v any) ([]byte, error) {
+	return json.MarshalIndent(v, "", "  ")
 }
