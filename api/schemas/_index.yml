@@ -7,8 +7,8 @@ Status:
   $ref: "./enum/Status.yml"
 
 # Requests
-SignupRequest:
-  $ref: "./requests/SignupRequest.yml"
+ExampleRecordRequest:
+  $ref: "./requests/ExampleRecordRequest.yml"
 
 # Types
 ProbeStatus:

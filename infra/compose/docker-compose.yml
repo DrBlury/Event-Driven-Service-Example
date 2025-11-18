@@ -20,8 +20,8 @@ services:
     healthcheck:
       test: curl --fail -s localhost:8080/info/status || exit 1
       interval: 30s
-      timeout: 10s
-      retries: 5
+      timeout: 15s
+      retries: 10
 
   mongo:
     image: mongo

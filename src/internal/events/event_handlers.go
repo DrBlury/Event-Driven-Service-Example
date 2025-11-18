@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"time"
@@ -27,12 +28,12 @@ func registerAppEventHandlers(svc *protoflow.Service, cfg *Config) error {
 		return err
 	}
 
-	if err := protoflow.RegisterProtoHandler(svc, protoflow.ProtoHandlerRegistration[*domain.Signup]{
-		Name:               "signupHandler",
-		ConsumeQueue:       cfg.SomeConsumeQueue,
-		PublishQueue:       cfg.SomePublishQueue,
-		Handler:            signupHandler(),
-		ConsumeMessageType: &domain.Signup{},
+	if err := protoflow.RegisterProtoHandler(svc, protoflow.ProtoHandlerRegistration[*domain.ExampleRecord]{
+		Name:               "exampleRecordHandler",
+		ConsumeQueue:       cfg.ExampleConsumeQueue,
+		PublishQueue:       cfg.ExamplePublishQueue,
+		Handler:            exampleRecordHandler(),
+		ConsumeMessageType: &domain.ExampleRecord{},
 	}); err != nil {
 		return err
 	}
@@ -40,8 +41,8 @@ func registerAppEventHandlers(svc *protoflow.Service, cfg *Config) error {
 	return nil
 }
 
-func RunSignupSimulation(ctx context.Context, svc *protoflow.Service, cfg *Config) {
-	runSomeSimulation(ctx, svc, cfg.SomeConsumeQueue)
+func RunExampleSimulation(ctx context.Context, svc *protoflow.Service, cfg *Config) {
+	runSomeSimulation(ctx, svc, cfg.ExampleConsumeQueue)
 }
 
 // runSomeSimulation produces demo events so the application can be
@@ -60,9 +61,22 @@ func runSomeSimulation(ctx context.Context, svc *protoflow.Service, queueName st
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			e := &domain.Signup{
-				SignupMeta: &domain.SignupMeta{
-					StartOfServiceDate: &domain.Date{
+			tags := []string{"demo", fmt.Sprintf("batch-%d", i%3)}
+			followUp := i%2 == 0
+			if followUp {
+				tags = append(tags, "follow-up")
+			}
+
+			e := &domain.ExampleRecord{
+				RecordId:    fmt.Sprintf("EX-%04d", i+1),
+				Title:       fmt.Sprintf("Example payload %d", i+1),
+				Description: "Auto-generated sample data",
+				Tags:        tags,
+				Meta: &domain.ExampleMeta{
+					RequestedBy:      "simulation-bot",
+					RequiresFollowUp: followUp,
+					Priority:         int32(rand.IntN(5) + 1),
+					DesiredStartDate: &domain.Date{
 						Year:  int32(rand.IntN(5) + 2020),
 						Month: int32(i%12 + 1),
 						Day:   int32((i % 28) + 1),
@@ -70,7 +84,7 @@ func runSomeSimulation(ctx context.Context, svc *protoflow.Service, queueName st
 				},
 			}
 
-			if err := svc.PublishProto(ctx, queueName, e, protoflow.Metadata{}); err != nil {
+			if err := svc.PublishProto(ctx, queueName, e, protoflow.Metadata{"source": "simulation"}); err != nil {
 				slog.Error("could not publish event", "error", err)
 				continue
 			}
@@ -118,25 +132,31 @@ func demoHandler() protoflow.JSONMessageHandler[*demoEvent, *processedDemoEvent]
 	}
 }
 
-func signupHandler() protoflow.ProtoMessageHandler[*domain.Signup] {
-	return func(ctx context.Context, e protoflow.ProtoMessageContext[*domain.Signup]) ([]protoflow.ProtoMessageOutput, error) {
-		postOfficeBox := "POB 1234"
-		newEvent := &domain.BillingAddress{
-			City:          "Cologne",
-			Country:       "DE",
-			Zip:           "50667",
-			PostOfficeBox: &postOfficeBox,
+func exampleRecordHandler() protoflow.ProtoMessageHandler[*domain.ExampleRecord] {
+	return func(ctx context.Context, e protoflow.ProtoMessageContext[*domain.ExampleRecord]) ([]protoflow.ProtoMessageOutput, error) {
+		if rand.IntN(10) == 0 {
+			return nil, errors.New("fatal error processing example event")
 		}
 
-		if rand.IntN(10)%10 == 0 {
-			return nil, errors.New("fatal error processing signup event")
+		statuses := []string{"queued", "in-progress", "completed"}
+		status := statuses[rand.IntN(len(statuses))]
+
+		now := time.Now()
+		result := &domain.ExampleResult{
+			RecordId: e.Payload.GetRecordId(),
+			Status:   status,
+			Note:     fmt.Sprintf("processed %s", e.Payload.GetTitle()),
+			ProcessedOn: &domain.Date{
+				Year:  int32(now.Year()),
+				Month: int32(now.Month()),
+				Day:   int32(now.Day()),
+			},
 		}
 
-		// This will clone the existing metadata and add new entries
-		newMetadata := e.CloneMetadata()
-		newMetadata["processed_by"] = "signupHandler"
-		newMetadata["some_extra_info"] = "additional_value"
+		metadata := e.CloneMetadata()
+		metadata["processed_by"] = "exampleRecordHandler"
+		metadata["example_status"] = status
 
-		return []protoflow.ProtoMessageOutput{{Message: newEvent, Metadata: newMetadata}}, nil
+		return []protoflow.ProtoMessageOutput{{Message: result, Metadata: metadata}}, nil
 	}
 }

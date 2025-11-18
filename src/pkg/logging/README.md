@@ -50,7 +50,7 @@ logger := logging.SetLogger(
     logging.WithLevel(slog.LevelDebug),
     logging.WithPrettyFormat(),
     logging.WithOTel(
-        "signup-service",
+      "example-service",
         version,
         logging.WithOTelEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
         logging.WithOTelConsoleMirror(),

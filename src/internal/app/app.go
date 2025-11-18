@@ -36,6 +36,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	}
 	// add event producer to app logic so we can emit events from use cases
 	appLogic.SetEventProducer(eventService)
+	appLogic.SetExampleTopic(cfg.Events.ExampleConsumeQueue)
 
 	httpServer, err := buildHTTPServer(cfg, appLogic, logger)
 	if err != nil {
@@ -47,7 +48,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	monitorHTTPServerErrors(ctx, srvErr, logger)
 
 	go events.StartEventService(ctx, eventService, logger)
-	go events.RunSignupSimulation(ctx, eventService, cfg.Events)
+	go events.RunExampleSimulation(ctx, eventService, cfg.Events)
 
 	<-ctx.Done()
 

@@ -1,0 +1,73 @@
+title: Example Record Request
+type: object
+required:
+  - recordId
+  - title
+  - meta
+properties:
+  recordId:
+    type: string
+    description: Unique identifier for this example record.
+    example: EX-0001
+  title:
+    type: string
+    description: Friendly title that will also appear in downstream logs.
+    example: Example payload 1
+  description:
+    type: string
+    description: Optional text with more context for the example.
+    example: Auto-generated sample data
+  tags:
+    type: array
+    items:
+      type: string
+    description: Semantic tags attached to the record.
+    example:
+      - demo
+      - follow-up
+  meta:
+    type: object
+    required:
+      - requestedBy
+      - desiredStartDate
+      - priority
+    properties:
+      requestedBy:
+        type: string
+        description: Identifier of the caller that submitted the record.
+        example: simulation-bot
+      desiredStartDate:
+        type: object
+        required:
+          - year
+          - month
+          - day
+        properties:
+          year:
+            type: integer
+            format: int32
+            example: 2025
+          month:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+            example: 4
+          day:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 31
+            example: 18
+        description: Requested date for the example to start.
+      requiresFollowUp:
+        type: boolean
+        description: Flag that indicates whether manual follow-up is needed.
+        example: true
+      priority:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 5
+        description: Arbitrary priority value to illustrate business rules.
+        example: 3

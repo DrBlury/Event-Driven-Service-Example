@@ -10,7 +10,7 @@ import (
 	"drblury/event-driven-service/internal/domain"
 )
 
-const signupCollection = "signups"
+const exampleCollection = "example-records"
 
 func (db *Database) StoreOutgoingMessage(ctx context.Context, handler string, uuid string, payload string) error {
 	_, err := db.DB.Collection(handler+"_outbox").InsertOne(ctx, bson.M{
@@ -21,16 +21,19 @@ func (db *Database) StoreOutgoingMessage(ctx context.Context, handler string, uu
 	return err
 }
 
-func (db *Database) StoreSignupInfo(ctx context.Context, info *domain.SignupInfo) error {
-	_, err := db.DB.Collection(signupCollection).InsertOne(ctx, info)
+func (db *Database) StoreExampleRecord(ctx context.Context, record *domain.ExampleRecord) error {
+	if record == nil {
+		return errors.New("example record is required")
+	}
+	_, err := db.DB.Collection(exampleCollection).InsertOne(ctx, record)
 	return err
 }
 
-func (db *Database) GetSignupInfoByID(ctx context.Context, id string) (*domain.SignupInfo, error) {
-	var result domain.SignupInfo
-	err := db.DB.Collection(signupCollection).FindOne(ctx, bson.M{"signupid": id}).Decode(&result)
+func (db *Database) GetExampleRecordByID(ctx context.Context, id string) (*domain.ExampleRecord, error) {
+	var result domain.ExampleRecord
+	err := db.DB.Collection(exampleCollection).FindOne(ctx, bson.M{"record_id": id}).Decode(&result)
 	if err == mongo.ErrNoDocuments {
-		return nil, errors.New("signupInfo not found")
+		return nil, errors.New("example record not found")
 	}
 	return &result, err
 }

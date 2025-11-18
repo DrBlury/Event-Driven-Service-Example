@@ -57,8 +57,8 @@ func SetDefaults() {
 	viper.SetDefault("PROTOFLOW_POISON_QUEUE", "messages-poison")
 	viper.SetDefault("EVENTS_DEMO_CONSUME_QUEUE", "messages")
 	viper.SetDefault("EVENTS_DEMO_PUBLISH_QUEUE", "messages-processed")
-	viper.SetDefault("EVENTS_SOME_CONSUME_QUEUE", "signup")
-	viper.SetDefault("EVENTS_SOME_PUBLISH_QUEUE", "signup-processable")
+	viper.SetDefault("EVENTS_EXAMPLE_CONSUME_QUEUE", "example-records")
+	viper.SetDefault("EVENTS_EXAMPLE_PUBLISH_QUEUE", "example-records-processed")
 }
 
 func LoadConfig(
@@ -204,10 +204,10 @@ func loadProtoflowConfig() *protoflow.Config {
 
 func loadEventsConfig() *events.Config {
 	return &events.Config{
-		DemoConsumeQueue: viper.GetString("EVENTS_DEMO_CONSUME_QUEUE"),
-		DemoPublishQueue: viper.GetString("EVENTS_DEMO_PUBLISH_QUEUE"),
-		SomeConsumeQueue: viper.GetString("EVENTS_SOME_CONSUME_QUEUE"),
-		SomePublishQueue: viper.GetString("EVENTS_SOME_PUBLISH_QUEUE"),
+		DemoConsumeQueue:    viper.GetString("EVENTS_DEMO_CONSUME_QUEUE"),
+		DemoPublishQueue:    viper.GetString("EVENTS_DEMO_PUBLISH_QUEUE"),
+		ExampleConsumeQueue: viper.GetString("EVENTS_EXAMPLE_CONSUME_QUEUE"),
+		ExamplePublishQueue: viper.GetString("EVENTS_EXAMPLE_PUBLISH_QUEUE"),
 	}
 }
 

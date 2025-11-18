@@ -16,3 +16,6 @@
 
 /readyz:
   $ref: "./probes/readyz.yml"
+
+/examples:
+  $ref: "./examples/create.yml"

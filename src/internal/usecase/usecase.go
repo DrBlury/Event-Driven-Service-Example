@@ -14,7 +14,7 @@ type AppLogic struct {
 	db            *database.Database
 	log           *slog.Logger
 	eventProducer protoflow.Producer
-	signupTopic   string
+	exampleTopic  string
 }
 
 func NewAppLogic(
@@ -36,11 +36,19 @@ func (a *AppLogic) SetEventProducer(producer protoflow.Producer) {
 	a.eventProducer = producer
 }
 
-func (a *AppLogic) SignupTopic() string {
+// SetExampleTopic configures the queue/topic used for outgoing example events.
+func (a *AppLogic) SetExampleTopic(topic string) {
+	if a == nil {
+		return
+	}
+	a.exampleTopic = topic
+}
+
+func (a *AppLogic) ExampleTopic() string {
 	if a == nil {
 		return ""
 	}
-	return a.signupTopic
+	return a.exampleTopic
 }
 
 // DatabaseProbe ensures the backing database remains reachable for readiness checks.

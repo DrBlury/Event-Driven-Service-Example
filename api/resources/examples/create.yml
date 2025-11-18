@@ -1,0 +1,43 @@
+post:
+  summary: Submit example data
+  operationId: createExampleRecord
+  description: |
+    Accept a payload that represents an example record and enqueue it for
+    asynchronous processing. The handler persists the document and emits a
+    protobuf event so downstream consumers can react to it.
+  tags:
+    - Examples
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../schemas/_index.yml#/ExampleRecordRequest"
+  responses:
+    "201":
+      description: Example record accepted and queued
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: queued
+              message:
+                type: string
+                example: example event accepted
+    "400":
+      description: Invalid request payload
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
+    default:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
