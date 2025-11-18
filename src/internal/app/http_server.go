@@ -32,12 +32,8 @@ func buildHTTPServer(cfg *Config, appLogic *usecase.AppLogic, logger *slog.Logge
 
 	options := []router.Option{
 		router.WithLogger(logger),
-	}
-	if cfg.Router != nil {
-		options = append(options, router.WithConfig(*cfg.Router))
-	}
-	if swagger != nil {
-		options = append(options, router.WithSwagger(swagger))
+		router.WithConfig(*cfg.Router),
+		router.WithSwagger(swagger),
 	}
 
 	r := router.New(handler, options...)

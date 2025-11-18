@@ -25,7 +25,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		return err
 	}
 
-	appLogic, err := initializeAppLogic(db, logger, cfg.Protoflow)
+	appLogic, err := initializeAppLogic(db, logger)
 	if err != nil {
 		return err
 	}
@@ -34,6 +34,7 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 	if err != nil {
 		return err
 	}
+	// add event producer to app logic so we can emit events from use cases
 	appLogic.SetEventProducer(eventService)
 
 	httpServer, err := buildHTTPServer(cfg, appLogic, logger)

@@ -54,6 +54,11 @@ func SetDefaults() {
 	viper.SetDefault("EVENTS_RETRY_MAX_RETRIES", 5)
 	viper.SetDefault("EVENTS_RETRY_INITIAL_INTERVAL", time.Second)
 	viper.SetDefault("EVENTS_RETRY_MAX_INTERVAL", 16*time.Second)
+	viper.SetDefault("PROTOFLOW_POISON_QUEUE", "messages-poison")
+	viper.SetDefault("EVENTS_DEMO_CONSUME_QUEUE", "messages")
+	viper.SetDefault("EVENTS_DEMO_PUBLISH_QUEUE", "messages-processed")
+	viper.SetDefault("EVENTS_SOME_CONSUME_QUEUE", "signup")
+	viper.SetDefault("EVENTS_SOME_PUBLISH_QUEUE", "signup-processable")
 }
 
 func LoadConfig(
