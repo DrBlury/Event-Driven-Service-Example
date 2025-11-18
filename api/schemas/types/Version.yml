@@ -1,4 +1,3 @@
-$id: "https://csr.sh/schemas/types/Version"
 title: Version Metadata
 type: object
 description: Machine-readable build information served by the info endpoints.

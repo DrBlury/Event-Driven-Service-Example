@@ -1,5 +1,5 @@
 ---
-openapi: "3.0.3"
+openapi: "3.1.0"
 info:
   title: Example Event Driven Service with Protoflow and APIWeaver
   description: Example API for an event driven service using Protoflow and APIWeaver.

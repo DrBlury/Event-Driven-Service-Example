@@ -1,4 +1,3 @@
-$id: "https://csr.sh/schemas/errors/ProblemDetails"
 title: Problem Details
 type: object
 description: Problem Details object as defined by RFC 9457.
