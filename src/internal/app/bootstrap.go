@@ -83,6 +83,11 @@ func connectToDatabase(ctx context.Context, cfg *Config, logger *slog.Logger) (*
 }
 
 // initializeAppLogic constructs the core application use cases.
-func initializeAppLogic(db *database.Database, logger *slog.Logger, protoCfg *protoflow.Config) *usecase.AppLogic {
-	return usecase.NewAppLogic(db, logger)
+func initializeAppLogic(db *database.Database, logger *slog.Logger, protoCfg *protoflow.Config) (*usecase.AppLogic, error) {
+	appLogic, err := usecase.NewAppLogic(db, logger)
+	if err != nil {
+		logger.Error("failed to initialize app logic", "error", err)
+		return nil, err
+	}
+	return appLogic, nil
 }

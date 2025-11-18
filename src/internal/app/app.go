@@ -25,7 +25,10 @@ func Run(cfg *Config, shutdownChannel chan os.Signal) error {
 		return err
 	}
 
-	appLogic := initializeAppLogic(db, logger, cfg.Protoflow)
+	appLogic, err := initializeAppLogic(db, logger, cfg.Protoflow)
+	if err != nil {
+		return err
+	}
 
 	eventService, err := events.BuildEventService(ctx, cfg.Events, logger, db, appLogic, cfg.Protoflow)
 	if err != nil {

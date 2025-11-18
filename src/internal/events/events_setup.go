@@ -28,13 +28,19 @@ func BuildEventService(
 
 	middlewares := composeEventMiddlewares(protoflowCfg)
 
+	validator, err := NewValidator()
+	if err != nil {
+		logger.Error("failed to create proto validator", "error", err)
+		return nil, err
+	}
+
 	svc := protoflow.NewService(
 		protoflowCfg,
 		logger,
 		ctx,
 		protoflow.ServiceDependencies{
 			Outbox:                    db,
-			Validator:                 appLogic,
+			Validator:                 validator,
 			DisableDefaultMiddlewares: true,
 			Middlewares:               middlewares,
 		},

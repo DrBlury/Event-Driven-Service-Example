@@ -10,12 +10,6 @@ import (
 )
 
 func (a *AppLogic) Signup(ctx context.Context, signup *domain.Signup, token string) error {
-	// validate signup
-	err := a.Validate(signup)
-	if err != nil {
-		return err
-	}
-
 	// Do something with the signup
 	// store signup in database
 
@@ -37,5 +31,5 @@ func (a *AppLogic) EmitSignupEvent(ctx context.Context, signup *domain.Signup) e
 		"source": "api.signup",
 	}
 
-	return a.PublishEvent(ctx, a.signupTopic, signup, metadata)
+	return a.eventProducer.PublishProto(ctx, a.signupTopic, signup, metadata)
 }
