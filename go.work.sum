@@ -38,8 +38,8 @@ github.com/chenzhuoyu/iasm v0.9.0/go.mod h1:Xjy2NpN3h7aUqeqM+woSuuvxmIe6+DDsiNLI
 github.com/cncf/xds/go v0.0.0-20250501225837-2ac532fd4443 h1:aQ3y1lwWyqYPiWZThqv1aFbZMiM9vblcSArJRf2Irls=
 github.com/cncf/xds/go v0.0.0-20250501225837-2ac532fd4443/go.mod h1:W+zGtBO5Y1IgJhy4+A9GOqVhqLpfZi+vwmdNXUehLA8=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
-github.com/drblury/protoflow v0.2.3 h1:iYUPzW6sB4MLL4FskkQ5/k8UDY6853wlNi4djsJX4r0=
-github.com/drblury/protoflow v0.2.3/go.mod h1:96YnI2bUwg/3cVMoDF+/7FZuCS+FGsvYpJTKo7jd8Fk=
+github.com/drblury/protoflow v0.3.0 h1:QYk7Z3ksUH4ifFs0Z9L1ZVAIBlQzRQkMATSKg+MNM2I=
+github.com/drblury/protoflow v0.3.0/go.mod h1:96YnI2bUwg/3cVMoDF+/7FZuCS+FGsvYpJTKo7jd8Fk=
 github.com/envoyproxy/go-control-plane v0.13.4 h1:zEqyPVyku6IvWCFwux4x9RxkLOMUL+1vC9xUFv5l2/M=
 github.com/envoyproxy/go-control-plane v0.13.4/go.mod h1:kDfuBlDVsSj2MjrLEtRWtHlsWIFcGyB2RMO44Dc5GZA=
 github.com/envoyproxy/go-control-plane/envoy v1.32.4 h1:jb83lalDRZSpPWW2Z7Mck/8kXZ5CQAFYVjQcdVIr83A=

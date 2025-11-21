@@ -3,6 +3,8 @@ module drblury/event-driven-service
 go 1.25.4
 
 require (
+	github.com/bytedance/gopkg v0.1.3
+	github.com/bytedance/sonic v1.14.2
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/oapi-codegen/runtime v1.1.0
 	github.com/samber/slog-multi v1.5.0
@@ -34,8 +36,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.40.2 // indirect
 	github.com/aws/smithy-go v1.23.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic v1.14.2 // indirect
 	github.com/bytedance/sonic/loader v0.4.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -109,7 +109,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/google/cel-go v0.26.1 // indirect
@@ -139,7 +139,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.39.6 // indirect
 	github.com/drblury/apiweaver v0.2.1
-	github.com/drblury/protoflow v0.2.3
+	github.com/drblury/protoflow v0.3.0
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
