@@ -19,19 +19,19 @@ import (
 func registerAppEventHandlers(svc *protoflow.Service, cfg *Config) error {
 
 	if err := protoflow.RegisterJSONHandler(svc, protoflow.JSONHandlerRegistration[*demoEvent, *processedDemoEvent]{
-		Name:               "demoHandler",
-		ConsumeQueue:       cfg.DemoConsumeQueue,
-		PublishQueue:       cfg.DemoPublishQueue,
-		Handler:            demoHandler(),
+		Name:         "demoHandler",
+		ConsumeQueue: cfg.DemoConsumeQueue,
+		PublishQueue: cfg.DemoPublishQueue,
+		Handler:      demoHandler(),
 	}); err != nil {
 		return err
 	}
 
 	if err := protoflow.RegisterProtoHandler(svc, protoflow.ProtoHandlerRegistration[*domain.ExampleRecord]{
-		Name:               "exampleRecordHandler",
-		ConsumeQueue:       cfg.ExampleConsumeQueue,
-		PublishQueue:       cfg.ExamplePublishQueue,
-		Handler:            exampleRecordHandler(),
+		Name:         "exampleRecordHandler",
+		ConsumeQueue: cfg.ExampleConsumeQueue,
+		PublishQueue: cfg.ExamplePublishQueue,
+		Handler:      exampleRecordHandler(),
 	}); err != nil {
 		return err
 	}
@@ -113,9 +113,13 @@ func demoHandler() protoflow.JSONMessageHandler[*demoEvent, *processedDemoEvent]
 			"day", evt.Payload.Date.Day,
 		)
 
-		metadata := evt.CloneMetadata()
-		metadata["handler"] = "demoHandler"
-		metadata["next_queue"] = "processed_demo_events"
+		metadata := evt.Metadata.WithAll(
+			protoflow.Metadata{
+				"handler":      "exampleRecordHandler",
+				"processed_at": time.Now().Format(time.RFC3339),
+				"next_queue":   "demo_processed_events",
+			},
+		)
 
 		return []protoflow.JSONMessageOutput[*processedDemoEvent]{
 			{
@@ -151,9 +155,12 @@ func exampleRecordHandler() protoflow.ProtoMessageHandler[*domain.ExampleRecord]
 			},
 		}
 
-		metadata := e.CloneMetadata()
-		metadata["processed_by"] = "exampleRecordHandler"
-		metadata["example_status"] = status
+		metadata := e.Metadata.WithAll(
+			protoflow.Metadata{
+				"handler":      "exampleRecordHandler",
+				"processed_at": now.Format(time.RFC3339),
+			},
+		)
 
 		return []protoflow.ProtoMessageOutput{{Message: result, Metadata: metadata}}, nil
 	}
