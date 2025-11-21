@@ -73,6 +73,8 @@ github.com/drblury/apiweaver v0.2.1 h1:sREsa/8+/0s6PUM6v5tzC7mkGIFZ6ArPHcsx72GiW
 github.com/drblury/apiweaver v0.2.1/go.mod h1:yL0a1a5jfsI1FfzQReOfzD5Ui9aJq5Rii4njYvBF06o=
 github.com/drblury/protoflow v0.1.0 h1:Zyci66Zp7xomA84yHeIlBUTSE9W4r3kGxfbJif0bXZQ=
 github.com/drblury/protoflow v0.1.0/go.mod h1:96YnI2bUwg/3cVMoDF+/7FZuCS+FGsvYpJTKo7jd8Fk=
+github.com/drblury/protoflow v0.2.3 h1:iYUPzW6sB4MLL4FskkQ5/k8UDY6853wlNi4djsJX4r0=
+github.com/drblury/protoflow v0.2.3/go.mod h1:96YnI2bUwg/3cVMoDF+/7FZuCS+FGsvYpJTKo7jd8Fk=
 github.com/eapache/go-resiliency v1.7.0 h1:n3NRTnBn5N0Cbi/IeOHuQn9s2UwVUH7Ga0ZWcP+9JTA=
 github.com/eapache/go-resiliency v1.7.0/go.mod h1:5yPzW0MIvSe0JDsv0v+DvcjEv2FyD6iZYSs1ZI+iQho=
 github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 h1:Oy0F4ALJ04o5Qqpdz8XLIpNA3WM/iSIXqxtqo7UGVws=

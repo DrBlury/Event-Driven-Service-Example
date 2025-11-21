@@ -21,7 +21,6 @@ func registerAppEventHandlers(svc *protoflow.Service, cfg *Config) error {
 	if err := protoflow.RegisterJSONHandler(svc, protoflow.JSONHandlerRegistration[*demoEvent, *processedDemoEvent]{
 		Name:               "demoHandler",
 		ConsumeQueue:       cfg.DemoConsumeQueue,
-		ConsumeMessageType: &demoEvent{},
 		PublishQueue:       cfg.DemoPublishQueue,
 		Handler:            demoHandler(),
 	}); err != nil {
@@ -33,7 +32,6 @@ func registerAppEventHandlers(svc *protoflow.Service, cfg *Config) error {
 		ConsumeQueue:       cfg.ExampleConsumeQueue,
 		PublishQueue:       cfg.ExamplePublishQueue,
 		Handler:            exampleRecordHandler(),
-		ConsumeMessageType: &domain.ExampleRecord{},
 	}); err != nil {
 		return err
 	}

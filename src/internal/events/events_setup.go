@@ -36,7 +36,7 @@ func BuildEventService(
 
 	svc := protoflow.NewService(
 		protoflowCfg,
-		logger,
+		protoflow.NewSlogServiceLogger(logger),
 		ctx,
 		protoflow.ServiceDependencies{
 			Outbox:                    db,

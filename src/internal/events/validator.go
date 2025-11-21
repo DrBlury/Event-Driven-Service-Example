@@ -25,8 +25,8 @@ func NewValidator() (*Validator, error) {
 	}, nil
 }
 
-func (v Validator) Validate(msg protoreflect.ProtoMessage) error {
-	if err := v.validator.Validate(msg); err != nil {
+func (v Validator) Validate(a any) error {
+	if err := v.validator.Validate(a.(protoreflect.ProtoMessage)); err != nil {
 		// log the error
 		slog.With("error", err).Error("validation error")
 		var errMessages []string
