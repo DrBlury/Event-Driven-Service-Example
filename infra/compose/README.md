@@ -80,6 +80,8 @@ Notes
 - The `app` service's PUBSUB_SYSTEM is set by the mode-specific files so the
   code can switch between Kafka, RabbitMQ or AWS (localstack) without
   duplicating the full `app` service definition.
+- The `app` service now also exposes port `8085` which proxies Protoflow's
+  metadata API (`/api/handlers`).
 
 Volume & infra changes
 -----------------------

@@ -55,6 +55,8 @@ func SetDefaults() {
 	viper.SetDefault("EVENTS_RETRY_INITIAL_INTERVAL", time.Second)
 	viper.SetDefault("EVENTS_RETRY_MAX_INTERVAL", 16*time.Second)
 	viper.SetDefault("PROTOFLOW_POISON_QUEUE", "messages-poison")
+	viper.SetDefault("PROTOFLOW_WEBUI_ENABLED", true)
+	viper.SetDefault("PROTOFLOW_WEBUI_PORT", 8081)
 	viper.SetDefault("EVENTS_DEMO_CONSUME_QUEUE", "messages")
 	viper.SetDefault("EVENTS_DEMO_PUBLISH_QUEUE", "messages-processed")
 	viper.SetDefault("EVENTS_EXAMPLE_CONSUME_QUEUE", "example-records")
@@ -203,6 +205,8 @@ func loadProtoflowConfig() *protoflow.Config {
 		RetryMaxRetries:      viper.GetInt("PROTOFLOW_RETRY_MAX_RETRIES"),
 		RetryInitialInterval: viper.GetDuration("PROTOFLOW_RETRY_INITIAL_INTERVAL"),
 		RetryMaxInterval:     viper.GetDuration("PROTOFLOW_RETRY_MAX_INTERVAL"),
+		WebUIEnabled:         viper.GetBool("PROTOFLOW_WEBUI_ENABLED"),
+		WebUIPort:            viper.GetInt("PROTOFLOW_WEBUI_PORT"),
 	}
 }
 

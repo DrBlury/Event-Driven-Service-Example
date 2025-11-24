@@ -38,14 +38,10 @@ tasks:
     cmds:
       - echo "Preparing environment configuration in {{.env_dir}}"
       - mkdir -p {{.env_dir}}
-      - cp {{.env_example_dir}}/app.env.example {{.env_dir}}/app.env
-      - cp {{.env_example_dir}}/kafdrop.env.example {{.env_dir}}/kafdrop.env
-      - cp {{.env_example_dir}}/kafka.env.example {{.env_dir}}/kafka.env
-      - cp {{.env_example_dir}}/mongo-express.env.example {{.env_dir}}/mongo-express.env
-      - cp {{.env_example_dir}}/mongo.env.example {{.env_dir}}/mongo.env
-      - cp {{.env_example_dir}}/openobserve.env.example {{.env_dir}}/openobserve.env
-      - cp {{.env_example_dir}}/rabbitmq.env.example {{.env_dir}}/rabbitmq.env
-      - cp {{.env_example_dir}}/localstack.env.example {{.env_dir}}/localstack.env
+      - |
+        for file in {{.env_example_dir}}/*.example; do
+          cp "$file" "{{.env_dir}}/$(basename "${file%.example}")"
+        done
 
   ci:
     desc: "Run the full GitHub Actions workflow locally"
@@ -192,130 +188,124 @@ tasks:
     silent: true
 
   debug:
-    desc: "Start the app in debug mode with the selected pubsub backend"
+    desc: "Start the app in debug mode with the selected system backend"
     summary: |
-      Reads PUBSUB_SYSTEM from your environment and boots the matching docker-compose stack layered with the debug configuration.
+      Reads SYSTEM from your environment and boots the matching docker-compose stack layered with the debug configuration.
     cmds:
       - |
-        set -euo pipefail
-        echo "Starting debug stack using PUBSUB_SYSTEM='${PUBSUB_SYSTEM}'"
-        case "${PUBSUB_SYSTEM}" in
-          kafka)
-            docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          rabbitmq)
-            docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          aws)
-            docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          nats)
-            docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          http)
-            docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          io)
-            docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} -f {{.compose_debug_file}} up --build
-            ;;
-          *)
-            echo "PUBSUB_SYSTEM must be set to 'kafka', 'rabbitmq', 'aws', 'nats', 'http', or 'io'" >&2
-            exit 1
-            ;;
-        esac
+        if [ -z "${SYSTEM:-}" ]; then
+          echo "SYSTEM must be set to 'kafka', 'rabbitmq', 'aws', 'nats', 'http', or 'io'" >&2
+          exit 1
+        fi
+      - task: compose-up
+        vars:
+          SYSTEM: "${SYSTEM}"
+          DEBUG: true
+
+  compose-up:
+    internal: true
+    cmds:
+      - echo "Starting {{.SYSTEM}} stack{{if .DEBUG}} in debug mode{{end}}"
+      - docker compose -f {{.compose_base_file}} -f infra/compose/docker-compose.{{.SYSTEM}}.yml {{if .DEBUG}}-f {{.compose_debug_file}}{{end}} up --build
+
+  compose-down:
+    internal: true
+    cmds:
+      - echo "Stopping {{.SYSTEM}} stack"
+      - docker compose -f {{.compose_base_file}} -f infra/compose/docker-compose.{{.SYSTEM}}.yml down
 
   up-rabbitmq:
     desc: "Start the RabbitMQ docker-compose stack"
     summary: |
       Boots the core services plus the RabbitMQ dependencies.
     cmds:
-      - echo "Starting RabbitMQ stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: rabbitmq }
 
   down-rabbitmq:
     desc: "Stop and remove the RabbitMQ stack"
     summary: |
       Tears down containers started by up-rabbitmq.
     cmds:
-      - echo "Stopping RabbitMQ stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_rabbitmq_file}} down
+      - task: compose-down
+        vars: { SYSTEM: rabbitmq }
 
   up-kafka:
     desc: "Start the Kafka docker-compose stack"
     summary: |
       Boots the core services plus Kafka and Kafdrop.
     cmds:
-      - echo "Starting Kafka stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: kafka }
 
   down-kafka:
     desc: "Stop and remove the Kafka stack"
     summary: |
       Tears down containers started by up-kafka.
     cmds:
-      - echo "Stopping Kafka stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_kafka_file}} down
+      - task: compose-down
+        vars: { SYSTEM: kafka }
 
   up-aws:
     desc: "Start the AWS/localstack docker-compose stack"
     summary: |
       Boots the core services plus LocalStack and OpenObserve.
     cmds:
-      - echo "Starting AWS/LocalStack stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: aws }
 
   down-aws:
     desc: "Stop and remove the AWS/localstack stack"
     summary: |
       Tears down containers started by up-aws.
     cmds:
-      - echo "Stopping AWS/LocalStack stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} down
+      - task: compose-down
+        vars: { SYSTEM: aws }
 
   up-nats:
     desc: "Start the NATS docker-compose stack"
     summary: |
       Boots the core services plus NATS.
     cmds:
-      - echo "Starting NATS stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: nats }
 
   down-nats:
     desc: "Stop and remove the NATS stack"
     summary: |
       Tears down containers started by up-nats.
     cmds:
-      - echo "Stopping NATS stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} down
+      - task: compose-down
+        vars: { SYSTEM: nats }
 
   up-http:
     desc: "Start the HTTP docker-compose stack"
     summary: |
       Boots the core services configured for HTTP transport.
     cmds:
-      - echo "Starting HTTP stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: http }
 
   down-http:
     desc: "Stop and remove the HTTP stack"
     summary: |
       Tears down containers started by up-http.
     cmds:
-      - echo "Stopping HTTP stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} down
+      - task: compose-down
+        vars: { SYSTEM: http }
 
   up-io:
     desc: "Start the IO docker-compose stack"
     summary: |
       Boots the core services configured for IO (file) transport.
     cmds:
-      - echo "Starting IO stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} up --build
+      - task: compose-up
+        vars: { SYSTEM: io }
 
   down-io:
     desc: "Stop and remove the IO stack"
     summary: |
       Tears down containers started by up-io.
     cmds:
-      - echo "Stopping IO stack"
-      - docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} down
+      - task: compose-down
+        vars: { SYSTEM: io }

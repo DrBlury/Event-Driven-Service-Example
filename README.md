@@ -56,7 +56,7 @@ Pick the pub/sub backend you want to explore:
 - `task up-nats`
 - `task up-http`
 - `task up-io`
-- `PUBSUB_SYSTEM=kafka task debug` to run the app with live code reloading against a compose stack.
+- `SYSTEM=kafka task debug` to run the app with live code reloading against a compose stack.
 
 Once the containers are healthy, the API is available at the address configured by `APP_SERVER_PORT` (default `:80`). Health probes live at `/healthz` and `/readyz`, while `/info/status` shows build metadata.
 
@@ -73,6 +73,7 @@ Once the containers are healthy, the API is available at the address configured 
 - **Logging**: Structured through `slog`, mirrored into Protoflow’s Watermill adapters.
 - **Tracing & Metrics**: Exported with OTEL (`go.opentelemetry.io/otel` plus auto instrumentation). Configure OTLP endpoints via env vars (`OTEL_EXPORTER_OTLP_*`).
 - **Poison queues & retries**: Protoflow middlewares provide correlation IDs, validation, retries, and poison queue routing. Tune values via `PROTOFLOW_*` env vars (loaded with Viper).
+- **Protoflow metadata API**: When `PROTOFLOW_WEBUI_ENABLED=true`, Protoflow launches a lightweight HTTP server (default host port `8085`) exposing `/api/handlers`, which returns the registered handler metadata for quick debugging.
 - **Monitoring**: When running the AWS/LocalStack stack, OpenObserve becomes available for quick dashboards.
 
 ## Infrastructure & Deployment
