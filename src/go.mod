@@ -111,18 +111,9 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
-	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1 // indirect
-	github.com/ThreeDotsLabs/watermill-nats/v2 v2.1.3 // indirect
-	github.com/ajg/form v1.5.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.1 // indirect
-	github.com/go-chi/chi v4.1.2+incompatible // indirect
-	github.com/go-chi/chi/v5 v5.2.3 // indirect
-	github.com/go-chi/render v1.0.3 // indirect
 	github.com/google/cel-go v0.26.1 // indirect
-	github.com/nats-io/nats.go v1.47.0 // indirect
-	github.com/nats-io/nkeys v0.4.12 // indirect
-	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -150,7 +141,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.40.0 // indirect
 	github.com/drblury/apiweaver v0.2.1
-	github.com/drblury/protoflow v0.3.4
+	github.com/drblury/protoflow v0.1.0
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
