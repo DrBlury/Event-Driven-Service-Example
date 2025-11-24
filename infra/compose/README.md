@@ -24,6 +24,15 @@ Files
   - AWS/localstack mode: adds `localstack` and `terraform`, and sets
     PUBSUB_SYSTEM=aws for `app`.
 
+- docker-compose.nats.yml
+  - NATS mode: adds `nats` and sets PUBSUB_SYSTEM=nats for `app`.
+
+- docker-compose.http.yml
+  - HTTP mode: adds `mockserver` and sets PUBSUB_SYSTEM=http for `app`.
+
+- docker-compose.io.yml
+  - IO mode: sets PUBSUB_SYSTEM=io for `app`.
+
 Examples
 --------
 
@@ -43,6 +52,24 @@ Start AWS/localstack mode (base + aws override):
 
 ```bash
 docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml up
+```
+
+Start NATS mode:
+
+```bash
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.nats.yml up
+```
+
+Start HTTP mode:
+
+```bash
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.http.yml up
+```
+
+Start IO mode:
+
+```bash
+docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.io.yml up
 ```
 
 Notes

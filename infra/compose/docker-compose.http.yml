@@ -1,0 +1,11 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      PUBSUB_SYSTEM: http
+      HTTP_SERVER_ADDRESS: :8081
+      HTTP_PUBLISHER_URL: http://app:8081
+    ports:
+      - "8081:8081"

@@ -53,6 +53,9 @@ Pick the pub/sub backend you want to explore:
 - `task up-kafka`
 - `task up-rabbitmq`
 - `task up-aws` (spins LocalStack + OpenObserve)
+- `task up-nats`
+- `task up-http`
+- `task up-io`
 - `PUBSUB_SYSTEM=kafka task debug` to run the app with live code reloading against a compose stack.
 
 Once the containers are healthy, the API is available at the address configured by `APP_SERVER_PORT` (default `:80`). Health probes live at `/healthz` and `/readyz`, while `/info/status` shows build metadata.

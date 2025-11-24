@@ -5,6 +5,9 @@ vars:
   compose_kafka_file: infra/compose/docker-compose.kafka.yml
   compose_rabbitmq_file: infra/compose/docker-compose.rabbitmq.yml
   compose_aws_file: infra/compose/docker-compose.aws.yml
+  compose_nats_file: infra/compose/docker-compose.nats.yml
+  compose_http_file: infra/compose/docker-compose.http.yml
+  compose_io_file: infra/compose/docker-compose.io.yml
   env_dir: infra/env
   env_example_dir: infra/env/example
   proto_dir: proto
@@ -206,8 +209,17 @@ tasks:
           aws)
             docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} -f {{.compose_debug_file}} up --build
             ;;
+          nats)
+            docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} -f {{.compose_debug_file}} up --build
+            ;;
+          http)
+            docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} -f {{.compose_debug_file}} up --build
+            ;;
+          io)
+            docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} -f {{.compose_debug_file}} up --build
+            ;;
           *)
-            echo "PUBSUB_SYSTEM must be set to 'kafka', 'rabbitmq', or 'aws'" >&2
+            echo "PUBSUB_SYSTEM must be set to 'kafka', 'rabbitmq', 'aws', 'nats', 'http', or 'io'" >&2
             exit 1
             ;;
         esac
@@ -259,3 +271,51 @@ tasks:
     cmds:
       - echo "Stopping AWS/LocalStack stack"
       - docker compose -f {{.compose_base_file}} -f {{.compose_aws_file}} down
+
+  up-nats:
+    desc: "Start the NATS docker-compose stack"
+    summary: |
+      Boots the core services plus NATS.
+    cmds:
+      - echo "Starting NATS stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} up --build
+
+  down-nats:
+    desc: "Stop and remove the NATS stack"
+    summary: |
+      Tears down containers started by up-nats.
+    cmds:
+      - echo "Stopping NATS stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_nats_file}} down
+
+  up-http:
+    desc: "Start the HTTP docker-compose stack"
+    summary: |
+      Boots the core services configured for HTTP transport.
+    cmds:
+      - echo "Starting HTTP stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} up --build
+
+  down-http:
+    desc: "Stop and remove the HTTP stack"
+    summary: |
+      Tears down containers started by up-http.
+    cmds:
+      - echo "Stopping HTTP stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_http_file}} down
+
+  up-io:
+    desc: "Start the IO docker-compose stack"
+    summary: |
+      Boots the core services configured for IO (file) transport.
+    cmds:
+      - echo "Starting IO stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} up --build
+
+  down-io:
+    desc: "Stop and remove the IO stack"
+    summary: |
+      Tears down containers started by up-io.
+    cmds:
+      - echo "Stopping IO stack"
+      - docker compose -f {{.compose_base_file}} -f {{.compose_io_file}} down

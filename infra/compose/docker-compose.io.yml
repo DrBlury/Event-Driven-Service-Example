@@ -1,0 +1,8 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      PUBSUB_SYSTEM: io
+      IO_FILE: /tmp/events.log

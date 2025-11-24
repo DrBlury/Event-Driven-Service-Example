@@ -1,0 +1,17 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      PUBSUB_SYSTEM: nats
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_started
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
