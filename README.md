@@ -1,5 +1,10 @@
 # Event-Driven Service Example
 
+[![CI](https://github.com/DrBlury/Event-Driven-Service-Example/actions/workflows/ci.yml/badge.svg)](https://github.com/DrBlury/Event-Driven-Service-Example/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/DrBlury/Event-Driven-Service-Example/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/DrBlury/Event-Driven-Service-Example)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/DrBlury/Event-Driven-Service-Example?filename=src%2Fgo.mod)](https://go.dev/)
+[![License](https://img.shields.io/github/license/DrBlury/Event-Driven-Service-Example)](LICENSE)
+
 This repository is a from-scratch reference implementation of a production-style event-driven service. It exposes an HTTP API powered by **APIWeaver**, produces and consumes events via **Protoflow**, persists data in MongoDB, and stitches everything together with a modern tooling stack (Task, Docker, Terraform, Buf, oapi-codegen, act, OTEL, and more). Use it to learn, prototype, or as a baseline for your own services.
 
 ## Overview
@@ -67,6 +72,52 @@ Once the containers are healthy, the API is available at the address configured 
 3. **Code business logic**: implement handlers in `src/internal/server/handler/*` and `src/internal/events`.
 4. **Run locally**: use the compose tasks above or run only the Go binary with `go run ./src` while relying on external infra.
 5. **Validate CI locally**: `task ci` executes every GitHub Actions job via `act`, matching the remote workflow.
+
+## Testing
+
+The project uses Go's built-in testing framework with race detection and coverage reporting.
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+cd src && go test ./...
+
+# Run tests with verbose output
+cd src && go test -v ./...
+
+# Run tests with race detection
+cd src && go test -race ./...
+
+# Run tests with coverage
+cd src && go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+# View coverage report in terminal
+go tool cover -func=coverage.out
+
+# Generate HTML coverage report
+go tool cover -html=coverage.out -o coverage.html
+```
+
+### Test Coverage
+
+Coverage reports are automatically generated during CI runs and uploaded to [Codecov](https://codecov.io/gh/DrBlury/Event-Driven-Service-Example). You can view detailed coverage metrics, including:
+
+- Line-by-line coverage highlighting
+- Coverage trends over time
+- Per-file and per-package breakdowns
+
+### CI Pipeline
+
+The GitHub Actions CI pipeline runs the following checks on every push and pull request:
+
+| Job | Description |
+| --- | --- |
+| **API Assets** | Validates OpenAPI spec and generates API assets |
+| **Lint & Build** | Runs golangci-lint and builds the Go module |
+| **Test** | Runs unit tests with race detection and coverage |
+| **Security Scan** | Trivy filesystem and IaC vulnerability scanning |
+| **Vulnerability Check** | govulncheck for known Go vulnerabilities |
 
 ## Observability & Operations
 

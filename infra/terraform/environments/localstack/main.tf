@@ -69,14 +69,16 @@ module "iam" {
 
 # Create SQS queues
 resource "aws_sqs_queue" "queues" {
-  for_each = local.queues
-  name     = each.value
+  for_each                = local.queues
+  name                    = each.value
+  sqs_managed_sse_enabled = true # Enable server-side encryption
 }
 
 # Create SNS topics
 resource "aws_sns_topic" "topics" {
-  for_each = local.topics
-  name     = each.value
+  for_each          = local.topics
+  name              = each.value
+  kms_master_key_id = "alias/aws/sns" # Enable server-side encryption with AWS managed key
 }
 
 # Subscribe each topic to the same-named SQS queue

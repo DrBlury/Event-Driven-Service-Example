@@ -139,6 +139,13 @@ jobs:
           path: src/coverage.out
           retention-days: 7
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: src/coverage.out
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   go_vulncheck:
     name: Go Vulnerability Check
     runs-on: ubuntu-latest
@@ -151,6 +158,19 @@ jobs:
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate protobuf stubs
+        uses: ./.github/actions/generate-protobuf
+        with:
+          github_token: ${{ github.token }}
+
+      - name: Generate API assets
+        uses: ./.github/actions/generate-api-assets
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest

@@ -316,6 +316,11 @@ tasks:
     cmds:
       - echo "Starting {{.SYSTEM}} stack{{if .DEBUG}} in debug mode{{end}}"
       - docker compose -f {{.compose_base_file}} -f infra/compose/docker-compose.{{.SYSTEM}}.yml {{if .DEBUG}}-f {{.compose_debug_file}}{{end}} up --build
+    env:
+      UID:
+        sh: id -u
+      GID:
+        sh: id -g
 
   compose-down:
     internal: true

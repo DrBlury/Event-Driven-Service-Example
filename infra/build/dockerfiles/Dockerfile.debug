@@ -6,6 +6,10 @@ ARG ALPINE_VERSION=3.22
 
 FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
 
+# Configurable UID/GID to match host user (avoids permission issues with mounted volumes)
+ARG UID=1000
+ARG GID=1000
+
 RUN apk update && \
   apk upgrade && \
   apk add --no-cache \
@@ -14,8 +18,17 @@ RUN apk update && \
   git \
   openssh-client \
   inotify-tools \
-  su-exec \
   curl
+
+# Create an unprivileged user for security with configurable UID/GID to match host
+RUN addgroup -g ${GID} service && \
+  adduser \
+  --disabled-password \
+  --gecos "" \
+  --home "/home/service" \
+  --uid ${UID} \
+  --ingroup service \
+  "service"
 
 # Install delve debugger and air for hot-reloading
 RUN GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest && \
@@ -24,50 +37,40 @@ RUN GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest && 
 WORKDIR /app
 
 # Copy go.mod and go.sum first to leverage Docker cache
-COPY src/go.mod src/go.sum ./
+COPY --chown=service:service src/go.mod src/go.sum ./
+
+# Set ownership of Go directories for non-root user
+RUN chown -R service:service /go /home/service
+
+# Switch to non-root user for remaining operations
+USER service
 
 # Download dependencies during build for faster startup
 RUN go mod download
 
 # Copy dependencies to a backup location (volume mount may overwrite /go/pkg/mod)
-RUN cp -r /go/pkg/mod /go-mod-cache
+RUN cp -r /go/pkg/mod /home/service/go-mod-cache
 
 # Copy air config for hot-reload
-COPY src/.air.toml .air.toml
+COPY --chown=service:service src/.air.toml .air.toml
+
+# Create tmp directory for builds
+RUN mkdir -p /app/tmp
 
 # Create entrypoint script that supports both hot-reload and debug-only modes
-RUN echo '#!/bin/sh' > /entrypoint.sh && \
-  echo 'set -e' >> /entrypoint.sh && \
-  echo 'echo "Syncing Go module cache from build..."' >> /entrypoint.sh && \
-  echo 'cp -rn /go-mod-cache/* /go/pkg/mod/ 2>/dev/null || true' >> /entrypoint.sh && \
-  echo 'if [ "${HOT_RELOAD:-true}" = "false" ]; then' >> /entrypoint.sh && \
-  echo '  echo "Hot reload disabled, building and running with debugger..."' >> /entrypoint.sh && \
-  echo '  go build -gcflags="all=-N -l" -o ./tmp/main .' >> /entrypoint.sh && \
-  echo '  exec dlv exec ./tmp/main --headless=true --listen=:40000 --api-version=2 --accept-multiclient --continue --log --check-go-version=false --' >> /entrypoint.sh && \
-  echo 'else' >> /entrypoint.sh && \
-  echo '  echo "Hot reload enabled, starting air..."' >> /entrypoint.sh && \
-  echo '  exec air -c .air.toml' >> /entrypoint.sh && \
-  echo 'fi' >> /entrypoint.sh && \
-  chmod +x /entrypoint.sh
-
-# Create an unprivileged user for security
-RUN adduser \
-  --disabled-password \
-  --gecos "" \
-  --home "/home/service" \
-  --uid 1001 \
-  "service" && \
-  mkdir -p /app/tmp && \
-  chown -R service:service /app /go /go-mod-cache /home/service
-
-# Create startup script that fixes volume permissions then drops to non-root user
-RUN echo '#!/bin/sh' > /startup.sh && \
-  echo 'set -e' >> /startup.sh && \
-  echo '# Fix ownership of mounted volumes (they are created as root)' >> /startup.sh && \
-  echo 'chown -R service:service /go/pkg/mod /app/tmp 2>/dev/null || true' >> /startup.sh && \
-  echo '# Switch to non-root user and run entrypoint' >> /startup.sh && \
-  echo 'exec su-exec service /entrypoint.sh' >> /startup.sh && \
-  chmod +x /startup.sh
+RUN echo '#!/bin/sh' > /home/service/entrypoint.sh && \
+  echo 'set -e' >> /home/service/entrypoint.sh && \
+  echo 'echo "Syncing Go module cache from build..."' >> /home/service/entrypoint.sh && \
+  echo 'cp -rn /home/service/go-mod-cache/* /go/pkg/mod/ 2>/dev/null || true' >> /home/service/entrypoint.sh && \
+  echo 'if [ "${HOT_RELOAD:-true}" = "false" ]; then' >> /home/service/entrypoint.sh && \
+  echo '  echo "Hot reload disabled, building and running with debugger..."' >> /home/service/entrypoint.sh && \
+  echo '  go build -gcflags="all=-N -l" -o ./tmp/main .' >> /home/service/entrypoint.sh && \
+  echo '  exec dlv exec ./tmp/main --headless=true --listen=:40000 --api-version=2 --accept-multiclient --continue --log --check-go-version=false --' >> /home/service/entrypoint.sh && \
+  echo 'else' >> /home/service/entrypoint.sh && \
+  echo '  echo "Hot reload enabled, starting air..."' >> /home/service/entrypoint.sh && \
+  echo '  exec air -c .air.toml' >> /home/service/entrypoint.sh && \
+  echo 'fi' >> /home/service/entrypoint.sh && \
+  chmod +x /home/service/entrypoint.sh
 
 EXPOSE 8080 40000
 
@@ -75,4 +78,4 @@ EXPOSE 8080 40000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD curl --fail -s http://localhost:8080/info/status || exit 1
 
-CMD ["/startup.sh"]
+CMD ["/home/service/entrypoint.sh"]

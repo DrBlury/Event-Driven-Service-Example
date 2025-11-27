@@ -6,9 +6,16 @@ variable "topic_arns" {
   type = list(string)
 }
 
+variable "sqs_managed_sse_enabled" {
+  type        = bool
+  default     = true
+  description = "Enable SQS managed server-side encryption"
+}
+
 resource "aws_sqs_queue" "queues" {
-  for_each = var.queues
-  name     = each.key
+  for_each                = var.queues
+  name                    = each.key
+  sqs_managed_sse_enabled = var.sqs_managed_sse_enabled # Enable server-side encryption
 }
 
 resource "aws_sqs_queue_policy" "allow_sns" {

@@ -8,9 +8,13 @@ services:
     extends:
       file: docker-compose.yml
       service: app
+    user: "${UID:-1000}:${GID:-1000}"
     build:
       context: ../..
       dockerfile: infra/build/dockerfiles/Dockerfile.debug
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     ports:
       - "8080:8080"
       - "40000:40000" # Delve debugger port
