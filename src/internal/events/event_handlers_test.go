@@ -23,7 +23,6 @@ func TestDemoHandler(t *testing.T) {
 				Day:   15,
 			},
 		},
-		Metadata: protoflow.Metadata{},
 	}
 
 	result, err := handler(ctx, evt)
@@ -57,9 +56,6 @@ func TestDemoHandler_WithMetadata(t *testing.T) {
 				Month: 12,
 				Day:   25,
 			},
-		},
-		Metadata: protoflow.Metadata{
-			"existing_key": "existing_value",
 		},
 	}
 
@@ -100,7 +96,6 @@ func TestExampleRecordHandler(t *testing.T) {
 				},
 			},
 		},
-		Metadata: protoflow.Metadata{},
 	}
 
 	// Run multiple times to test random behavior
@@ -145,9 +140,6 @@ func TestExampleRecordHandler_MetadataEnrichment(t *testing.T) {
 		Payload: &domain.ExampleRecord{
 			RecordId: "TEST-002",
 			Title:    "Test",
-		},
-		Metadata: protoflow.Metadata{
-			"correlation_id": "abc-123",
 		},
 	}
 

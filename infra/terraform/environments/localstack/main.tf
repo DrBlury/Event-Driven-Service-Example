@@ -51,8 +51,9 @@ locals {
 }
 
 module "sns" {
-  source = "../../modules/sns"
-  topics = local.topics
+  source            = "../../modules/sns"
+  topics            = local.topics
+  kms_master_key_id = aws_kms_key.sns_key.arn
 }
 
 module "sqs" {
@@ -67,6 +68,45 @@ module "iam" {
   queue_arns = [for q in module.sqs : q.arn]
 }
 
+# Create a customer managed KMS key for SNS encryption
+resource "aws_kms_key" "sns_key" {
+  description             = "Customer managed KMS key for SNS topic encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow SNS to use the key"
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_kms_alias" "sns_key_alias" {
+  name          = "alias/sns-cmk"
+  target_key_id = aws_kms_key.sns_key.key_id
+}
+
 # Create SQS queues
 resource "aws_sqs_queue" "queues" {
   for_each                = local.queues
@@ -78,7 +118,7 @@ resource "aws_sqs_queue" "queues" {
 resource "aws_sns_topic" "topics" {
   for_each          = local.topics
   name              = each.value
-  kms_master_key_id = "alias/aws/sns" # Enable server-side encryption with AWS managed key
+  kms_master_key_id = aws_kms_key.sns_key.arn # Enable server-side encryption with customer managed key
 }
 
 # Subscribe each topic to the same-named SQS queue

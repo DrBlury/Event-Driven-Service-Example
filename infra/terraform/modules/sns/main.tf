@@ -4,8 +4,8 @@ variable "topics" {
 
 variable "kms_master_key_id" {
   type        = string
-  default     = "alias/aws/sns"
-  description = "KMS key for SNS encryption. Defaults to AWS managed key."
+  description = "KMS key ARN for SNS encryption. Must be a customer managed key."
+  # No default - caller must provide a CMK ARN to satisfy security requirements
 }
 
 resource "aws_sns_topic" "topics" {
