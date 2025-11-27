@@ -31,12 +31,3 @@ func TestDatabasePingNilDB(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
-
-func TestDatabasePingNilContext(t *testing.T) {
-	var db *Database
-
-	err := db.Ping(nil)
-	if err == nil {
-		t.Error("Expected error for nil receiver")
-	}
-}

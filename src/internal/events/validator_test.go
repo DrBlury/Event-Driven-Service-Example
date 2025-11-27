@@ -10,7 +10,7 @@ func TestNewValidator(t *testing.T) {
 		t.Fatalf("NewValidator() error = %v", err)
 	}
 	if v == nil {
-		t.Error("NewValidator() returned nil")
+		t.Fatal("NewValidator() returned nil")
 	}
 	if v.validator == nil {
 		t.Error("validator field is nil")

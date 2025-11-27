@@ -77,8 +77,13 @@ func composeEventMiddlewares(cfg *protoflow.Config) []protoflow.MiddlewareRegist
 // poisonQueueFilter decides when an event should be redirected to the poison queue.
 func poisonQueueFilter() func(error) bool {
 	return func(err error) bool {
+		// Check for UnprocessableEventError struct type
 		var unprocessable *protoflow.UnprocessableEventError
 		if errors.As(err, &unprocessable) {
+			return true
+		}
+		// Check for ErrUnprocessable sentinel error
+		if errors.Is(err, protoflow.ErrUnprocessable) {
 			return true
 		}
 		var validationErr domain.ErrValidations

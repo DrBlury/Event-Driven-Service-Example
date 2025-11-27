@@ -66,10 +66,8 @@ func TestErrValidationsError(t *testing.T) {
 }
 
 func TestErrValidationsImplementsError(t *testing.T) {
-	var err error = ErrValidations{Errors: []string{"test"}}
-	if err == nil {
-		t.Error("ErrValidations should implement error interface")
-	}
+	var _ error = ErrValidations{Errors: []string{"test"}}
+	// If this compiles, ErrValidations implements error interface
 }
 
 func TestErrorsIs(t *testing.T) {

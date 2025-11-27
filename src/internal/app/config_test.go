@@ -62,37 +62,8 @@ func TestSetDefaultsCORSValues(t *testing.T) {
 	}
 }
 
-func TestLoadConfig(t *testing.T) {
-	viper.Reset()
-
-	cfg, err := LoadConfig("1.0.0", "2024-01-01", "test", "abc123", "2024-01-01")
-
-	if err != nil {
-		t.Fatalf("LoadConfig error: %v", err)
-	}
-	if cfg == nil {
-		t.Fatal("LoadConfig returned nil")
-	}
-
-	// Verify Info
-	if cfg.Info == nil {
-		t.Error("Info is nil")
-	} else {
-		if cfg.Info.Version != "1.0.0" {
-			t.Errorf("Info.Version = %s, want 1.0.0", cfg.Info.Version)
-		}
-		if cfg.Info.BuildDate != "2024-01-01" {
-			t.Errorf("Info.BuildDate = %s, want 2024-01-01", cfg.Info.BuildDate)
-		}
-		if cfg.Info.Details != "test" {
-			t.Errorf("Info.Details = %s, want test", cfg.Info.Details)
-		}
-		if cfg.Info.CommitHash != "abc123" {
-			t.Errorf("Info.CommitHash = %s, want abc123", cfg.Info.CommitHash)
-		}
-	}
-
-	// Verify other configs are not nil
+func testConfigNotNil(t *testing.T, cfg *Config) {
+	t.Helper()
 	if cfg.Router == nil {
 		t.Error("Router config is nil")
 	}
@@ -117,6 +88,41 @@ func TestLoadConfig(t *testing.T) {
 	if cfg.Events == nil {
 		t.Error("Events config is nil")
 	}
+}
+
+func TestLoadConfig(t *testing.T) {
+	viper.Reset()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "test", "abc123", "2024-01-01")
+
+	if err != nil {
+		t.Fatalf("LoadConfig error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadConfig returned nil")
+	}
+
+	t.Run("Info", func(t *testing.T) {
+		if cfg.Info == nil {
+			t.Fatal("Info is nil")
+		}
+		if cfg.Info.Version != "1.0.0" {
+			t.Errorf("Info.Version = %s, want 1.0.0", cfg.Info.Version)
+		}
+		if cfg.Info.BuildDate != "2024-01-01" {
+			t.Errorf("Info.BuildDate = %s, want 2024-01-01", cfg.Info.BuildDate)
+		}
+		if cfg.Info.Details != "test" {
+			t.Errorf("Info.Details = %s, want test", cfg.Info.Details)
+		}
+		if cfg.Info.CommitHash != "abc123" {
+			t.Errorf("Info.CommitHash = %s, want abc123", cfg.Info.CommitHash)
+		}
+	})
+
+	t.Run("ConfigsNotNil", func(t *testing.T) {
+		testConfigNotNil(t, cfg)
+	})
 }
 
 func TestLoadConfigWithEnvOverrides(t *testing.T) {

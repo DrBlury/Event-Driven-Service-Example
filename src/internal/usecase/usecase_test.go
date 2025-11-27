@@ -36,7 +36,7 @@ func TestNewAppLogic(t *testing.T) {
 		t.Fatalf("NewAppLogic returned error: %v", err)
 	}
 	if logic == nil {
-		t.Error("NewAppLogic returned nil")
+		t.Fatal("NewAppLogic returned nil")
 	}
 	if logic.log != logger {
 		t.Error("Logger not set correctly")
