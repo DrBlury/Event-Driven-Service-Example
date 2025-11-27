@@ -1,3 +1,7 @@
+# Debug compose file with hot-reload support
+# Usage: docker compose -f docker-compose.yml -f docker-compose.<system>.yml -f docker-compose.debug.yml up --build
+# Set HOT_RELOAD=false to disable hot-reload and use debugger-only mode
+
 services:
   app:
     container_name: event-driven-service-example-app-debug
@@ -9,8 +13,21 @@ services:
       dockerfile: infra/build/dockerfiles/Dockerfile.debug
     ports:
       - "8080:8080"
-      - "40000:40000"
+      - "40000:40000" # Delve debugger port
     security_opt:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
+    environment:
+      - HOT_RELOAD=${HOT_RELOAD:-true}
+      - GOFLAGS=-modcacherw
+    volumes:
+      - ../../src:/app
+      - app-go-mod-cache:/go/pkg/mod
+      - app-tmp:/app/tmp
+    # Override the base command since Dockerfile handles startup
+    command: []
+
+volumes:
+  app-go-mod-cache:
+  app-tmp:

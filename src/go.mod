@@ -120,6 +120,8 @@ require (
 	github.com/go-chi/chi/v5 v5.2.2 // indirect
 	github.com/go-chi/render v1.0.3 // indirect
 	github.com/google/cel-go v0.26.1 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/nats-io/nats.go v1.37.0 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
@@ -150,7 +152,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.40.0 // indirect
 	github.com/drblury/apiweaver v0.2.1
-	github.com/drblury/protoflow v0.4.0
+	github.com/drblury/protoflow v0.5.0
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

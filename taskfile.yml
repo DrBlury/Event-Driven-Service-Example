@@ -16,6 +16,7 @@ vars:
   redocly_cli_image: redocly/cli:2.11.1
   buf_image: bufbuild/buf:1.60.0
   scc_image: ghcr.io/lhoupert/scc:v0.0.2
+  trivy_image: aquasec/trivy:0.58.0
 
 version: 3
 
@@ -47,9 +48,79 @@ tasks:
     desc: "Run the full GitHub Actions workflow locally"
     summary: |
       Uses nektos/act to execute every job defined in the repository workflows for a quick pre-flight CI check.
+      Includes security scanning with Trivy.
+    deps:
+      - scan-security
     cmds:
       - echo "Running all GitHub Actions locally via act"
       - act | grep -v '::'
+
+  scan-security:
+    desc: "Run Trivy security scan on the codebase"
+    summary: |
+      Scans the codebase for vulnerabilities in dependencies and misconfigurations in IaC files using Trivy.
+    cmds:
+      - echo "Running Trivy filesystem vulnerability scan..."
+      - |
+        docker run --rm -v "$(pwd):/workspace" -w /workspace {{.trivy_image}} fs \
+          --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          --ignore-unfixed \
+          --scanners vuln,secret \
+          .
+      - echo "Running Trivy config scan for IaC misconfigurations..."
+      - |
+        docker run --rm -v "$(pwd):/workspace" -w /workspace {{.trivy_image}} config \
+          --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          .
+
+  test-go:
+    desc: "Run Go tests with coverage"
+    deps:
+      - gen-buf
+    summary: |
+      Runs all Go tests with race detection and generates a coverage report.
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Running Go tests with coverage under {{.src_dir}}"
+        docker run --rm -v "$(pwd)/{{.src_dir}}:/workspace" -w /workspace {{.golang_image}} bash -c '
+          set -euo pipefail
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          echo ""
+          echo "=== Coverage Summary ==="
+          go tool cover -func=coverage.out | tail -1
+        '
+
+  test-go-local:
+    desc: "Run Go tests locally (without Docker)"
+    summary: |
+      Runs all Go tests locally with race detection and coverage.
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Running Go tests locally under {{.src_dir}}"
+        cd {{.src_dir}}
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        echo ""
+        echo "=== Coverage Summary ==="
+        go tool cover -func=coverage.out | tail -1
+
+  vulncheck:
+    desc: "Run Go vulnerability check with govulncheck"
+    summary: |
+      Scans Go dependencies for known vulnerabilities using Google's govulncheck.
+      This is more accurate than general scanners as it analyzes the call graph.
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Running govulncheck on {{.src_dir}}"
+        docker run --rm -v "$(pwd)/{{.src_dir}}:/workspace" -w /workspace {{.golang_image}} bash -c '
+          set -euo pipefail
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+        '
 
   act-test:
     desc: "Run a specific GitHub Actions job via act"
@@ -188,9 +259,10 @@ tasks:
     silent: true
 
   debug:
-    desc: "Start the app in debug mode with the selected system backend"
+    desc: "Start the app in debug mode with hot-reload (default) and the selected system backend"
     summary: |
       Reads SYSTEM from your environment and boots the matching docker-compose stack layered with the debug configuration.
+      Hot-reload is enabled by default. Set HOT_RELOAD=false to disable it and use debugger-only mode.
     cmds:
       - |
         if [ -z "${SYSTEM:-}" ]; then
@@ -201,6 +273,43 @@ tasks:
         vars:
           SYSTEM: "${SYSTEM}"
           DEBUG: true
+
+  dev:
+    desc: "Start the app with hot-reload using the selected system backend (alias for debug with HOT_RELOAD=true)"
+    summary: |
+      Convenience task that starts the app with hot-reload enabled.
+      Usage: SYSTEM=kafka task dev
+    cmds:
+      - |
+        if [ -z "${SYSTEM:-}" ]; then
+          echo "SYSTEM must be set to 'kafka', 'rabbitmq', 'aws', 'nats', 'http', or 'io'" >&2
+          exit 1
+        fi
+      - task: compose-up
+        vars:
+          SYSTEM: "${SYSTEM}"
+          DEBUG: true
+    env:
+      HOT_RELOAD: "true"
+
+  dev-no-reload:
+    desc: "Start the app without hot-reload (debugger-only mode) using the selected system backend"
+    summary: |
+      Starts the app with hot-reload disabled, running the debugger directly.
+      Useful when you need to set breakpoints without Air restarting the process.
+      Usage: SYSTEM=kafka task dev-no-reload
+    cmds:
+      - |
+        if [ -z "${SYSTEM:-}" ]; then
+          echo "SYSTEM must be set to 'kafka', 'rabbitmq', 'aws', 'nats', 'http', or 'io'" >&2
+          exit 1
+        fi
+      - task: compose-up
+        vars:
+          SYSTEM: "${SYSTEM}"
+          DEBUG: true
+    env:
+      HOT_RELOAD: "false"
 
   compose-up:
     internal: true

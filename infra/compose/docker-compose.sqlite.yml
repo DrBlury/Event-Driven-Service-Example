@@ -1,0 +1,13 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      PUBSUB_SYSTEM: sqlite
+      # SQLite file path - persisted in the app volume
+      # Use ":memory:" for in-memory database (useful for testing)
+      SQLITE_FILE: /tmp/protoflow_queue.db
+    volumes:
+      # Additional volume for SQLite persistence
+      - ../../_volume_data/sqlite:/tmp

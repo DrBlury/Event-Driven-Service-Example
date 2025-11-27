@@ -1,0 +1,63 @@
+# Air configuration for hot-reloading Go applications
+# https://github.com/air-verse/air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Build command - includes debug flags for Delve compatibility
+cmd = "go build -gcflags='all=-N -l' -o ./tmp/main ."
+# Binary to execute
+bin = "./tmp/main"
+# Watch these file extensions
+include_ext = ["go", "tpl", "tmpl", "html", "yaml", "yml", "json", "toml"]
+# Exclude these directories from watching
+exclude_dir = ["assets", "tmp", "vendor", "_volume_data", "node_modules", ".git"]
+# Exclude these files from watching
+exclude_file = []
+# Exclude files matching these regex patterns
+exclude_regex = ["_test\\.go$", "_gen\\.go$"]
+# Exclude unchanged files
+exclude_unchanged = true
+# Follow symlinks
+follow_symlink = false
+# Log file location (empty = stdout)
+log = ""
+# Poll interval for file changes (milliseconds)
+poll = false
+poll_interval = 500
+# Delay before rebuilding after file change (milliseconds)
+delay = 1000
+# Stop old binary before building new one
+stop_on_error = true
+# Send interrupt signal before killing process
+send_interrupt = true
+# Delay between interrupt and kill (milliseconds)
+kill_delay = 500
+# Rerun binary with previous args when build fails
+rerun = false
+# Delay before rerunning (milliseconds)
+rerun_delay = 500
+
+[log]
+# Show log time
+time = true
+# Log level: debug, info, warn, error
+main_only = false
+
+[color]
+# Customize build output colors
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# Delete tmp dir on exit
+clean_on_exit = true
+
+[screen]
+# Clear screen before each build
+clear_on_rebuild = true
+# Keep scroll position
+keep_scroll = true

@@ -1,0 +1,10 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      # Go Channel transport - in-memory, no external dependencies
+      # Best for testing and local development
+      # Note: Messages are not persisted and will be lost on restart
+      PUBSUB_SYSTEM: channel
