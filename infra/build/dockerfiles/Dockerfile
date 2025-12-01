@@ -7,12 +7,11 @@
 ARG CGO_ENABLED=0
 
 # Builder image: Use bookworm (Debian/glibc) for CGO, alpine for static builds
-# hadolint ignore=DL3006
 FROM golang:1.25-alpine AS builder-static
-# hadolint ignore=DL3006
 FROM golang:1.25-bookworm AS builder-cgo
 FROM builder-static AS builder-0
 FROM builder-cgo AS builder-1
+# hadolint ignore=DL3006
 FROM builder-${CGO_ENABLED} AS builder
 
 # Build arguments
@@ -71,10 +70,9 @@ RUN go build -a -ldflags="-s -w \
 # Runtime image: static (no CGO) or base (with CGO/glibc)
 # Using distroless nonroot images which run as non-root user by default
 # =============================================================================
-# hadolint ignore=DL3006
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime-0
-# hadolint ignore=DL3006
 FROM gcr.io/distroless/base-debian12:nonroot AS runtime-1
+# hadolint ignore=DL3006
 FROM runtime-${CGO_ENABLED} AS runtime
 
 LABEL org.opencontainers.image.authors="Julian Bensch"

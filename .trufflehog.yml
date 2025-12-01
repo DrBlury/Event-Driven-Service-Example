@@ -1,10 +1,6 @@
 # TruffleHog configuration file
 # https://github.com/trufflesecurity/trufflehog
 
-# Detectors to exclude (reduces false positives)
-detectors:
-  - PrivateKey
-
 # Paths to exclude from scanning (regex patterns)
 exclude_paths:
   # Example environment files (contain placeholder/example values)
