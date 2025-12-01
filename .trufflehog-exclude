@@ -1,0 +1,30 @@
+# TruffleHog exclude patterns (one regex per line)
+# https://github.com/trufflesecurity/trufflehog
+
+# Example environment files (contain placeholder/example values)
+infra/env/example/
+\.example$
+
+# Test data and fixtures
+_test\.go$
+testdata/
+fixtures/
+
+# Generated files
+src/internal/server/_gen/
+\.pb\.go$
+
+# Volume data (local development data)
+_volume_data/
+
+# Dependencies and build artifacts
+vendor/
+node_modules/
+\.min\.js$
+
+# Documentation
+\.md$
+
+# Binary files
+\.wt$
+\.bson$

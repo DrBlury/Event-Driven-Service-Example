@@ -10,6 +10,7 @@ FROM golang:${GOLANG_VERSION}-alpine${ALPINE_VERSION}
 ARG UID=1000
 ARG GID=1000
 
+# hadolint ignore=DL3018
 RUN apk update && \
   apk upgrade && \
   apk add --no-cache \
@@ -46,10 +47,9 @@ RUN chown -R service:service /go /home/service
 USER service
 
 # Download dependencies during build for faster startup
-RUN go mod download
-
 # Copy dependencies to a backup location (volume mount may overwrite /go/pkg/mod)
-RUN cp -r /go/pkg/mod /home/service/go-mod-cache
+RUN go mod download && \
+  cp -r /go/pkg/mod /home/service/go-mod-cache
 
 # Copy air config for hot-reload
 COPY --chown=service:service src/.air.toml .air.toml
@@ -58,6 +58,7 @@ COPY --chown=service:service src/.air.toml .air.toml
 RUN mkdir -p /app/tmp
 
 # Create entrypoint script that supports both hot-reload and debug-only modes
+# hadolint ignore=SC2016
 RUN echo '#!/bin/sh' > /home/service/entrypoint.sh && \
   echo 'set -e' >> /home/service/entrypoint.sh && \
   echo 'echo "Syncing Go module cache from build..."' >> /home/service/entrypoint.sh && \
