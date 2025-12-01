@@ -110,6 +110,68 @@ jobs:
         with:
           extra_args: --exclude-paths=.trufflehog-exclude --exclude-detectors=PrivateKey --only-verified
 
+  lint_dockerfiles:
+    name: Lint Dockerfiles (Hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: infra/build/dockerfiles/Dockerfile
+
+      - name: Run Hadolint on debug Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: infra/build/dockerfiles/Dockerfile.debug
+
+      - name: Run Hadolint on oapi-codegen Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: infra/build/dockerfiles/oapi-codegen.Dockerfile
+
+  lint_actions:
+    name: Lint GitHub Actions (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          fail-on-error: true
+
+  lint_proto:
+    name: Lint Protobuf (buf)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.60.0"
+
+      - name: Run buf lint
+        working-directory: proto
+        run: buf lint
+
+  go_security:
+    name: Go Security Scan (gosec)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: -exclude-generated -severity medium -confidence medium ./src/...
+
   go_test:
     name: Test Go Module
     runs-on: ubuntu-latest

@@ -20,6 +20,9 @@ vars:
   syft_image: anchore/syft:v1.18.1
   grype_image: anchore/grype:v0.86.1
   trufflehog_image: trufflesecurity/trufflehog:latest
+  hadolint_image: hadolint/hadolint:v2.12.0-alpine
+  actionlint_image: rhysd/actionlint:1.7.7
+  gosec_image: securego/gosec:2.22.0
 
 version: 3
 
@@ -226,6 +229,75 @@ tasks:
           --exclude-paths=/workspace/.trufflehog-exclude \
           --exclude-detectors=PrivateKey
       - echo "Secret scan complete"
+
+  hadolint:
+    desc: "Lint Dockerfiles using Hadolint"
+    summary: |
+      Validates Dockerfiles against best practices using Hadolint.
+      Checks for common issues like missing version pinning, inefficient layers, and security concerns.
+    cmds:
+      - echo "Linting Dockerfiles with Hadolint..."
+      - |
+        docker run --rm -i \
+          -v "$(pwd):/workspace" -w /workspace \
+          {{.hadolint_image}} \
+          hadolint \
+          infra/build/dockerfiles/Dockerfile \
+          infra/build/dockerfiles/Dockerfile.debug \
+          infra/build/dockerfiles/oapi-codegen.Dockerfile
+      - echo "Dockerfile linting complete"
+
+  actionlint:
+    desc: "Lint GitHub Actions workflows using actionlint"
+    summary: |
+      Validates GitHub Actions workflow files for syntax errors, type mismatches,
+      deprecated features, and other common issues.
+    cmds:
+      - echo "Linting GitHub Actions workflows with actionlint..."
+      - |
+        docker run --rm \
+          -v "$(pwd):/workspace" -w /workspace \
+          {{.actionlint_image}} \
+          -color
+      - echo "GitHub Actions linting complete"
+
+  gosec:
+    desc: "Run Go security scanner (gosec)"
+    summary: |
+      Scans Go source code for security vulnerabilities using gosec.
+      Detects issues like SQL injection, hardcoded credentials, weak crypto, and more.
+    cmds:
+      - echo "Running gosec security scan on {{.src_dir}}..."
+      - |
+        docker run --rm \
+          -v "$(pwd):/workspace" -w /workspace/{{.src_dir}} \
+          {{.gosec_image}} \
+          -exclude-generated \
+          -severity medium \
+          -confidence medium \
+          ./...
+      - echo "Go security scan complete"
+
+  lint-all:
+    desc: "Run all linters (Go, API, Proto, Dockerfiles, Actions)"
+    summary: |
+      Runs all available linters in sequence: golangci-lint, Redocly, buf, Hadolint, and actionlint.
+    deps:
+      - lint-go
+      - lint-api
+      - lint-proto
+      - hadolint
+      - actionlint
+
+  security-all:
+    desc: "Run all security scans (Trivy, gosec, Trufflehog, vulncheck)"
+    summary: |
+      Runs all security scanning tools: Trivy, gosec, Trufflehog, and govulncheck.
+    deps:
+      - scan-security
+      - gosec
+      - trufflehog
+      - vulncheck
 
   act-test:
     desc: "Run a specific GitHub Actions job via act"
