@@ -63,12 +63,12 @@ jobs:
         id: check-changes
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Generated code is out of sync"
             git status --porcelain
             git diff --stat
           else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             echo "✅ Generated code is up to date"
           fi
 
