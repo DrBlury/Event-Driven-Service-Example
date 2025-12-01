@@ -15,7 +15,11 @@ jobs:
   # ============================================
   verify-generated:
     name: Verify Generated Code
+    permissions:
+      contents: write
     uses: ./.github/workflows/reusable-verify-generated.yml
+    with:
+      auto-commit: true
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
