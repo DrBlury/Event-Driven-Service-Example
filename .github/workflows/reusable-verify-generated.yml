@@ -5,94 +5,95 @@
 name: Verify Generated Code
 
 on:
-    workflow_call:
-        inputs:
-            node-version:
-                description: Node.js version for tooling
-                type: string
-                default: "20"
-            go-version-file:
-                description: Path to go.mod file
-                type: string
-                default: src/go.mod
-            cache-dependency-path:
-                description: Path to go.sum file
-                type: string
-                default: src/go.sum
-            auto-commit:
-                description: Auto-commit generated code if out of sync (only works on push, not PRs)
-                type: boolean
-                default: true
-        secrets:
-            github-token:
-                description: GitHub token for API calls
-                required: false
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version for tooling
+        type: string
+        default: "20"
+      go-version-file:
+        description: Path to go.mod file
+        type: string
+        default: src/go.mod
+      cache-dependency-path:
+        description: Path to go.sum file
+        type: string
+        default: src/go.sum
+      auto-commit:
+        description: Auto-commit generated code if out of sync (only works on push, not PRs)
+        type: boolean
+        default: true
+    secrets:
+      github-token:
+        description: GitHub token for API calls
+        required: false
 
 jobs:
-    verify:
-        name: Verify
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v6
-              with:
-                  token: ${{ secrets.github-token || github.token }}
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.github-token || github.token }}
 
-            - name: Setup Go
-              uses: ./.github/actions/setup-go-env
-              with:
-                  go-version-file: ${{ inputs.go-version-file }}
-                  cache-dependency-path: ${{ inputs.cache-dependency-path }}
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
-            - name: Setup Node.js
-              uses: ./.github/actions/setup-node-env
-              with:
-                  node-version: ${{ inputs.node-version }}
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node-env
+        with:
+          node-version: ${{ inputs.node-version }}
 
-            - name: Generate protobuf stubs
-              uses: ./.github/actions/generate-protobuf
-              with:
-                  github_token: ${{ secrets.github-token || github.token }}
+      - name: Generate protobuf stubs
+        uses: ./.github/actions/generate-protobuf
+        with:
+          github_token: ${{ secrets.github-token || github.token }}
 
-            - name: Generate API assets
-              uses: ./.github/actions/generate-api-assets
+      - name: Generate API assets
+        uses: ./.github/actions/generate-api-assets
 
-            - name: Check for uncommitted changes
-              id: check-changes
-              run: |
-                  if [ -n "$(git status --porcelain)" ]; then
-                    echo "has_changes=true" >> $GITHUB_OUTPUT
-                    echo "::warning::Generated code is out of sync"
-                    git status --porcelain
-                    git diff --stat
-                  else
-                    echo "has_changes=false" >> $GITHUB_OUTPUT
-                    echo "✅ Generated code is up to date"
-                  fi
+      - name: Check for uncommitted changes
+        id: check-changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "::warning::Generated code is out of sync"
+            git status --porcelain
+            git diff --stat
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ Generated code is up to date"
+          fi
 
-            - name: Auto-commit generated code
-              if: steps.check-changes.outputs.has_changes == 'true' && inputs.auto-commit && github.event_name == 'push'
-              run: |
-                  git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                  git config --local user.name "github-actions[bot]"
-                  git add -A
-                  git commit -m "chore: regenerate code [skip ci]
+      - name: Auto-commit generated code
+        if: steps.check-changes.outputs.has_changes == 'true' && inputs.auto-commit && github.event_name == 'push'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          CHANGED_FILES="$(git diff --cached --name-only)"
+          git commit -m "chore: regenerate code [skip ci]
 
-                  Auto-generated by CI workflow.
-                  Files updated:
-                  $(git diff --cached --name-only)"
-                  git push
-                  echo "✅ Auto-committed generated code changes"
+          Auto-generated by CI workflow.
+          Files updated:
+          ${CHANGED_FILES}"
+          git push
+          echo "✅ Auto-committed generated code changes"
 
-            - name: Fail on PR with uncommitted changes
-              if: steps.check-changes.outputs.has_changes == 'true' && github.event_name == 'pull_request'
-              run: |
-                  echo "::error::Generated code is out of sync. Please regenerate and commit before merging."
-                  echo ""
-                  echo "Run the following commands locally:"
-                  echo "  task gen-api"
-                  echo "  task gen-buf"
-                  echo "  git add -A && git commit -m 'chore: regenerate code'"
-                  exit 1
+      - name: Fail on PR with uncommitted changes
+        if: steps.check-changes.outputs.has_changes == 'true' && github.event_name == 'pull_request'
+        run: |
+          echo "::error::Generated code is out of sync. Please regenerate and commit before merging."
+          echo ""
+          echo "Run the following commands locally:"
+          echo "  task gen-api"
+          echo "  task gen-buf"
+          echo "  git add -A && git commit -m 'chore: regenerate code'"
+          exit 1

@@ -76,8 +76,8 @@ func runSomeSimulation(ctx context.Context, svc *protoflow.Service, queueName st
 					Priority:         int32(rand.IntN(5) + 1), // #nosec G404 G115 -- non-security simulation data with bounded values
 					DesiredStartDate: &domain.Date{
 						Year:  int32(rand.IntN(5) + 2020), // #nosec G404 G115 -- non-security simulation data with bounded values
-						Month: int32(i%12 + 1),           // #nosec G115 -- bounded value 1-12
-						Day:   int32((i % 28) + 1),       // #nosec G115 -- bounded value 1-28
+						Month: int32(i%12 + 1),            // #nosec G115 -- bounded value 1-12
+						Day:   int32((i % 28) + 1),        // #nosec G115 -- bounded value 1-28
 					},
 				},
 			}
