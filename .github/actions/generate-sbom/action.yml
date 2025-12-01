@@ -1,0 +1,51 @@
+name: Generate SBOM
+description: Generates Software Bill of Materials using Syft.
+inputs:
+  path:
+    description: Path to scan for SBOM generation.
+    required: false
+    default: ./src
+  output-dir:
+    description: Directory to output SBOM files.
+    required: false
+    default: "."
+  formats:
+    description: Comma-separated list of formats (syft-json, cyclonedx-json, spdx-json).
+    required: false
+    default: syft-json,cyclonedx-json
+outputs:
+  syft-sbom:
+    description: Path to Syft JSON SBOM.
+    value: ${{ inputs.output-dir }}/sbom.syft.json
+  cyclonedx-sbom:
+    description: Path to CycloneDX SBOM.
+    value: ${{ inputs.output-dir }}/sbom.cdx.json
+runs:
+  using: composite
+  steps:
+    - name: Generate Syft JSON SBOM
+      if: contains(inputs.formats, 'syft-json')
+      uses: anchore/sbom-action@v0
+      with:
+        path: ${{ inputs.path }}
+        artifact-name: sbom.syft.json
+        output-file: ${{ inputs.output-dir }}/sbom.syft.json
+        format: syft-json
+
+    - name: Generate CycloneDX SBOM
+      if: contains(inputs.formats, 'cyclonedx-json')
+      uses: anchore/sbom-action@v0
+      with:
+        path: ${{ inputs.path }}
+        artifact-name: sbom.cdx.json
+        output-file: ${{ inputs.output-dir }}/sbom.cdx.json
+        format: cyclonedx-json
+
+    - name: Generate SPDX SBOM
+      if: contains(inputs.formats, 'spdx-json')
+      uses: anchore/sbom-action@v0
+      with:
+        path: ${{ inputs.path }}
+        artifact-name: sbom.spdx.json
+        output-file: ${{ inputs.output-dir }}/sbom.spdx.json
+        format: spdx-json

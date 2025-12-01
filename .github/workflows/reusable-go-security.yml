@@ -1,0 +1,71 @@
+# Reusable workflow for Go security scanning
+# Assumes generated code is committed to the repository
+name: Go Security
+
+on:
+    workflow_call:
+        inputs:
+            go-version-file:
+                description: Path to go.mod file
+                type: string
+                default: src/go.mod
+            cache-dependency-path:
+                description: Path to go.sum file
+                type: string
+                default: src/go.sum
+            working-directory:
+                description: Go module directory
+                type: string
+                default: src
+            run-gosec:
+                description: Run gosec security scanner
+                type: boolean
+                default: true
+            gosec-severity:
+                description: Minimum gosec severity level
+                type: string
+                default: medium
+            run-govulncheck:
+                description: Run govulncheck vulnerability scanner
+                type: boolean
+                default: true
+
+jobs:
+    gosec:
+        name: gosec
+        if: ${{ inputs.run-gosec }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Go
+              uses: ./.github/actions/setup-go-env
+              with:
+                  go-version-file: ${{ inputs.go-version-file }}
+                  cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+            - name: Run gosec
+              uses: ./.github/actions/run-gosec
+              with:
+                  working-directory: ${{ inputs.working-directory }}
+                  severity: ${{ inputs.gosec-severity }}
+
+    govulncheck:
+        name: govulncheck
+        if: ${{ inputs.run-govulncheck }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Go
+              uses: ./.github/actions/setup-go-env
+              with:
+                  go-version-file: ${{ inputs.go-version-file }}
+                  cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+            - name: Run govulncheck
+              uses: ./.github/actions/run-govulncheck
+              with:
+                  working-directory: ${{ inputs.working-directory }}

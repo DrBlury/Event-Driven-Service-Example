@@ -1,0 +1,57 @@
+# Example: Full Go service CI (with protobuf, OpenAPI, SBOM)
+# Copy this to your project and customize as needed
+# Generated code should be committed to the repository
+name: Service CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Verify generated code matches source
+  verify-generated:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-verify-generated.yml@main
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-go-lint-build.yml@main
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
+
+  test:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-go-test.yml@main
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
+      upload-codecov: true
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  go-security:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-go-security.yml@main
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
+
+  security:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-security-scan.yml@main
+
+  lint:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-lint.yml@main
+    with:
+      dockerfiles: "Dockerfile"
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-sbom.yml@main
+    with:
+      source-path: ./src

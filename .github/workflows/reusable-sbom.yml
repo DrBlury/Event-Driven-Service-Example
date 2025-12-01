@@ -1,0 +1,83 @@
+# Reusable workflow for SBOM generation and vulnerability scanning
+name: SBOM & Vulnerability Scan
+
+on:
+    workflow_call:
+        inputs:
+            source-path:
+                description: Path to scan for SBOM generation
+                type: string
+                default: ./src
+            sbom-formats:
+                description: Comma-separated SBOM formats
+                type: string
+                default: syft-json,cyclonedx-json
+            run-grype:
+                description: Run Grype vulnerability scanner on SBOM
+                type: boolean
+                default: true
+            grype-severity-cutoff:
+                description: Minimum severity for Grype to fail
+                type: string
+                default: high
+            grype-only-fixed:
+                description: Only report vulnerabilities with fixes
+                type: boolean
+                default: true
+            upload-sarif:
+                description: Upload SARIF to GitHub Security
+                type: boolean
+                default: true
+            artifact-retention-days:
+                description: Number of days to retain SBOM artifacts
+                type: number
+                default: 90
+
+jobs:
+    sbom-scan:
+        name: Generate & Scan
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Generate SBOM
+              uses: ./.github/actions/generate-sbom
+              with:
+                  path: ${{ inputs.source-path }}
+                  formats: ${{ inputs.sbom-formats }}
+
+            - name: Upload SBOMs as artifacts
+              uses: actions/upload-artifact@v5
+              with:
+                  name: sbom-artifacts
+                  path: |
+                      ./sbom.syft.json
+                      ./sbom.cdx.json
+                  retention-days: ${{ inputs.artifact-retention-days }}
+
+            - name: Scan SBOM with Grype
+              if: ${{ inputs.run-grype }}
+              uses: ./.github/actions/run-grype
+              id: grype-scan
+              with:
+                  sbom: ./sbom.syft.json
+                  severity-cutoff: ${{ inputs.grype-severity-cutoff }}
+                  only-fixed: ${{ inputs.grype-only-fixed && 'true' || 'false' }}
+
+            - name: Upload Grype SARIF as artifact
+              if: ${{ inputs.run-grype && always() }}
+              uses: actions/upload-artifact@v5
+              with:
+                  name: grype-sarif
+                  path: ${{ steps.grype-scan.outputs.sarif }}
+                  retention-days: 30
+
+            - name: Upload to GitHub Security
+              if: ${{ inputs.upload-sarif && inputs.run-grype && always() }}
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                  sarif_file: ${{ steps.grype-scan.outputs.sarif }}

@@ -1,0 +1,36 @@
+name: Run Hadolint
+description: Lints Dockerfiles using Hadolint.
+inputs:
+  dockerfiles:
+    description: Space-separated list of Dockerfile paths to lint.
+    required: true
+  failure-threshold:
+    description: Failure threshold (error, warning, info, style, ignore, none).
+    required: false
+    default: warning
+runs:
+  using: composite
+  steps:
+    - name: Run Hadolint
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Install hadolint if not available
+        if ! command -v hadolint &> /dev/null; then
+          echo "Installing hadolint..."
+          curl -sL -o /tmp/hadolint "https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64"
+          chmod +x /tmp/hadolint
+          sudo mv /tmp/hadolint /usr/local/bin/hadolint
+        fi
+
+        # Lint each Dockerfile
+        exit_code=0
+        for dockerfile in ${{ inputs.dockerfiles }}; do
+          echo "Linting $dockerfile..."
+          if ! hadolint --failure-threshold ${{ inputs.failure-threshold }} "$dockerfile"; then
+            exit_code=1
+          fi
+        done
+
+        exit $exit_code

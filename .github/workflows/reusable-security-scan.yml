@@ -1,0 +1,61 @@
+# Reusable workflow for security scanning (non-Go specific)
+name: Security Scan
+
+on:
+    workflow_call:
+        inputs:
+            run-trivy:
+                description: Run Trivy security scanner
+                type: boolean
+                default: true
+            trivy-scan-type:
+                description: Trivy scan type (fs, config, both)
+                type: string
+                default: both
+            trivy-severity:
+                description: Trivy severity levels to report
+                type: string
+                default: CRITICAL,HIGH
+            run-trufflehog:
+                description: Run Trufflehog secret scanner
+                type: boolean
+                default: true
+            trufflehog-only-verified:
+                description: Only report verified secrets
+                type: boolean
+                default: true
+            trufflehog-exclude-paths:
+                description: Path to exclusion file
+                type: string
+                default: .trufflehog-exclude
+
+jobs:
+    trivy:
+        name: Trivy
+        if: ${{ inputs.run-trivy }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Run Trivy scan
+              uses: ./.github/actions/run-trivy-scan
+              with:
+                  scan-type: ${{ inputs.trivy-scan-type }}
+                  severity: ${{ inputs.trivy-severity }}
+
+    trufflehog:
+        name: Trufflehog
+        if: ${{ inputs.run-trufflehog }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
+
+            - name: Run Trufflehog
+              uses: ./.github/actions/run-trufflehog
+              with:
+                  exclude-paths: ${{ inputs.trufflehog-exclude-paths }}
+                  only-verified: ${{ inputs.trufflehog-only-verified && 'true' || 'false' }}

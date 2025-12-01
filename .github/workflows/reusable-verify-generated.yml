@@ -1,0 +1,60 @@
+# Verifies that committed generated code matches what would be generated
+# This ensures developers keep generated code in sync
+name: Verify Generated Code
+
+on:
+    workflow_call:
+        inputs:
+            node-version:
+                description: Node.js version for tooling
+                type: string
+                default: "20"
+            go-version-file:
+                description: Path to go.mod file
+                type: string
+                default: src/go.mod
+            cache-dependency-path:
+                description: Path to go.sum file
+                type: string
+                default: src/go.sum
+        secrets:
+            github-token:
+                description: GitHub token for API calls
+                required: false
+
+jobs:
+    verify:
+        name: Verify
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Go
+              uses: ./.github/actions/setup-go-env
+              with:
+                  go-version-file: ${{ inputs.go-version-file }}
+                  cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+            - name: Setup Node.js
+              uses: ./.github/actions/setup-node-env
+              with:
+                  node-version: ${{ inputs.node-version }}
+
+            - name: Generate protobuf stubs
+              uses: ./.github/actions/generate-protobuf
+              with:
+                  github_token: ${{ secrets.github-token || github.token }}
+
+            - name: Generate API assets
+              uses: ./.github/actions/generate-api-assets
+
+            - name: Check for uncommitted changes
+              run: |
+                  if [ -n "$(git status --porcelain)" ]; then
+                    echo "::error::Generated code is out of sync. Please regenerate and commit:"
+                    git status --porcelain
+                    git diff --stat
+                    exit 1
+                  fi
+                  echo "✅ Generated code is up to date"

@@ -1,0 +1,32 @@
+# Example: Minimal Go CI workflow
+# Copy this to your project and customize as needed
+# Assumes generated code is committed to the repository
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build & Test
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-go-lint-build.yml@main
+    with:
+      go-version-file: go.mod
+      cache-dependency-path: go.sum
+      working-directory: .
+
+  test:
+    name: Test
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-go-test.yml@main
+    with:
+      go-version-file: go.mod
+      cache-dependency-path: go.sum
+      working-directory: .
+      upload-codecov: false
+
+  security:
+    name: Security
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-security-scan.yml@main

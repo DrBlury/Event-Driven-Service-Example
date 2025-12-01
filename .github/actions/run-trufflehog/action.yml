@@ -1,0 +1,22 @@
+name: Run Trufflehog Secret Scan
+description: Scans repository for leaked secrets using Trufflehog.
+inputs:
+  exclude-paths:
+    description: Path to exclusion file.
+    required: false
+    default: .trufflehog-exclude
+  only-verified:
+    description: Only report verified secrets.
+    required: false
+    default: "true"
+  extra-args:
+    description: Additional arguments to pass to Trufflehog.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Trufflehog Secret Scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        extra_args: --exclude-paths=${{ inputs.exclude-paths }} ${{ inputs.only-verified == 'true' && '--only-verified' || '' }} ${{ inputs.extra-args }}

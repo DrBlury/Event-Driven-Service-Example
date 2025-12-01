@@ -1,322 +1,83 @@
+# Main CI workflow - uses modular reusable workflows
+# Generated code (protobuf, OpenAPI) is committed to the repo for simplicity
 name: Service CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
-env:
-  GO_VERSION_FILE: src/go.mod
-
 jobs:
-  api_assets:
-    name: Validate & Generate API Assets
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
+  # ============================================
+  # Verify Generated Code is Up-to-Date
+  # ============================================
+  verify-generated:
+    name: Verify Generated Code
+    uses: ./.github/workflows/reusable-verify-generated.yml
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
+  # ============================================
+  # Go Module Lint & Build
+  # ============================================
+  go-lint-build:
+    name: Go Lint & Build
+    uses: ./.github/workflows/reusable-go-lint-build.yml
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
 
-      - name: Set up Go
-        uses: actions/setup-go@v6.1.0
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
+  # ============================================
+  # Go Tests with Coverage
+  # ============================================
+  go-test:
+    name: Go Test
+    uses: ./.github/workflows/reusable-go-test.yml
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
+      upload-codecov: true
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Generate API assets
-        uses: ./.github/actions/generate-api-assets
+  # ============================================
+  # Go Security Scanning (gosec + govulncheck)
+  # ============================================
+  go-security:
+    name: Go Security
+    uses: ./.github/workflows/reusable-go-security.yml
+    with:
+      go-version-file: src/go.mod
+      cache-dependency-path: src/go.sum
+      working-directory: src
 
-  go_module:
-    name: Lint & Build Go Module
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
+  # ============================================
+  # General Security Scanning (Trivy + Trufflehog)
+  # ============================================
+  security-scan:
+    name: Security Scan
+    uses: ./.github/workflows/reusable-security-scan.yml
 
-      - name: Set up Go
-        uses: actions/setup-go@v6.1.0
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache: true
+  # ============================================
+  # Linting (Dockerfiles, Actions, Protobuf)
+  # ============================================
+  lint:
+    name: Lint
+    uses: ./.github/workflows/reusable-lint.yml
+    with:
+      dockerfiles: "infra/build/dockerfiles/Dockerfile infra/build/dockerfiles/Dockerfile.debug infra/build/dockerfiles/oapi-codegen.Dockerfile"
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Generate protobuf stubs
-        uses: ./.github/actions/generate-protobuf
-        with:
-          github_token: ${{ github.token }}
-
-      - name: Generate API assets
-        uses: ./.github/actions/generate-api-assets
-
-      - name: Download modules
-        working-directory: src
-        run: go mod download
-
-      - name: Run golangci-lint
-        uses: ./.github/actions/run-golangci-lint
-
-      - name: Build Go module
-        working-directory: src
-        run: go build ./...
-
-  security_scan:
-    name: Security Scan (Trivy)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Run Trivy vulnerability scanner (filesystem)
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          severity: "CRITICAL,HIGH"
-          exit-code: "1"
-          ignore-unfixed: true
-          format: "table"
-
-      - name: Run Trivy config scanner (IaC misconfigurations)
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: "config"
-          scan-ref: "."
-          severity: "CRITICAL,HIGH"
-          exit-code: "1"
-          format: "table"
-
-  secret_scan:
-    name: Secret Scan (Trufflehog)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Trufflehog Secret Scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          extra_args: --exclude-paths=.trufflehog-exclude --only-verified
-
-  lint_dockerfiles:
-    name: Lint Dockerfiles (Hadolint)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Run Hadolint
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: infra/build/dockerfiles/Dockerfile
-
-      - name: Run Hadolint on debug Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: infra/build/dockerfiles/Dockerfile.debug
-
-      - name: Run Hadolint on oapi-codegen Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: infra/build/dockerfiles/oapi-codegen.Dockerfile
-
-  lint_actions:
-    name: Lint GitHub Actions (actionlint)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Run actionlint
-        uses: raven-actions/actionlint@v2
-        with:
-          fail-on-error: true
-
-  lint_proto:
-    name: Lint Protobuf (buf)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Setup buf
-        uses: bufbuild/buf-setup-action@v1
-        with:
-          version: "1.60.0"
-
-      - name: Run buf lint
-        working-directory: proto
-        run: buf lint
-
-  go_security:
-    name: Go Security Scan (gosec)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Set up Go
-        uses: actions/setup-go@v6.1.0
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache: true
-
-      - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
-
-      - name: Run gosec
-        working-directory: src
-        run: gosec -exclude-generated -severity medium -confidence medium ./...
-
-  go_test:
-    name: Test Go Module
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Set up Go
-        uses: actions/setup-go@v6.1.0
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Generate protobuf stubs
-        uses: ./.github/actions/generate-protobuf
-        with:
-          github_token: ${{ github.token }}
-
-      - name: Generate API assets
-        uses: ./.github/actions/generate-api-assets
-
-      - name: Download modules
-        working-directory: src
-        run: go mod download
-
-      - name: Run tests with coverage
-        working-directory: src
-        run: |
-          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-          go tool cover -func=coverage.out
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v5
-        with:
-          name: coverage-report
-          path: src/coverage.out
-          retention-days: 7
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: src/coverage.out
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  go_vulncheck:
-    name: Go Vulnerability Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Set up Go
-        uses: actions/setup-go@v6.1.0
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Generate protobuf stubs
-        uses: ./.github/actions/generate-protobuf
-        with:
-          github_token: ${{ github.token }}
-
-      - name: Generate API assets
-        uses: ./.github/actions/generate-api-assets
-
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-
-      - name: Run govulncheck
-        working-directory: src
-        run: govulncheck ./...
-
-  sbom_and_grype:
-    name: SBOM Generation & Grype Scan
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.0
-
-      - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@v0
-        with:
-          path: ./src
-          artifact-name: sbom.syft.json
-          output-file: ./sbom.syft.json
-          format: syft-json
-
-      - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          path: ./src
-          artifact-name: sbom.cdx.json
-          output-file: ./sbom.cdx.json
-          format: cyclonedx-json
-
-      - name: Upload SBOMs as artifacts
-        uses: actions/upload-artifact@v5
-        with:
-          name: sbom-artifacts
-          path: |
-            ./sbom.syft.json
-            ./sbom.cdx.json
-          retention-days: 90
-
-      - name: Scan SBOM with Grype
-        uses: anchore/scan-action@v6
-        id: grype-scan
-        with:
-          sbom: ./sbom.syft.json
-          fail-build: true
-          severity-cutoff: high
-          only-fixed: true
-
-      - name: Upload Grype SARIF as artifact
-        uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: grype-sarif
-          path: ${{ steps.grype-scan.outputs.sarif }}
-          retention-days: 30
-
-      - name: Upload Grype scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: ${{ steps.grype-scan.outputs.sarif }}
+  # ============================================
+  # SBOM Generation & Vulnerability Scanning
+  # ============================================
+  sbom:
+    name: SBOM & Grype
+    uses: ./.github/workflows/reusable-sbom.yml
+    with:
+      source-path: ./src

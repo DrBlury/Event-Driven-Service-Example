@@ -1,0 +1,58 @@
+name: Run Go Tests
+description: Runs Go tests with optional coverage reporting.
+inputs:
+  working-directory:
+    description: Directory containing the Go module.
+    required: false
+    default: src
+  coverage:
+    description: Enable coverage reporting.
+    required: false
+    default: "true"
+  coverage-file:
+    description: Coverage output file name.
+    required: false
+    default: coverage.out
+  race:
+    description: Enable race detector.
+    required: false
+    default: "true"
+  verbose:
+    description: Enable verbose output.
+    required: false
+    default: "true"
+  test-args:
+    description: Additional test arguments.
+    required: false
+    default: "./..."
+outputs:
+  coverage-file:
+    description: Path to the coverage file.
+    value: ${{ inputs.working-directory }}/${{ inputs.coverage-file }}
+runs:
+  using: composite
+  steps:
+    - name: Download modules
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: go mod download
+
+    - name: Run tests
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+
+        args=""
+        ${{ inputs.verbose == 'true' }} && args="$args -v"
+        ${{ inputs.race == 'true' }} && args="$args -race"
+
+        if [[ "${{ inputs.coverage }}" == "true" ]]; then
+          args="$args -coverprofile=${{ inputs.coverage-file }} -covermode=atomic"
+        fi
+
+        go test $args ${{ inputs.test-args }}
+
+        if [[ "${{ inputs.coverage }}" == "true" ]]; then
+          go tool cover -func=${{ inputs.coverage-file }}
+        fi

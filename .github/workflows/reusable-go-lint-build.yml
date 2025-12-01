@@ -1,0 +1,53 @@
+# Reusable workflow for Go project linting and building
+# Assumes generated code is committed to the repository
+name: Go Lint & Build
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: Path to go.mod file
+        type: string
+        default: src/go.mod
+      cache-dependency-path:
+        description: Path to go.sum file
+        type: string
+        default: src/go.sum
+      working-directory:
+        description: Go module directory
+        type: string
+        default: src
+      run-lint:
+        description: Run golangci-lint
+        type: boolean
+        default: true
+      lint-version:
+        description: golangci-lint version
+        type: string
+        default: v2.6.2
+
+jobs:
+  lint-build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+      - name: Run golangci-lint
+        if: ${{ inputs.run-lint }}
+        uses: ./.github/actions/run-golangci-lint
+        with:
+          src_dir: ${{ inputs.working-directory }}
+          lint_version: ${{ inputs.lint-version }}
+
+      - name: Build
+        uses: ./.github/actions/go-build
+        with:
+          working-directory: ${{ inputs.working-directory }}

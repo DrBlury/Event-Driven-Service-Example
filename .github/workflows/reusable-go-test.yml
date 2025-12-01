@@ -1,0 +1,75 @@
+# Reusable workflow for Go testing with coverage
+# Assumes generated code is committed to the repository
+name: Go Test
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: Path to go.mod file
+        type: string
+        default: src/go.mod
+      cache-dependency-path:
+        description: Path to go.sum file
+        type: string
+        default: src/go.sum
+      working-directory:
+        description: Go module directory
+        type: string
+        default: src
+      coverage:
+        description: Enable coverage reporting
+        type: boolean
+        default: true
+      upload-codecov:
+        description: Upload coverage to Codecov
+        type: boolean
+        default: true
+      upload-artifact:
+        description: Upload coverage as artifact
+        type: boolean
+        default: true
+      artifact-retention-days:
+        description: Number of days to retain coverage artifact
+        type: number
+        default: 7
+    secrets:
+      codecov-token:
+        description: Codecov upload token
+        required: false
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go-env
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+      - name: Run tests
+        uses: ./.github/actions/go-test
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          coverage: ${{ inputs.coverage && 'true' || 'false' }}
+
+      - name: Upload coverage artifact
+        if: ${{ inputs.upload-artifact && inputs.coverage }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-report
+          path: ${{ inputs.working-directory }}/coverage.out
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+      - name: Upload to Codecov
+        if: ${{ inputs.upload-codecov && inputs.coverage }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ${{ inputs.working-directory }}/coverage.out
+          fail_ci_if_error: false
+          token: ${{ secrets.codecov-token }}

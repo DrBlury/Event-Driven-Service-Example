@@ -1,0 +1,30 @@
+name: Run gosec Security Scanner
+description: Installs and runs gosec to scan Go code for security issues.
+inputs:
+  working-directory:
+    description: Directory containing the Go module to scan.
+    required: false
+    default: src
+  severity:
+    description: Minimum severity level to report (low, medium, high).
+    required: false
+    default: medium
+  confidence:
+    description: Minimum confidence level to report (low, medium, high).
+    required: false
+    default: medium
+  gosec-version:
+    description: gosec version to install.
+    required: false
+    default: latest
+runs:
+  using: composite
+  steps:
+    - name: Install gosec
+      shell: bash
+      run: go install github.com/securego/gosec/v2/cmd/gosec@${{ inputs.gosec-version }}
+
+    - name: Run gosec
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: gosec -exclude-generated -severity ${{ inputs.severity }} -confidence ${{ inputs.confidence }} ./...

@@ -1,0 +1,39 @@
+name: Run Grype Vulnerability Scan
+description: Scans SBOM or filesystem with Grype for vulnerabilities.
+inputs:
+  sbom:
+    description: Path to SBOM file to scan.
+    required: false
+    default: ""
+  path:
+    description: Path to scan directly (if no SBOM provided).
+    required: false
+    default: ""
+  severity-cutoff:
+    description: Minimum severity to fail on (negligible, low, medium, high, critical).
+    required: false
+    default: high
+  fail-build:
+    description: Fail the build if vulnerabilities found.
+    required: false
+    default: "true"
+  only-fixed:
+    description: Only report vulnerabilities with fixes available.
+    required: false
+    default: "true"
+outputs:
+  sarif:
+    description: Path to SARIF output file.
+    value: ${{ steps.grype-scan.outputs.sarif }}
+runs:
+  using: composite
+  steps:
+    - name: Scan with Grype
+      uses: anchore/scan-action@v6
+      id: grype-scan
+      with:
+        sbom: ${{ inputs.sbom }}
+        path: ${{ inputs.path }}
+        fail-build: ${{ inputs.fail-build }}
+        severity-cutoff: ${{ inputs.severity-cutoff }}
+        only-fixed: ${{ inputs.only-fixed }}

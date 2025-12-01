@@ -1,0 +1,76 @@
+# Reusable workflow for linting various file types
+name: Lint
+
+on:
+  workflow_call:
+    inputs:
+      lint-dockerfiles:
+        description: Lint Dockerfiles with Hadolint
+        type: boolean
+        default: true
+      dockerfiles:
+        description: Space-separated list of Dockerfile paths
+        type: string
+        default: infra/build/dockerfiles/Dockerfile infra/build/dockerfiles/Dockerfile.debug
+      lint-actions:
+        description: Lint GitHub Actions with actionlint
+        type: boolean
+        default: true
+      lint-proto:
+        description: Lint protobuf files with buf
+        type: boolean
+        default: true
+      proto-directory:
+        description: Directory containing buf.yaml
+        type: string
+        default: proto
+      buf-version:
+        description: Buf CLI version
+        type: string
+        default: "1.60.0"
+    secrets:
+      github-token:
+        description: GitHub token for API calls
+        required: false
+
+jobs:
+  hadolint:
+    name: Hadolint
+    if: ${{ inputs.lint-dockerfiles }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Hadolint
+        uses: ./.github/actions/run-hadolint
+        with:
+          dockerfiles: ${{ inputs.dockerfiles }}
+
+  actionlint:
+    name: actionlint
+    if: ${{ inputs.lint-actions }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          fail-on-error: true
+
+  buf-lint:
+    name: buf lint
+    if: ${{ inputs.lint-proto }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Lint protobuf
+        uses: ./.github/actions/lint-buf
+        with:
+          working-directory: ${{ inputs.proto-directory }}
+          buf-version: ${{ inputs.buf-version }}
+          github-token: ${{ secrets.github-token || github.token }}

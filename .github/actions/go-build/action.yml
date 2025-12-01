@@ -1,0 +1,23 @@
+name: Build Go Module
+description: Downloads dependencies and builds the Go module.
+inputs:
+  working-directory:
+    description: Directory containing the Go module.
+    required: false
+    default: src
+  build-args:
+    description: Additional build arguments.
+    required: false
+    default: "./..."
+runs:
+  using: composite
+  steps:
+    - name: Download modules
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: go mod download
+
+    - name: Build Go module
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: go build ${{ inputs.build-args }}

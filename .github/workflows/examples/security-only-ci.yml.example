@@ -1,0 +1,27 @@
+# Example: Security-only CI
+# For projects that just need security scanning
+name: Security CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly on Monday
+
+jobs:
+  security:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-security-scan.yml@main
+    with:
+      run-trivy: true
+      trivy-scan-type: both
+      run-trufflehog: true
+      trufflehog-only-verified: true
+
+  sbom:
+    uses: your-org/Event-Driven-Service-Example/.github/workflows/reusable-sbom.yml@main
+    with:
+      source-path: .
+      run-grype: true
+      upload-sarif: true

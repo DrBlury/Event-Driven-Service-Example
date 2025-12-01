@@ -1,0 +1,50 @@
+name: Run Trivy Security Scan
+description: Runs Trivy vulnerability and config scanner.
+inputs:
+  scan-path:
+    description: Path to scan.
+    required: false
+    default: "."
+  scan-type:
+    description: Type of scan (fs, config, or both).
+    required: false
+    default: both
+  severity:
+    description: Severity levels to report.
+    required: false
+    default: CRITICAL,HIGH
+  exit-code:
+    description: Exit code when vulnerabilities are found.
+    required: false
+    default: "1"
+  ignore-unfixed:
+    description: Ignore unfixed vulnerabilities.
+    required: false
+    default: "true"
+  trivy-version:
+    description: Trivy action version.
+    required: false
+    default: "0.33.1"
+runs:
+  using: composite
+  steps:
+    - name: Run Trivy vulnerability scanner (filesystem)
+      if: inputs.scan-type == 'fs' || inputs.scan-type == 'both'
+      uses: aquasecurity/trivy-action@0.33.1
+      with:
+        scan-type: fs
+        scan-ref: ${{ inputs.scan-path }}
+        severity: ${{ inputs.severity }}
+        exit-code: ${{ inputs.exit-code }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        format: table
+
+    - name: Run Trivy config scanner (IaC misconfigurations)
+      if: inputs.scan-type == 'config' || inputs.scan-type == 'both'
+      uses: aquasecurity/trivy-action@0.33.1
+      with:
+        scan-type: config
+        scan-ref: ${{ inputs.scan-path }}
+        severity: ${{ inputs.severity }}
+        exit-code: ${{ inputs.exit-code }}
+        format: table
