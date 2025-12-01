@@ -108,7 +108,7 @@ jobs:
       - name: Trufflehog Secret Scan
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --exclude-paths=.trufflehog-exclude --exclude-detectors=PrivateKey --only-verified
+          extra_args: --config=.trufflehog.yml --only-verified
 
   lint_dockerfiles:
     name: Lint Dockerfiles (Hadolint)

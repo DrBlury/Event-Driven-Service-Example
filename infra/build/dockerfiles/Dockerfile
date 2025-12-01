@@ -7,7 +7,9 @@
 ARG CGO_ENABLED=0
 
 # Builder image: Use bookworm (Debian/glibc) for CGO, alpine for static builds
+# hadolint ignore=DL3006
 FROM golang:1.25-alpine AS builder-static
+# hadolint ignore=DL3006
 FROM golang:1.25-bookworm AS builder-cgo
 FROM builder-static AS builder-0
 FROM builder-cgo AS builder-1
@@ -28,8 +30,9 @@ WORKDIR /build
 # Install dependencies based on CGO setting
 # Alpine (CGO=0): minimal packages
 # Debian (CGO=1): build-essential for C compiler
+# hadolint ignore=DL3008,DL3018
 RUN if [ "$CGO_ENABLED" = "0" ]; then \
-  apk add --no-cache git openssh-client; \
+  apk update && apk add --no-cache git openssh-client; \
   else \
   apt-get update && apt-get install -y --no-install-recommends \
   git openssh-client ca-certificates build-essential \
@@ -66,14 +69,20 @@ RUN go build -a -ldflags="-s -w \
 
 # =============================================================================
 # Runtime image: static (no CGO) or base (with CGO/glibc)
+# Using distroless nonroot images which run as non-root user by default
 # =============================================================================
+# hadolint ignore=DL3006
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime-0
+# hadolint ignore=DL3006
 FROM gcr.io/distroless/base-debian12:nonroot AS runtime-1
 FROM runtime-${CGO_ENABLED} AS runtime
 
 LABEL org.opencontainers.image.authors="Julian Bensch"
 
 ENV TZ=Europe/Berlin
+
+# Distroless nonroot images already run as non-root user (uid 65532)
+USER nonroot:nonroot
 
 COPY --from=builder /build/app /app
 
