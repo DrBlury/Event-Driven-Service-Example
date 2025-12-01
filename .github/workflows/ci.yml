@@ -78,6 +78,9 @@ jobs:
   # ============================================
   sbom:
     name: SBOM & Grype
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/reusable-sbom.yml
     with:
       source-path: ./src
