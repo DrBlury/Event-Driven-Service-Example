@@ -96,6 +96,20 @@ jobs:
           exit-code: "1"
           format: "table"
 
+  secret_scan:
+    name: Secret Scan (Trufflehog)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Trufflehog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --exclude-paths=.trufflehog-exclude --exclude-detectors=PrivateKey --only-verified
+
   go_test:
     name: Test Go Module
     runs-on: ubuntu-latest
