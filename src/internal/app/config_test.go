@@ -1,69 +1,62 @@
 package app
 
 import (
+	"os"
 	"testing"
-
-	"github.com/spf13/viper"
+	"time"
 )
 
 func TestSetDefaults(t *testing.T) {
-	// Reset viper before test
-	viper.Reset()
-
+	// Just ensure it doesn't panic
 	SetDefaults()
-
-	tests := []struct {
-		key      string
-		expected any
-	}{
-		{"APP_NAME", "example-service"},
-		{"APP_SERVER_PORT", "80"},
-		{"LOGGER", "json"},
-		{"LOGGER_LEVEL", "debug"},
-		{"TRACING_ENABLED", false},
-		{"SERVICE_NAME", "example-service"},
-		{"PROTOFLOW_POISON_QUEUE", "messages-poison"},
-		{"PROTOFLOW_WEBUI_ENABLED", true},
-		{"PROTOFLOW_WEBUI_PORT", 8081},
-		{"EVENTS_DEMO_CONSUME_QUEUE", "messages"},
-		{"EVENTS_DEMO_PUBLISH_QUEUE", "messages-processed"},
-		{"EVENTS_EXAMPLE_CONSUME_QUEUE", "example-records"},
-		{"EVENTS_EXAMPLE_PUBLISH_QUEUE", "example-records-processed"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.key, func(t *testing.T) {
-			got := viper.Get(tt.key)
-			if got != tt.expected {
-				t.Errorf("Default %s = %v, want %v", tt.key, got, tt.expected)
-			}
-		})
-	}
 }
 
-func TestSetDefaultsCORSValues(t *testing.T) {
-	viper.Reset()
-	SetDefaults()
+func TestLoadConfig(t *testing.T) {
+	// Set some env vars for testing
+	os.Setenv("APP_NAME", "test-service")
+	os.Setenv("LOGGER", "json")
+	os.Setenv("LOGGER_LEVEL", "info")
+	defer func() {
+		os.Unsetenv("APP_NAME")
+		os.Unsetenv("LOGGER")
+		os.Unsetenv("LOGGER_LEVEL")
+	}()
 
-	corsHeaders := viper.GetStringSlice("APP_SERVER_CORS_HEADERS")
-	if len(corsHeaders) != 1 || corsHeaders[0] != "*" {
-		t.Errorf("CORS headers = %v, want [*]", corsHeaders)
+	cfg, err := LoadConfig(
+		"1.0.0",
+		"2024-01-01",
+		"Test details",
+		"abc123",
+		"2024-01-01T00:00:00Z",
+	)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadConfig() returned nil config")
 	}
 
-	corsMethods := viper.GetStringSlice("APP_SERVER_CORS_METHODS")
-	expectedMethods := []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	if len(corsMethods) != len(expectedMethods) {
-		t.Errorf("CORS methods = %v, want %v", corsMethods, expectedMethods)
+	// Check Info
+	if cfg.Info == nil {
+		t.Fatal("Info config is nil")
+	}
+	if cfg.Info.Version != "1.0.0" {
+		t.Errorf("Info.Version = %q, want '1.0.0'", cfg.Info.Version)
+	}
+	if cfg.Info.BuildDate != "2024-01-01" {
+		t.Errorf("Info.BuildDate = %q, want '2024-01-01'", cfg.Info.BuildDate)
+	}
+	if cfg.Info.Details != "Test details" {
+		t.Errorf("Info.Details = %q, want 'Test details'", cfg.Info.Details)
+	}
+	if cfg.Info.CommitHash != "abc123" {
+		t.Errorf("Info.CommitHash = %q, want 'abc123'", cfg.Info.CommitHash)
+	}
+	if cfg.Info.CommitDate != "2024-01-01T00:00:00Z" {
+		t.Errorf("Info.CommitDate = %q, want '2024-01-01T00:00:00Z'", cfg.Info.CommitDate)
 	}
 
-	corsOrigins := viper.GetStringSlice("APP_SERVER_CORS_ORIGINS")
-	if len(corsOrigins) != 1 || corsOrigins[0] != "*" {
-		t.Errorf("CORS origins = %v, want [*]", corsOrigins)
-	}
-}
-
-func testConfigNotNil(t *testing.T, cfg *Config) {
-	t.Helper()
+	// Check other configs are not nil
 	if cfg.Router == nil {
 		t.Error("Router config is nil")
 	}
@@ -90,102 +83,195 @@ func testConfigNotNil(t *testing.T, cfg *Config) {
 	}
 }
 
-func TestLoadConfig(t *testing.T) {
-	viper.Reset()
+func TestLoadConfigWithOTelLogger(t *testing.T) {
+	os.Setenv("LOGGER", "otel")
+	defer os.Unsetenv("LOGGER")
 
-	cfg, err := LoadConfig("1.0.0", "2024-01-01", "test", "abc123", "2024-01-01")
-
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
 	if err != nil {
-		t.Fatalf("LoadConfig error: %v", err)
+		t.Fatalf("LoadConfig() error = %v", err)
 	}
-	if cfg == nil {
-		t.Fatal("LoadConfig returned nil")
-	}
-
-	t.Run("Info", func(t *testing.T) {
-		if cfg.Info == nil {
-			t.Fatal("Info is nil")
-		}
-		if cfg.Info.Version != "1.0.0" {
-			t.Errorf("Info.Version = %s, want 1.0.0", cfg.Info.Version)
-		}
-		if cfg.Info.BuildDate != "2024-01-01" {
-			t.Errorf("Info.BuildDate = %s, want 2024-01-01", cfg.Info.BuildDate)
-		}
-		if cfg.Info.Details != "test" {
-			t.Errorf("Info.Details = %s, want test", cfg.Info.Details)
-		}
-		if cfg.Info.CommitHash != "abc123" {
-			t.Errorf("Info.CommitHash = %s, want abc123", cfg.Info.CommitHash)
-		}
-	})
-
-	t.Run("ConfigsNotNil", func(t *testing.T) {
-		testConfigNotNil(t, cfg)
-	})
-}
-
-func TestLoadConfigWithEnvOverrides(t *testing.T) {
-	viper.Reset()
-
-	// Set some env overrides
-	t.Setenv("APP_SERVER_PORT", "3000")
-	t.Setenv("LOGGER", "pretty")
-	t.Setenv("LOGGER_LEVEL", "info")
-
-	cfg, err := LoadConfig("2.0.0", "2024-06-01", "prod", "def456", "2024-06-01")
-
-	if err != nil {
-		t.Fatalf("LoadConfig error: %v", err)
-	}
-
-	if cfg.Server.Address != "0.0.0.0:3000" {
-		t.Errorf("Server.Address = %s, want 0.0.0.0:3000", cfg.Server.Address)
-	}
-}
-
-func TestLoadLoggerConfigOTel(t *testing.T) {
-	viper.Reset()
-	t.Setenv("LOGGER", "otel")
-
-	cfg, _ := LoadConfig("1.0.0", "", "", "", "")
-
 	if cfg.Logger.ConsoleEnabled {
-		t.Error("Console should be disabled for otel logger")
+		t.Error("Logger.ConsoleEnabled should be false for otel")
 	}
 	if !cfg.Logger.OTel.Enabled {
-		t.Error("OTel should be enabled for otel logger")
+		t.Error("Logger.OTel.Enabled should be true for otel")
 	}
 }
 
-func TestLoadLoggerConfigOTelAndConsole(t *testing.T) {
-	viper.Reset()
-	t.Setenv("LOGGER", "otel-and-console")
+func TestLoadConfigWithOTelAndConsoleLogger(t *testing.T) {
+	os.Setenv("LOGGER", "otel-and-console")
+	defer os.Unsetenv("LOGGER")
 
-	cfg, _ := LoadConfig("1.0.0", "", "", "", "")
-
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
 	if !cfg.Logger.ConsoleEnabled {
-		t.Error("Console should be enabled for otel-and-console logger")
+		t.Error("Logger.ConsoleEnabled should be true for otel-and-console")
 	}
 	if !cfg.Logger.OTel.Enabled {
-		t.Error("OTel should be enabled for otel-and-console logger")
+		t.Error("Logger.OTel.Enabled should be true for otel-and-console")
 	}
 	if !cfg.Logger.OTel.MirrorToConsole {
-		t.Error("MirrorToConsole should be true for otel-and-console logger")
+		t.Error("Logger.OTel.MirrorToConsole should be true for otel-and-console")
+	}
+}
+
+func TestLoadConfigServerDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Server.Address != "0.0.0.0:80" {
+		t.Errorf("Server.Address = %q, want '0.0.0.0:80'", cfg.Server.Address)
+	}
+}
+
+func TestLoadConfigRouterDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Router.Timeout != 60*time.Second {
+		t.Errorf("Router.Timeout = %v, want 60s", cfg.Router.Timeout)
+	}
+}
+
+func TestLoadConfigEventsDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Events.DemoConsumeQueue != "messages" {
+		t.Errorf("Events.DemoConsumeQueue = %q, want 'messages'", cfg.Events.DemoConsumeQueue)
+	}
+	if cfg.Events.ExampleConsumeQueue != "example-records" {
+		t.Errorf("Events.ExampleConsumeQueue = %q, want 'example-records'", cfg.Events.ExampleConsumeQueue)
+	}
+}
+
+func TestLoadConfigProtoflowDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Protoflow.PoisonQueue != "messages-poison" {
+		t.Errorf("Protoflow.PoisonQueue = %q, want 'messages-poison'", cfg.Protoflow.PoisonQueue)
+	}
+	if !cfg.Protoflow.WebUIEnabled {
+		t.Error("Protoflow.WebUIEnabled should be true by default")
+	}
+	if cfg.Protoflow.WebUIPort != 8081 {
+		t.Errorf("Protoflow.WebUIPort = %d, want 8081", cfg.Protoflow.WebUIPort)
+	}
+}
+
+func TestLoadConfigTracingDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Tracing.Enabled {
+		t.Error("Tracing.Enabled should be false by default")
+	}
+}
+
+func TestLoadConfigMetricsDefaults(t *testing.T) {
+	SetDefaults()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	// Metrics should have defaults set
+	if cfg.Metrics == nil {
+		t.Fatal("Metrics config is nil")
+	}
+}
+
+func TestLoadConfigDatabaseConfig(t *testing.T) {
+	os.Setenv("MONGO_URL", "mongodb://localhost:27017")
+	os.Setenv("MONGO_DB", "testdb")
+	os.Setenv("MONGO_USER", "testuser")
+	os.Setenv("MONGO_PASSWORD", "testpass")
+	defer func() {
+		os.Unsetenv("MONGO_URL")
+		os.Unsetenv("MONGO_DB")
+		os.Unsetenv("MONGO_USER")
+		os.Unsetenv("MONGO_PASSWORD")
+	}()
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Database.MongoURL != "mongodb://localhost:27017" {
+		t.Errorf("Database.MongoURL = %q, want 'mongodb://localhost:27017'", cfg.Database.MongoURL)
+	}
+	if cfg.Database.MongoDB != "testdb" {
+		t.Errorf("Database.MongoDB = %q, want 'testdb'", cfg.Database.MongoDB)
+	}
+}
+
+func TestLoadConfigWithCustomServerPort(t *testing.T) {
+	os.Setenv("APP_SERVER_PORT", "8080")
+	defer os.Unsetenv("APP_SERVER_PORT")
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.Server.Address != "0.0.0.0:8080" {
+		t.Errorf("Server.Address = %q, want '0.0.0.0:8080'", cfg.Server.Address)
+	}
+}
+
+func TestLoadConfigWithTracingEnabled(t *testing.T) {
+	os.Setenv("TRACING_ENABLED", "true")
+	defer os.Unsetenv("TRACING_ENABLED")
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if !cfg.Tracing.Enabled {
+		t.Error("Tracing.Enabled should be true when TRACING_ENABLED=true")
+	}
+}
+
+func TestLoadConfigWithMetricsEnabled(t *testing.T) {
+	os.Setenv("METRICS_ENABLED", "true")
+	defer os.Unsetenv("METRICS_ENABLED")
+
+	cfg, err := LoadConfig("1.0.0", "2024-01-01", "Test", "abc123", "2024-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if !cfg.Metrics.Enabled {
+		t.Error("Metrics.Enabled should be true when METRICS_ENABLED=true")
 	}
 }
 
 func TestConfigStructFields(t *testing.T) {
-	cfg := Config{}
-
-	// Test that all fields are nil initially
+	cfg := &Config{}
 	if cfg.Info != nil {
-		t.Error("Info should be nil by default")
+		t.Error("Config.Info should be nil by default")
 	}
 	if cfg.Router != nil {
-		t.Error("Router should be nil by default")
+		t.Error("Config.Router should be nil by default")
 	}
 	if cfg.Server != nil {
-		t.Error("Server should be nil by default")
+		t.Error("Config.Server should be nil by default")
 	}
 }

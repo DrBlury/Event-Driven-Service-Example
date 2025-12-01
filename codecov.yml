@@ -32,3 +32,6 @@ ignore:
   - "**/*_test.go" # Test files themselves
   - "pkg/logging/metrics/**" # Metrics package (observability)
   - "pkg/logging/tracing/**" # Tracing package (observability)
+  - "internal/database/**" # Database package (requires MongoDB)
+  - "internal/server/gen/**" # Generated server code
+  - "main.go" # Application entry point

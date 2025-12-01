@@ -1,42 +1,48 @@
 package events
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestEventsConfigFields(t *testing.T) {
-	cfg := Config{
-		DemoConsumeQueue:    "demo-consume",
-		DemoPublishQueue:    "demo-publish",
-		ExampleConsumeQueue: "example-consume",
-		ExamplePublishQueue: "example-publish",
+func TestConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		DemoConsumeQueue:    "messages",
+		DemoPublishQueue:    "messages-processed",
+		ExampleConsumeQueue: "example-records",
+		ExamplePublishQueue: "example-records-processed",
 	}
 
-	if cfg.DemoConsumeQueue != "demo-consume" {
-		t.Errorf("DemoConsumeQueue = %q, want %q", cfg.DemoConsumeQueue, "demo-consume")
+	if cfg.DemoConsumeQueue != "messages" {
+		t.Errorf("DemoConsumeQueue = %q, want 'messages'", cfg.DemoConsumeQueue)
 	}
-	if cfg.DemoPublishQueue != "demo-publish" {
-		t.Errorf("DemoPublishQueue = %q, want %q", cfg.DemoPublishQueue, "demo-publish")
+	if cfg.DemoPublishQueue != "messages-processed" {
+		t.Errorf("DemoPublishQueue = %q, want 'messages-processed'", cfg.DemoPublishQueue)
 	}
-	if cfg.ExampleConsumeQueue != "example-consume" {
-		t.Errorf("ExampleConsumeQueue = %q, want %q", cfg.ExampleConsumeQueue, "example-consume")
+	if cfg.ExampleConsumeQueue != "example-records" {
+		t.Errorf("ExampleConsumeQueue = %q, want 'example-records'", cfg.ExampleConsumeQueue)
 	}
-	if cfg.ExamplePublishQueue != "example-publish" {
-		t.Errorf("ExamplePublishQueue = %q, want %q", cfg.ExamplePublishQueue, "example-publish")
+	if cfg.ExamplePublishQueue != "example-records-processed" {
+		t.Errorf("ExamplePublishQueue = %q, want 'example-records-processed'", cfg.ExamplePublishQueue)
 	}
 }
 
-func TestEventsConfigZeroValue(t *testing.T) {
-	var cfg Config
+func TestConfigEmpty(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{}
 
 	if cfg.DemoConsumeQueue != "" {
-		t.Errorf("zero value DemoConsumeQueue = %q, want empty string", cfg.DemoConsumeQueue)
+		t.Errorf("DemoConsumeQueue should be empty")
 	}
 	if cfg.DemoPublishQueue != "" {
-		t.Errorf("zero value DemoPublishQueue = %q, want empty string", cfg.DemoPublishQueue)
+		t.Errorf("DemoPublishQueue should be empty")
 	}
 	if cfg.ExampleConsumeQueue != "" {
-		t.Errorf("zero value ExampleConsumeQueue = %q, want empty string", cfg.ExampleConsumeQueue)
+		t.Errorf("ExampleConsumeQueue should be empty")
 	}
 	if cfg.ExamplePublishQueue != "" {
-		t.Errorf("zero value ExamplePublishQueue = %q, want empty string", cfg.ExamplePublishQueue)
+		t.Errorf("ExamplePublishQueue should be empty")
 	}
 }

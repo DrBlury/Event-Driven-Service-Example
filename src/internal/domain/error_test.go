@@ -161,3 +161,68 @@ func TestErrValidationsWithSpecialCharacters(t *testing.T) {
 		t.Error("Should preserve double quotes")
 	}
 }
+
+func TestErrValidationsEmptySlice(t *testing.T) {
+	e := ErrValidations{Errors: []string{}}
+	result := e.Error()
+	if result != "" {
+		t.Errorf("Empty ErrValidations should return empty string, got %q", result)
+	}
+}
+
+func TestErrValidationsSingleError(t *testing.T) {
+	e := ErrValidations{Errors: []string{"validation failed"}}
+	result := e.Error()
+	expected := "1: validation failed"
+	if result != expected {
+		t.Errorf("Single error: got %q, want %q", result, expected)
+	}
+}
+
+func TestErrValidationsNilSlice(t *testing.T) {
+	e := ErrValidations{Errors: nil}
+	result := e.Error()
+	if result != "" {
+		t.Errorf("Nil slice ErrValidations should return empty string, got %q", result)
+	}
+}
+
+// Test that the predefined errors can be used with errors.Is
+func TestErrorsIsWithPredefinedErrors(t *testing.T) {
+	tests := []struct {
+		name   string
+		err    error
+		target error
+		want   bool
+	}{
+		{"ErrorNotFound matches", ErrorNotFound, ErrorNotFound, true},
+		{"ErrorBadRequest matches", ErrorBadRequest, ErrorBadRequest, true},
+		{"ErrorUpstreamService matches", ErrorUpstreamService, ErrorUpstreamService, true},
+		{"ErrorNotImplemented matches", ErrorNotImplemented, ErrorNotImplemented, true},
+		{"ErrorInternal matches", ErrorInternal, ErrorInternal, true},
+		{"ErrorNotFound does not match ErrorBadRequest", ErrorNotFound, ErrorBadRequest, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := errors.Is(tt.err, tt.target); got != tt.want {
+				t.Errorf("errors.Is(%v, %v) = %v, want %v", tt.err, tt.target, got, tt.want)
+			}
+		})
+	}
+}
+
+// Test that ErrValidations can be wrapped and unwrapped
+func TestErrValidationsWrapped(t *testing.T) {
+	original := ErrValidations{Errors: []string{"error1", "error2"}}
+	wrapped := errors.Join(errors.New("wrapper"), original)
+
+	var unwrapped ErrValidations
+	if !errors.As(wrapped, &unwrapped) {
+		t.Error("errors.As should find ErrValidations in wrapped error")
+	}
+
+	if len(unwrapped.Errors) != 2 {
+		t.Errorf("Expected 2 errors, got %d", len(unwrapped.Errors))
+	}
+}
