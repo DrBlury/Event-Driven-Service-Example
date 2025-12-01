@@ -73,11 +73,11 @@ func runSomeSimulation(ctx context.Context, svc *protoflow.Service, queueName st
 				Meta: &domain.ExampleMeta{
 					RequestedBy:      "simulation-bot",
 					RequiresFollowUp: followUp,
-					Priority:         int32(rand.IntN(5) + 1),
+					Priority:         int32(rand.IntN(5) + 1), // #nosec G404 G115 -- non-security simulation data with bounded values
 					DesiredStartDate: &domain.Date{
-						Year:  int32(rand.IntN(5) + 2020),
-						Month: int32(i%12 + 1),
-						Day:   int32((i % 28) + 1),
+						Year:  int32(rand.IntN(5) + 2020), // #nosec G404 G115 -- non-security simulation data with bounded values
+						Month: int32(i%12 + 1),           // #nosec G115 -- bounded value 1-12
+						Day:   int32((i % 28) + 1),       // #nosec G115 -- bounded value 1-28
 					},
 				},
 			}
@@ -136,12 +136,13 @@ func demoHandler() protoflow.JSONMessageHandler[*demoEvent, *processedDemoEvent]
 
 func exampleRecordHandler() protoflow.ProtoMessageHandler[*domain.ExampleRecord] {
 	return func(ctx context.Context, e protoflow.ProtoMessageContext[*domain.ExampleRecord]) ([]protoflow.ProtoMessageOutput, error) {
+		// #nosec G404 -- non-security simulation for random failures
 		if rand.IntN(10) == 0 {
 			return nil, errors.New("fatal error processing example event")
 		}
 
 		statuses := []string{"queued", "in-progress", "completed"}
-		status := statuses[rand.IntN(len(statuses))]
+		status := statuses[rand.IntN(len(statuses))] // #nosec G404 -- non-security simulation data
 
 		now := time.Now()
 		result := &domain.ExampleResult{
@@ -149,9 +150,9 @@ func exampleRecordHandler() protoflow.ProtoMessageHandler[*domain.ExampleRecord]
 			Status:   status,
 			Note:     fmt.Sprintf("processed %s", e.Payload.GetTitle()),
 			ProcessedOn: &domain.Date{
-				Year:  int32(now.Year()),
-				Month: int32(now.Month()),
-				Day:   int32(now.Day()),
+				Year:  int32(now.Year()),  // #nosec G115 -- year is bounded to reasonable values
+				Month: int32(now.Month()), // #nosec G115 -- month is bounded 1-12
+				Day:   int32(now.Day()),   // #nosec G115 -- day is bounded 1-31
 			},
 		}
 
