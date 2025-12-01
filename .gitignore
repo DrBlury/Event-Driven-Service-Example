@@ -4,3 +4,4 @@ _volume_data/
 .idea/
 .DS_Store
 coverage.out
+sbom/

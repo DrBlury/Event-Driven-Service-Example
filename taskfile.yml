@@ -17,6 +17,8 @@ vars:
   buf_image: bufbuild/buf:1.60.0
   scc_image: ghcr.io/lhoupert/scc:v0.0.2
   trivy_image: aquasec/trivy:0.58.0
+  syft_image: anchore/syft:v1.18.1
+  grype_image: anchore/grype:v0.86.1
 
 version: 3
 
@@ -121,6 +123,74 @@ tasks:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
         '
+
+  sbom:
+    desc: "Generate Software Bill of Materials (SBOM) using Syft"
+    summary: |
+      Creates an SBOM in CycloneDX JSON format for the Go module.
+      The SBOM catalogs all dependencies and can be used for compliance, auditing, and vulnerability scanning.
+    cmds:
+      - echo "Generating SBOM for {{.src_dir}} using Syft..."
+      - mkdir -p sbom
+      - |
+        docker run --rm -v "$(pwd):/workspace" -w /workspace {{.syft_image}} \
+          dir:{{.src_dir}} \
+          -o cyclonedx-json=sbom/sbom.cdx.json \
+          -o spdx-json=sbom/sbom.spdx.json \
+          -o syft-json=sbom/sbom.syft.json
+      - echo "SBOMs generated in sbom/ directory"
+
+  sbom-scan:
+    desc: "Scan SBOM for vulnerabilities using Grype"
+    summary: |
+      Scans the generated SBOM for known vulnerabilities using Anchore's Grype scanner.
+      Run 'task sbom' first to generate the SBOM.
+    deps:
+      - sbom
+    cmds:
+      - echo "Scanning SBOM for vulnerabilities using Grype..."
+      - |
+        docker run --rm -v "$(pwd):/workspace" -w /workspace {{.grype_image}} \
+          sbom:sbom/sbom.syft.json \
+          --fail-on high \
+          --only-fixed
+      - echo "Vulnerability scan complete"
+
+  grype:
+    desc: "Scan the codebase directly for vulnerabilities using Grype"
+    summary: |
+      Scans the Go module directly for vulnerabilities without generating an SBOM first.
+      Faster for quick checks, but sbom-scan is recommended for CI/audit trails.
+    cmds:
+      - echo "Scanning {{.src_dir}} for vulnerabilities using Grype..."
+      - |
+        docker run --rm -v "$(pwd):/workspace" -w /workspace {{.grype_image}} \
+          dir:{{.src_dir}} \
+          --fail-on high \
+          --only-fixed
+      - echo "Vulnerability scan complete"
+
+  grype-image:
+    desc: "Scan a Docker image for vulnerabilities using Grype"
+    summary: |
+      Scans a Docker image for vulnerabilities. Pass IMAGE=<image:tag> when invoking.
+      Example: task grype-image IMAGE=myapp:latest
+    cmds:
+      - |
+        if [ -z "${IMAGE:-}" ]; then
+          echo "IMAGE must be set. Example: task grype-image IMAGE=myapp:latest" >&2
+          exit 1
+        fi
+      - echo "Scanning Docker image ${IMAGE} for vulnerabilities..."
+      - |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "$(pwd):/workspace" -w /workspace \
+          {{.grype_image}} \
+          docker:${IMAGE} \
+          --fail-on high \
+          --only-fixed
+      - echo "Image vulnerability scan complete"
 
   act-test:
     desc: "Run a specific GitHub Actions job via act"

@@ -178,3 +178,50 @@ jobs:
       - name: Run govulncheck
         working-directory: src
         run: govulncheck ./...
+
+  sbom_and_grype:
+    name: SBOM Generation & Grype Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.0
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./src
+          artifact-name: sbom.syft.json
+          output-file: ./sbom.syft.json
+          format: syft-json
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./src
+          artifact-name: sbom.cdx.json
+          output-file: ./sbom.cdx.json
+          format: cyclonedx-json
+
+      - name: Upload SBOMs as artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: sbom-artifacts
+          path: |
+            ./sbom.syft.json
+            ./sbom.cdx.json
+          retention-days: 90
+
+      - name: Scan SBOM with Grype
+        uses: anchore/scan-action@v6
+        id: grype-scan
+        with:
+          sbom: ./sbom.syft.json
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+
+      - name: Upload Grype scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: ${{ steps.grype-scan.outputs.sarif }}
