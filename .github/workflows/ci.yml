@@ -167,10 +167,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.0
 
-      - name: Run gosec
-        uses: securego/gosec@master
+      - name: Set up Go
+        uses: actions/setup-go@v6.1.0
         with:
-          args: -exclude-generated -severity medium -confidence medium ./src/...
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache: true
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec
+        working-directory: src
+        run: gosec -exclude-generated -severity medium -confidence medium ./...
 
   go_test:
     name: Test Go Module

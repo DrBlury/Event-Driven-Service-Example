@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package domain;
+package domain.v1;
 
-option go_package = "./domain";
+option go_package = "drblury/event-driven-service/internal/domain";
 
 message Date {
   int32 year = 1;

@@ -1,53 +1,61 @@
-FROM golang:alpine AS builder
+# =============================================================================
+# CGO Configuration: Set CGO_ENABLED=1 to enable CGO support
+# Usage:
+#   Static build (default): docker build .
+#   CGO build:              docker build --build-arg CGO_ENABLED=1 .
+# =============================================================================
+ARG CGO_ENABLED=0
 
-# Arguments for passing during build, set default if they are not passed
+# Builder image: Use bookworm (Debian/glibc) for CGO, alpine for static builds
+FROM golang:1.25-alpine AS builder-static
+FROM golang:1.25-bookworm AS builder-cgo
+FROM builder-static AS builder-0
+FROM builder-cgo AS builder-1
+FROM builder-${CGO_ENABLED} AS builder
+
+# Build arguments
+ARG CGO_ENABLED
 ARG GOPROXY=https://proxy.golang.org,direct
 ARG VERSION=dev
-ARG COMMIT=$(git log -n 1 --pretty=format:"%H")
-ARG COMMIT_DATE=$(git log -1 --format=%cI)
-ARG BRANCH=$(git branch --show-current)
+ARG COMMIT=unknown
+ARG COMMIT_DATE=unknown
+ARG BRANCH=unknown
 ARG USER=unknown
-ARG NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-# Install needed tools
-RUN \
-  apk update && \
-  apk upgrade && \
-  apk add --no-cache \
-  ca-certificates \
-  gcc \
-  git \
-  musl-dev \
-  openssh-client
-
-# Set necessary environmet variables needed for our image
-ENV GO111MODULE=on \
-  GOOS=linux \
-  GOARCH=amd64 \
-  CGO_ENABLED=0
+ARG NOW=unknown
 
 WORKDIR /build
 
-# Prepare for SSH
+# Install dependencies based on CGO setting
+# Alpine (CGO=0): minimal packages
+# Debian (CGO=1): build-essential for C compiler
+RUN if [ "$CGO_ENABLED" = "0" ]; then \
+  apk add --no-cache git openssh-client; \
+  else \
+  apt-get update && apt-get install -y --no-install-recommends \
+  git openssh-client ca-certificates build-essential \
+  && rm -rf /var/lib/apt/lists/*; \
+  fi
+
+# Set build environment
+ENV GO111MODULE=on \
+  GOOS=linux \
+  GOARCH=amd64 \
+  CGO_ENABLED=${CGO_ENABLED} \
+  GOPROXY=${GOPROXY}
+
+# Prepare for SSH (private modules)
 RUN git config --global url."ssh://git@github.com".insteadOf "https://github.com" \
-  && mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+  && mkdir -p ~/.ssh && chmod 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-# Config golang settings for fetching private modules
-ENV GOPROXY=${GOPROXY}
-
-# Fetch all needed go modules (mounting ssh for private modules)
+# Copy and download dependencies first (better layer caching)
+COPY ./src/go.* /build/
 RUN --mount=type=ssh go mod download
 
-# Copy and download dependency using go mod
-ADD ./src/go.* /build/
-RUN go mod download
+# Copy sources
+COPY ./src /build/
 
-# Copy sources to build container
-ADD ./src /build/
-
-# Build the app
-RUN go build -a -tags musl -ldflags=" \
-  -linkmode=external \
+# Build binary
+RUN go build -a -ldflags="-s -w \
   -X 'main.version=${VERSION}' \
   -X 'main.buildUser=${USER}' \
   -X 'main.buildBranch=${BRANCH}' \
@@ -55,29 +63,18 @@ RUN go build -a -tags musl -ldflags=" \
   -X 'main.commitHash=${COMMIT}' \
   -X 'main.commitDate=${COMMIT_DATE}' \
   " -o /build/app
-######################################
-FROM alpine:3
-LABEL AUTHOR="Julian Bensch"
 
-# install os packages
-RUN apk update && \
-  apk add --no-cache libxml2 \
-  tzdata \
-  libc6-compat \
-  curl
+# =============================================================================
+# Runtime image: static (no CGO) or base (with CGO/glibc)
+# =============================================================================
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime-0
+FROM gcr.io/distroless/base-debian12:nonroot AS runtime-1
+FROM runtime-${CGO_ENABLED} AS runtime
+
+LABEL org.opencontainers.image.authors="Julian Bensch"
 
 ENV TZ=Europe/Berlin
-RUN cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 
-# Create an unprivileged user
-RUN adduser \
-  --disabled-password \
-  --gecos "" \
-  --home "$(pwd)" \
-  --no-create-home \
-  "nobody"
+COPY --from=builder /build/app /app
 
-#RUN apk --no-cache add curl
-USER nobody
-COPY --from=builder --chown=nobody /build/app /app
-ENTRYPOINT [ "/app" ]
+ENTRYPOINT ["/app"]

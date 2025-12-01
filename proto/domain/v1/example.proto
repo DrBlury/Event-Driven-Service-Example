@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package domain;
+package domain.v1;
 
-option go_package = "./domain";
+option go_package = "drblury/event-driven-service/internal/domain";
 
-import "date.proto";
+import "domain/v1/date.proto";
 
 // ExampleRecord demonstrates the payload this sample service works with.
 message ExampleRecord {

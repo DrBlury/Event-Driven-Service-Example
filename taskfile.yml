@@ -200,7 +200,7 @@ tasks:
     desc: "Scan for secrets in the repository using Trufflehog"
     summary: |
       Scans the git repository history for accidentally committed secrets like API keys, passwords, and tokens.
-      Uses the .trufflehog-exclude file to exclude example files and known false positives.
+      Uses the .trufflehog.yml config file to exclude example files and known false positives.
     cmds:
       - echo "Scanning repository for secrets using Trufflehog..."
       - |
@@ -208,8 +208,7 @@ tasks:
           -v "$(pwd):/workspace" -w /workspace \
           {{.trufflehog_image}} \
           git file:///workspace \
-          --exclude-paths=/workspace/.trufflehog-exclude \
-          --exclude-detectors=PrivateKey \
+          --config=/workspace/.trufflehog.yml \
           --only-verified \
           --fail
       - echo "Secret scan complete - no verified secrets found"
@@ -226,8 +225,7 @@ tasks:
           -v "$(pwd):/workspace" -w /workspace \
           {{.trufflehog_image}} \
           git file:///workspace \
-          --exclude-paths=/workspace/.trufflehog-exclude \
-          --exclude-detectors=PrivateKey
+          --config=/workspace/.trufflehog.yml
       - echo "Secret scan complete"
 
   hadolint:
