@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+
+	"github.com/samber/lo"
 )
 
 // MyWrapperHandler wraps another slog.Handler and flattens nested JSON payloads
@@ -84,10 +86,9 @@ func mapToSlogAttrs(input map[string]any, depth int, maxDepth int) []slog.Attr {
 		case map[string]any:
 			nestedAttrs := mapToSlogAttrs(val, depth+1, maxDepth)
 			// Convert []slog.Attr to []any
-			nestedAny := make([]any, len(nestedAttrs))
-			for i, attr := range nestedAttrs {
-				nestedAny[i] = attr
-			}
+			nestedAny := lo.Map(nestedAttrs, func(attr slog.Attr, _ int) any {
+				return attr
+			})
 			attrs = append(attrs, slog.Group(k, nestedAny...))
 		default:
 			attrs = append(attrs, slog.Any(k, val))

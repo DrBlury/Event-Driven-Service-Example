@@ -80,7 +80,7 @@ require (
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/lo v1.51.0
 	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect

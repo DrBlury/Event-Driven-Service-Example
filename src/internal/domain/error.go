@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 // Predefined errors used throughout the application
@@ -21,8 +23,8 @@ type ErrValidations struct {
 
 func (e ErrValidations) Error() string {
 	// Join the errors with a separator and number them
-	for i, v := range e.Errors {
-		e.Errors[i] = fmt.Sprintf("%d: %s", i+1, v)
-	}
-	return strings.Join(e.Errors, " - ")
+	numbered := lo.Map(e.Errors, func(v string, i int) string {
+		return fmt.Sprintf("%d: %s", i+1, v)
+	})
+	return strings.Join(numbered, " - ")
 }

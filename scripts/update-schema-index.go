@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 var sections = []struct {
@@ -97,21 +100,20 @@ func listSchemas(dir string) ([]string, error) {
 		return nil, err
 	}
 
-	var names []string
-	for _, entry := range entries {
+	names := lo.FilterMap(entries, func(entry fs.DirEntry, _ int) (string, bool) {
 		if entry.IsDir() {
-			continue
+			return "", false
 		}
 		name := entry.Name()
 		if !strings.HasSuffix(name, ".yml") {
-			continue
+			return "", false
 		}
 		trimmed := strings.TrimSuffix(name, ".yml")
 		if trimmed == "_index" {
-			continue
+			return "", false
 		}
-		names = append(names, trimmed)
-	}
+		return trimmed, true
+	})
 	sort.Strings(names)
 	return names, nil
 }

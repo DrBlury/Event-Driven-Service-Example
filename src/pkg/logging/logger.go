@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/samber/lo"
 	slogmulti "github.com/samber/slog-multi"
 )
 
@@ -81,10 +82,9 @@ func SetLogger(ctx context.Context, opts ...Option) *slog.Logger {
 
 	logger := slog.New(mainHandler)
 	if len(cfg.attrs) > 0 {
-		args := make([]any, 0, len(cfg.attrs))
-		for _, attr := range cfg.attrs {
-			args = append(args, attr)
-		}
+		args := lo.Map(cfg.attrs, func(attr slog.Attr, _ int) any {
+			return attr
+		})
 		logger = logger.With(args...)
 	}
 

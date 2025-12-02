@@ -68,33 +68,44 @@ func TestParseDocsTemplate(t *testing.T) {
 		}
 	})
 
-	t.Run("valid template file", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "template*.html")
-		if err != nil {
-			t.Fatalf("failed to create temp file: %v", err)
-		}
-		defer os.Remove(tmpFile.Name())
-
-		_, err = tmpFile.WriteString(`<!DOCTYPE html><html><body>{{.BaseURL}}</body></html>`)
-		if err != nil {
-			t.Fatalf("failed to write to temp file: %v", err)
-		}
-		tmpFile.Close()
-
-		result := parseDocsTemplate(tmpFile.Name(), logger)
-		if result == nil {
-			t.Error("parseDocsTemplate should return a template for a valid file")
-		}
+	t.Run("valid templates", func(t *testing.T) {
+		testParseDocsTemplateValidFiles(t, logger)
 	})
 
-	t.Run("complex template file", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "complex_template*.html")
-		if err != nil {
-			t.Fatalf("failed to create temp file: %v", err)
-		}
-		defer os.Remove(tmpFile.Name())
+	t.Run("invalid template syntax", func(t *testing.T) {
+		testParseDocsTemplateInvalidSyntax(t, logger)
+	})
+}
 
-		complexTemplate := `<!DOCTYPE html>
+func testParseDocsTemplateValidFiles(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+
+	// Simple template
+	tmpFile, err := os.CreateTemp("", "template*.html")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	_, err = tmpFile.WriteString(`<!DOCTYPE html><html><body>{{.BaseURL}}</body></html>`)
+	if err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	result := parseDocsTemplate(tmpFile.Name(), logger)
+	if result == nil {
+		t.Error("parseDocsTemplate should return a template for a valid file")
+	}
+
+	// Complex template
+	complexFile, err := os.CreateTemp("", "complex_template*.html")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(complexFile.Name())
+
+	complexTemplate := `<!DOCTYPE html>
 <html>
 <head><title>API Docs</title></head>
 <body>
@@ -102,36 +113,37 @@ func TestParseDocsTemplate(t *testing.T) {
 <h2>Spec URL: {{.SpecURL}}</h2>
 </body>
 </html>`
-		_, err = tmpFile.WriteString(complexTemplate)
-		if err != nil {
-			t.Fatalf("failed to write to temp file: %v", err)
-		}
-		tmpFile.Close()
+	_, err = complexFile.WriteString(complexTemplate)
+	if err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	complexFile.Close()
 
-		result := parseDocsTemplate(tmpFile.Name(), logger)
-		if result == nil {
-			t.Error("parseDocsTemplate should return a template for a complex valid file")
-		}
-	})
+	result = parseDocsTemplate(complexFile.Name(), logger)
+	if result == nil {
+		t.Error("parseDocsTemplate should return a template for a complex valid file")
+	}
+}
 
-	t.Run("invalid template syntax", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "invalid_template*.html")
-		if err != nil {
-			t.Fatalf("failed to create temp file: %v", err)
-		}
-		defer os.Remove(tmpFile.Name())
+func testParseDocsTemplateInvalidSyntax(t *testing.T, logger *slog.Logger) {
+	t.Helper()
 
-		_, err = tmpFile.WriteString(`{{.Invalid`)
-		if err != nil {
-			t.Fatalf("failed to write to temp file: %v", err)
-		}
-		tmpFile.Close()
+	tmpFile, err := os.CreateTemp("", "invalid_template*.html")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
 
-		result := parseDocsTemplate(tmpFile.Name(), logger)
-		if result != nil {
-			t.Error("parseDocsTemplate should return nil for invalid template syntax")
-		}
-	})
+	_, err = tmpFile.WriteString(`{{.Invalid`)
+	if err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	result := parseDocsTemplate(tmpFile.Name(), logger)
+	if result != nil {
+		t.Error("parseDocsTemplate should return nil for invalid template syntax")
+	}
 }
 
 func TestNewAPIHandler(t *testing.T) {
@@ -146,96 +158,19 @@ func TestNewAPIHandler(t *testing.T) {
 	})
 
 	t.Run("various info configurations", func(t *testing.T) {
-		testCases := []struct {
-			name string
-			info *domain.Info
-		}{
-			{"minimal info", &domain.Info{}},
-			{"version only", &domain.Info{Version: "1.0.0"}},
-			{"full info", &domain.Info{
-				Version:    "1.0.0",
-				BuildDate:  "2024-01-01",
-				Details:    "Test",
-				CommitHash: "abc123",
-				CommitDate: "2024-01-01T00:00:00Z",
-			}},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				handler := NewAPIHandler(nil, tc.info, logger, "/api", "")
-				if handler == nil {
-					t.Fatal("handler should not be nil")
-				}
-				if handler.InfoHandler == nil {
-					t.Error("InfoHandler should not be nil")
-				}
-			})
-		}
+		testNewAPIHandlerInfoConfigs(t, logger)
 	})
 
 	t.Run("various baseURL configurations", func(t *testing.T) {
-		info := &domain.Info{Version: "1.0.0"}
-		baseURLs := []string{
-			"",
-			"/",
-			"/api",
-			"/api/",
-			"/api/v1",
-			"/api/v1/",
-			"  /api  ",
-			"/api/v2/nested/path",
-		}
-
-		for _, baseURL := range baseURLs {
-			t.Run("baseURL_"+baseURL, func(t *testing.T) {
-				handler := NewAPIHandler(nil, info, logger, baseURL, "")
-				if handler == nil {
-					t.Fatalf("NewAPIHandler(%q) should not return nil", baseURL)
-				}
-			})
-		}
+		testNewAPIHandlerBaseURLConfigs(t, logger)
 	})
 
 	t.Run("with AppLogic", func(t *testing.T) {
-		info := &domain.Info{Version: "1.0.0"}
-		appLogic, _ := usecase.NewAppLogic(nil, logger)
-		handler := NewAPIHandler(appLogic, info, logger, "/api", "")
-
-		if handler == nil {
-			t.Fatal("handler should not be nil")
-		}
-		if handler.AppLogic != appLogic {
-			t.Error("AppLogic should be set correctly")
-		}
+		testNewAPIHandlerWithAppLogic(t, logger)
 	})
 
-	t.Run("with valid docs template", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "api_docs*.html")
-		if err != nil {
-			t.Fatalf("failed to create temp file: %v", err)
-		}
-		defer os.Remove(tmpFile.Name())
-
-		_, err = tmpFile.WriteString(`<!DOCTYPE html><html><body>{{.BaseURL}} - {{.SpecURL}}</body></html>`)
-		if err != nil {
-			t.Fatalf("failed to write to temp file: %v", err)
-		}
-		tmpFile.Close()
-
-		info := &domain.Info{Version: "1.0.0"}
-		handler := NewAPIHandler(nil, info, logger, "/api", tmpFile.Name())
-		if handler == nil {
-			t.Fatal("handler should not be nil with valid template")
-		}
-	})
-
-	t.Run("with invalid docs template path", func(t *testing.T) {
-		info := &domain.Info{Version: "1.0.0"}
-		handler := NewAPIHandler(nil, info, logger, "", "/nonexistent/template.html")
-		if handler == nil {
-			t.Fatal("handler should not be nil even with invalid template path")
-		}
+	t.Run("with templates", func(t *testing.T) {
+		testNewAPIHandlerWithTemplates(t, logger)
 	})
 
 	t.Run("fields are set correctly", func(t *testing.T) {
@@ -252,4 +187,98 @@ func TestNewAPIHandler(t *testing.T) {
 			t.Error("InfoHandler should not be nil")
 		}
 	})
+}
+
+func testNewAPIHandlerInfoConfigs(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+
+	testCases := []struct {
+		name string
+		info *domain.Info
+	}{
+		{"minimal info", &domain.Info{}},
+		{"version only", &domain.Info{Version: "1.0.0"}},
+		{"full info", &domain.Info{
+			Version:    "1.0.0",
+			BuildDate:  "2024-01-01",
+			Details:    "Test",
+			CommitHash: "abc123",
+			CommitDate: "2024-01-01T00:00:00Z",
+		}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := NewAPIHandler(nil, tc.info, logger, "/api", "")
+			if handler == nil {
+				t.Fatal("handler should not be nil")
+			}
+			if handler.InfoHandler == nil {
+				t.Error("InfoHandler should not be nil")
+			}
+		})
+	}
+}
+
+func testNewAPIHandlerBaseURLConfigs(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+
+	info := &domain.Info{Version: "1.0.0"}
+	baseURLs := []string{
+		"", "/", "/api", "/api/", "/api/v1",
+		"/api/v1/", "  /api  ", "/api/v2/nested/path",
+	}
+
+	for _, baseURL := range baseURLs {
+		t.Run("baseURL_"+baseURL, func(t *testing.T) {
+			handler := NewAPIHandler(nil, info, logger, baseURL, "")
+			if handler == nil {
+				t.Fatalf("NewAPIHandler(%q) should not return nil", baseURL)
+			}
+		})
+	}
+}
+
+func testNewAPIHandlerWithAppLogic(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+
+	info := &domain.Info{Version: "1.0.0"}
+	appLogic, _ := usecase.NewAppLogic(nil, logger)
+	handler := NewAPIHandler(appLogic, info, logger, "/api", "")
+
+	if handler == nil {
+		t.Fatal("handler should not be nil")
+	}
+	if handler.AppLogic != appLogic {
+		t.Error("AppLogic should be set correctly")
+	}
+}
+
+func testNewAPIHandlerWithTemplates(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+
+	// Valid template
+	tmpFile, err := os.CreateTemp("", "api_docs*.html")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	_, err = tmpFile.WriteString(`<!DOCTYPE html><html><body>{{.BaseURL}} - {{.SpecURL}}</body></html>`)
+	if err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	info := &domain.Info{Version: "1.0.0"}
+	handler := NewAPIHandler(nil, info, logger, "/api", tmpFile.Name())
+	if handler == nil {
+		t.Fatal("handler should not be nil with valid template")
+	}
+
+	// Invalid template path
+	handler = NewAPIHandler(nil, info, logger, "", "/nonexistent/template.html")
+	if handler == nil {
+		t.Fatal("handler should not be nil even with invalid template path")
+	}
 }

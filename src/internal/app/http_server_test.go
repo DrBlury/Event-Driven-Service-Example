@@ -131,90 +131,61 @@ func TestBuildHTTPServer(t *testing.T) {
 	t.Run("nil config panics or errors", func(t *testing.T) {
 		t.Parallel()
 		defer func() {
-			if r := recover(); r != nil {
-				// Expected to recover from panic
-			}
+			_ = recover() // Expected to recover from panic
 		}()
 		_, _ = buildHTTPServer(nil, nil, logger)
 	})
 
 	t.Run("various configs", func(t *testing.T) {
 		t.Parallel()
-		testCases := []struct {
-			name string
-			cfg  *Config
-		}{
-			{
-				name: "minimal config",
-				cfg: &Config{
-					Server: &server.Config{Address: ":0"},
-					Router: &router.Config{},
-					Info:   &domain.Info{},
-				},
-			},
-			{
-				name: "with base URL",
-				cfg: &Config{
-					Server: &server.Config{Address: ":0", BaseURL: "/api"},
-					Router: &router.Config{Timeout: 30 * time.Second},
-					Info:   &domain.Info{Version: "2.0.0"},
-				},
-			},
-			{
-				name: "with CORS",
-				cfg: &Config{
-					Server: &server.Config{Address: ":0"},
-					Router: &router.Config{
-						CORS: router.CORSConfig{
-							Origins: []string{"*"},
-							Methods: []string{"GET", "POST"},
-						},
-					},
-					Info: &domain.Info{Version: "3.0.0"},
-				},
-			},
-			{
-				name: "full config",
-				cfg: &Config{
-					Server: &server.Config{
-						Address:          ":8080",
-						BaseURL:          "/api/v1",
-						DocsTemplatePath: "",
-					},
-					Router: &router.Config{
-						Timeout: 60 * time.Second,
-						CORS: router.CORSConfig{
-							AllowCredentials: true,
-							Headers:          []string{"*"},
-							Methods:          []string{"GET", "POST"},
-							Origins:          []string{"*"},
-						},
-						QuietdownRoutes: []string{"/healthz"},
-						HideHeaders:     []string{"Authorization"},
-					},
-					Info: &domain.Info{
-						Version:    "2.0.0",
-						BuildDate:  "2024-06-15",
-						Details:    "Test",
-						CommitHash: "abc123",
-					},
-				},
-			},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				appLogic, _ := usecase.NewAppLogic(nil, logger)
-				srv, err := buildHTTPServer(tc.cfg, appLogic, logger)
-				if err != nil {
-					t.Fatalf("buildHTTPServer failed for %s: %v", tc.name, err)
-				}
-				if srv == nil {
-					t.Errorf("buildHTTPServer returned nil for %s", tc.name)
-				}
-			})
-		}
+		testBuildHTTPServerConfigs(t, logger)
 	})
+}
+
+func testBuildHTTPServerConfigs(t *testing.T, logger *slog.Logger) {
+	t.Helper()
+	testCases := buildHTTPServerTestCases()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appLogic, _ := usecase.NewAppLogic(nil, logger)
+			srv, err := buildHTTPServer(tc.cfg, appLogic, logger)
+			if err != nil {
+				t.Fatalf("buildHTTPServer failed for %s: %v", tc.name, err)
+			}
+			if srv == nil {
+				t.Errorf("buildHTTPServer returned nil for %s", tc.name)
+			}
+		})
+	}
+}
+
+func buildHTTPServerTestCases() []struct {
+	name string
+	cfg  *Config
+} {
+	return []struct {
+		name string
+		cfg  *Config
+	}{
+		{"minimal config", &Config{Server: &server.Config{Address: ":0"}, Router: &router.Config{}, Info: &domain.Info{}}},
+		{"with base URL", &Config{Server: &server.Config{Address: ":0", BaseURL: "/api"}, Router: &router.Config{Timeout: 30 * time.Second}, Info: &domain.Info{Version: "2.0.0"}}},
+		{"with CORS", &Config{Server: &server.Config{Address: ":0"}, Router: &router.Config{CORS: router.CORSConfig{Origins: []string{"*"}, Methods: []string{"GET", "POST"}}}, Info: &domain.Info{Version: "3.0.0"}}},
+		{"full config", buildFullConfigTestCase()},
+	}
+}
+
+func buildFullConfigTestCase() *Config {
+	return &Config{
+		Server: &server.Config{Address: ":8080", BaseURL: "/api/v1", DocsTemplatePath: ""},
+		Router: &router.Config{
+			Timeout:         60 * time.Second,
+			CORS:            router.CORSConfig{AllowCredentials: true, Headers: []string{"*"}, Methods: []string{"GET", "POST"}, Origins: []string{"*"}},
+			QuietdownRoutes: []string{"/healthz"},
+			HideHeaders:     []string{"Authorization"},
+		},
+		Info: &domain.Info{Version: "2.0.0", BuildDate: "2024-06-15", Details: "Test", CommitHash: "abc123"},
+	}
 }
 
 func TestHTTPServerLifecycle(t *testing.T) {

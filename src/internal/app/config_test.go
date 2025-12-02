@@ -36,7 +36,13 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatal("LoadConfig() returned nil config")
 	}
 
-	// Check Info
+	testLoadConfigInfo(t, cfg)
+	testLoadConfigNonNil(t, cfg)
+}
+
+func testLoadConfigInfo(t *testing.T, cfg *Config) {
+	t.Helper()
+
 	if cfg.Info == nil {
 		t.Fatal("Info config is nil")
 	}
@@ -55,8 +61,11 @@ func TestLoadConfig(t *testing.T) {
 	if cfg.Info.CommitDate != "2024-01-01T00:00:00Z" {
 		t.Errorf("Info.CommitDate = %q, want '2024-01-01T00:00:00Z'", cfg.Info.CommitDate)
 	}
+}
 
-	// Check other configs are not nil
+func testLoadConfigNonNil(t *testing.T, cfg *Config) {
+	t.Helper()
+
 	if cfg.Router == nil {
 		t.Error("Router config is nil")
 	}

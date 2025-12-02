@@ -247,14 +247,7 @@ func TestSetLogger(t *testing.T) {
 	})
 
 	t.Run("with options", func(t *testing.T) {
-		buf := &bytes.Buffer{}
-		logger := SetLogger(context.Background(), WithoutGlobal(), WithLevel(slog.LevelDebug), WithJSONFormat(), WithConsoleWriter(buf), WithAttrs(slog.String("attr", "value")))
-
-		logger.Debug("hello")
-		out := buf.String()
-		if !strings.Contains(out, "hello") || !strings.Contains(out, "attr") {
-			t.Fatalf("expected output to include message and attribute, got %q", out)
-		}
+		testSetLoggerWithOptions(t)
 	})
 
 	t.Run("with nil console writer", func(t *testing.T) {
@@ -264,58 +257,77 @@ func TestSetLogger(t *testing.T) {
 		}
 	})
 
-	t.Run("TODO context", func(t *testing.T) {
-		logger := SetLogger(context.TODO(), WithoutGlobal())
-		if logger == nil {
-			t.Fatal("expected logger instance with TODO context")
-		}
+	t.Run("context variations", func(t *testing.T) {
+		testSetLoggerContextVariations(t)
 	})
 
-	t.Run("nil context", func(t *testing.T) {
-		//nolint:staticcheck // Testing nil context handling deliberately
-		var nilCtx context.Context = nil
-		logger := SetLogger(nilCtx, WithoutGlobal())
-		if logger == nil {
-			t.Fatal("expected logger instance with nil context")
-		}
+	t.Run("format and attrs variations", func(t *testing.T) {
+		testSetLoggerFormatAndAttrs(t)
 	})
+}
 
-	t.Run("empty format", func(t *testing.T) {
-		buf := &bytes.Buffer{}
-		logger := SetLogger(context.Background(), WithoutGlobal(), WithConsoleWriter(buf), func(s *settings) {
-			s.console.format = ""
-		})
-		if logger == nil {
-			t.Fatal("expected logger instance")
-		}
+func testSetLoggerWithOptions(t *testing.T) {
+	t.Helper()
+
+	buf := &bytes.Buffer{}
+	logger := SetLogger(context.Background(), WithoutGlobal(), WithLevel(slog.LevelDebug), WithJSONFormat(), WithConsoleWriter(buf), WithAttrs(slog.String("attr", "value")))
+
+	logger.Debug("hello")
+	out := buf.String()
+	if !strings.Contains(out, "hello") || !strings.Contains(out, "attr") {
+		t.Fatalf("expected output to include message and attribute, got %q", out)
+	}
+}
+
+func testSetLoggerContextVariations(t *testing.T) {
+	t.Helper()
+
+	logger := SetLogger(context.TODO(), WithoutGlobal())
+	if logger == nil {
+		t.Fatal("expected logger instance with TODO context")
+	}
+
+	//nolint:staticcheck // Testing nil context handling deliberately
+	var nilCtx context.Context = nil
+	logger = SetLogger(nilCtx, WithoutGlobal())
+	if logger == nil {
+		t.Fatal("expected logger instance with nil context")
+	}
+}
+
+func testSetLoggerFormatAndAttrs(t *testing.T) {
+	t.Helper()
+
+	buf := &bytes.Buffer{}
+	logger := SetLogger(context.Background(), WithoutGlobal(), WithConsoleWriter(buf), func(s *settings) {
+		s.console.format = ""
 	})
+	if logger == nil {
+		t.Fatal("expected logger instance")
+	}
 
-	t.Run("nil options", func(t *testing.T) {
-		logger := SetLogger(context.Background(), nil, WithoutGlobal(), nil)
-		if logger == nil {
-			t.Fatal("expected logger instance")
-		}
-	})
+	logger = SetLogger(context.Background(), nil, WithoutGlobal(), nil)
+	if logger == nil {
+		t.Fatal("expected logger instance")
+	}
 
-	t.Run("multiple attrs", func(t *testing.T) {
-		buf := &bytes.Buffer{}
-		logger := SetLogger(context.Background(),
-			WithoutGlobal(),
-			WithJSONFormat(),
-			WithConsoleWriter(buf),
-			WithAttrs(
-				slog.String("key1", "value1"),
-				slog.Int("key2", 42),
-				slog.Bool("key3", true),
-			),
-		)
+	buf = &bytes.Buffer{}
+	logger = SetLogger(context.Background(),
+		WithoutGlobal(),
+		WithJSONFormat(),
+		WithConsoleWriter(buf),
+		WithAttrs(
+			slog.String("key1", "value1"),
+			slog.Int("key2", 42),
+			slog.Bool("key3", true),
+		),
+	)
 
-		logger.Info("multi attr test")
-		out := buf.String()
-		if !strings.Contains(out, "key1") {
-			t.Error("expected key1 in output")
-		}
-	})
+	logger.Info("multi attr test")
+	out := buf.String()
+	if !strings.Contains(out, "key1") {
+		t.Error("expected key1 in output")
+	}
 }
 
 func TestSetLoggerWithOtel(t *testing.T) {
