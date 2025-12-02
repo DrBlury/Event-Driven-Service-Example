@@ -38,6 +38,8 @@ jobs:
     name: Hadolint
     if: ${{ inputs.lint-dockerfiles }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -51,6 +53,8 @@ jobs:
     name: actionlint
     if: ${{ inputs.lint-actions }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -64,6 +68,8 @@ jobs:
     name: buf lint
     if: ${{ inputs.lint-proto }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6

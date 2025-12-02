@@ -35,6 +35,8 @@ jobs:
         name: gosec
         if: ${{ inputs.run-gosec }}
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
             - name: Checkout
               uses: actions/checkout@v6
@@ -55,6 +57,8 @@ jobs:
         name: govulncheck
         if: ${{ inputs.run-govulncheck }}
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
             - name: Checkout
               uses: actions/checkout@v6

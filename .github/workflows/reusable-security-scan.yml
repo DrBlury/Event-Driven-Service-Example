@@ -34,6 +34,8 @@ jobs:
         name: Trivy
         if: ${{ inputs.run-trivy }}
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
             - name: Checkout
               uses: actions/checkout@v6
@@ -48,6 +50,8 @@ jobs:
         name: Trufflehog
         if: ${{ inputs.run-trufflehog }}
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
             - name: Checkout
               uses: actions/checkout@v6
