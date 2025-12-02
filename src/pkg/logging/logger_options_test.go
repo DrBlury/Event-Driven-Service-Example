@@ -331,7 +331,7 @@ func testSetLoggerFormatAndAttrs(t *testing.T) {
 }
 
 func TestSetLoggerWithOtel(t *testing.T) {
-	t.Parallel()
+	// Note: cannot use t.Parallel() because this test modifies package-level variables
 
 	origExporter := logExporterFactory
 	origResource := resourceFactory
@@ -395,7 +395,7 @@ func TestNewConsoleHandlerFormats(t *testing.T) {
 }
 
 func TestBuildHandlers(t *testing.T) {
-	t.Parallel()
+	// Note: cannot use t.Parallel() because subtests modify package-level variables
 
 	t.Run("no handlers fallback", func(t *testing.T) {
 		cfg := defaultSettings()
