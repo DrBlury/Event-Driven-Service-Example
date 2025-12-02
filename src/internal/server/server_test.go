@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -311,10 +312,10 @@ func TestServerConcurrentRequests(t *testing.T) {
 	t.Parallel()
 
 	cfg := &Config{Address: ":0"}
-	counter := 0
+	var counter atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		counter++
+		counter.Add(1)
 		w.WriteHeader(http.StatusOK)
 	})
 
