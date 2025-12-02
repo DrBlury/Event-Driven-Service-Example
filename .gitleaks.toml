@@ -1,0 +1,54 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "Event-Driven-Service-Example Gitleaks Config"
+
+[extend]
+# Use the default gitleaks config as a base
+useDefault = true
+
+# Paths to ignore
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    # Example/template files
+    '''infra/env/example/.*''',
+    '''\.example$''',
+
+    # Test files
+    '''_test\.go$''',
+    '''testdata/.*''',
+    '''fixtures/.*''',
+
+    # Generated files
+    '''src/internal/server/_gen/.*''',
+    '''\.pb\.go$''',
+    '''_gen\.go$''',
+    '''\.gen\.go$''',
+
+    # Volume data (local dev)
+    '''_volume_data/.*''',
+
+    # Dependencies
+    '''vendor/.*''',
+    '''node_modules/.*''',
+
+    # Lock files
+    '''go\.sum$''',
+    '''package-lock\.json$''',
+    '''yarn\.lock$''',
+
+    # SBOM files
+    '''sbom/.*''',
+
+    # Binary/data files
+    '''\.wt$''',
+    '''\.bson$''',
+  ]
+
+# Custom rules to ignore known false positives
+[[rules]]
+  id = "example-api-key"
+  description = "Example API keys in documentation"
+  regex = '''(?i)(example|sample|test|demo|placeholder).*['\"]?[a-zA-Z0-9_-]{20,}['\"]?'''
+  allowlist = { regexTarget = "match" }

@@ -1,0 +1,83 @@
+---
+# yamllint configuration
+# https://yamllint.readthedocs.io/
+
+extends: default
+
+rules:
+  # Allow longer lines for URLs and complex configs
+  line-length:
+    max: 150
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Allow multiple documents in a file (useful for k8s manifests)
+  document-start:
+    present: false
+
+  # Indentation settings
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Truthy values - allow yes/no, on/off
+  truthy:
+    allowed-values: ["true", "false", "yes", "no", "on", "off"]
+    check-keys: false
+
+  # Comments
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+
+  # Braces
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Brackets
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+
+  # Colons
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+
+  # Commas
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+  # Key duplicates
+  key-duplicates: enable
+
+  # New lines
+  new-lines:
+    type: unix
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+ignore: |
+  # Ignore generated files
+  api/bundle.yml
+  # Ignore docker compose files (have special syntax)
+  infra/compose/
+  # Ignore volume data
+  _volume_data/
+  # Ignore node_modules if present
+  node_modules/
+  # Ignore vendor directory
+  vendor/

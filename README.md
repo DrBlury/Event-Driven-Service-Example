@@ -51,6 +51,39 @@ task gen-api                # lint OpenAPI + regenerate oapi-codegen stubs
 task build-go               # compile the service
 ```
 
+### Set up pre-commit hooks
+
+This project uses [pre-commit](https://pre-commit.com/) to enforce code quality before commits:
+
+```bash
+# Install pre-commit (if not already installed)
+pip install pre-commit
+# or: brew install pre-commit
+
+# Install the git hooks
+pre-commit install
+pre-commit install --hook-type commit-msg  # for conventional commits
+
+# Run all hooks manually
+pre-commit run --all-files
+```
+
+**Included hooks:**
+
+| Category | Hooks |
+| --- | --- |
+| **Go** | golangci-lint, go-fmt, go-mod-tidy, goimports-reviser |
+| **Security** | gitleaks, trufflehog (secret detection) |
+| **Protobuf** | buf-lint |
+| **Terraform** | terraform_fmt, terraform_validate, terraform_tflint |
+| **Docker** | hadolint (Dockerfile linting) |
+| **YAML/JSON** | yamllint, prettier |
+| **Markdown** | markdownlint |
+| **Shell** | shellcheck |
+| **GitHub Actions** | actionlint |
+| **General** | trailing-whitespace, end-of-file-fixer, check-merge-conflict |
+| **Commits** | conventional-pre-commit (enforces conventional commit messages) |
+
 ### Start a local stack
 
 Pick the pub/sub backend you want to explore:
