@@ -37,69 +37,42 @@ func TestBuildEventService(t *testing.T) {
 
 func TestComposeEventMiddlewares(t *testing.T) {
 	t.Run("with retry config", func(t *testing.T) {
-		cfg := &protoflow.Config{
-			RetryMaxRetries:      3,
-			RetryInitialInterval: 100,
-			RetryMaxInterval:     1000,
-		}
-
-		middlewares := composeEventMiddlewares(cfg)
-
-		expectedCount := 8
-		if len(middlewares) != expectedCount {
-			t.Errorf("expected %d middlewares, got %d", expectedCount, len(middlewares))
-		}
+		cfg := &protoflow.Config{RetryMaxRetries: 3, RetryInitialInterval: 100, RetryMaxInterval: 1000}
+		assertMiddlewareCount(t, cfg, 8)
 	})
 
 	t.Run("with default config", func(t *testing.T) {
-		cfg := &protoflow.Config{}
-		middlewares := composeEventMiddlewares(cfg)
-
+		middlewares := composeEventMiddlewares(&protoflow.Config{})
 		if len(middlewares) == 0 {
 			t.Error("expected at least one middleware")
 		}
 	})
 
 	t.Run("with zero retry values", func(t *testing.T) {
-		cfg := &protoflow.Config{
-			RetryMaxRetries:      0,
-			RetryInitialInterval: 0,
-			RetryMaxInterval:     0,
-		}
-
-		middlewares := composeEventMiddlewares(cfg)
-		if len(middlewares) != 8 {
-			t.Errorf("expected 8 middlewares, got %d", len(middlewares))
-		}
+		cfg := &protoflow.Config{RetryMaxRetries: 0, RetryInitialInterval: 0, RetryMaxInterval: 0}
+		assertMiddlewareCount(t, cfg, 8)
 	})
 
 	t.Run("with high retry values", func(t *testing.T) {
-		cfg := &protoflow.Config{
-			RetryMaxRetries:      100,
-			RetryInitialInterval: 10000,
-			RetryMaxInterval:     100000,
-		}
-
-		middlewares := composeEventMiddlewares(cfg)
-		if len(middlewares) != 8 {
-			t.Errorf("expected 8 middlewares, got %d", len(middlewares))
-		}
+		cfg := &protoflow.Config{RetryMaxRetries: 100, RetryInitialInterval: 10000, RetryMaxInterval: 100000}
+		assertMiddlewareCount(t, cfg, 8)
 	})
 
 	t.Run("middleware order is consistent", func(t *testing.T) {
-		cfg := &protoflow.Config{
-			RetryMaxRetries:      3,
-			RetryInitialInterval: 100,
-			RetryMaxInterval:     1000,
-		}
-
+		cfg := &protoflow.Config{RetryMaxRetries: 3, RetryInitialInterval: 100, RetryMaxInterval: 1000}
 		middlewares1 := composeEventMiddlewares(cfg)
 		middlewares2 := composeEventMiddlewares(cfg)
-
 		if len(middlewares1) != len(middlewares2) {
 			t.Error("middleware count should be consistent")
 		}
 	})
+}
+
+func assertMiddlewareCount(t *testing.T, cfg *protoflow.Config, expected int) {
+	t.Helper()
+	if got := len(composeEventMiddlewares(cfg)); got != expected {
+		t.Errorf("expected %d middlewares, got %d", expected, got)
+	}
 }
 
 func TestPoisonQueueFilter(t *testing.T) {

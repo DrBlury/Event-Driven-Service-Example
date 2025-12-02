@@ -289,69 +289,67 @@ func TestDatabasePingWithTimeoutContext(t *testing.T) {
 func TestConfigVariants(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name   string
-		cfg    Config
-		fields map[string]string
-	}{
+	for _, tc := range configVariantTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assertConfigFields(t, tc.cfg, tc.fields)
+		})
+	}
+}
+
+type configVariantTestCase struct {
+	name   string
+	cfg    Config
+	fields map[string]string
+}
+
+func configVariantTestCases() []configVariantTestCase {
+	return []configVariantTestCase{
 		{
 			name: "all empty",
 			cfg:  Config{},
 			fields: map[string]string{
-				"MongoURL":      "",
-				"MongoDB":       "",
-				"MongoUser":     "",
-				"MongoPassword": "",
+				"MongoURL": "", "MongoDB": "", "MongoUser": "", "MongoPassword": "",
 			},
 		},
 		{
 			name: "typical production",
 			cfg: Config{
-				MongoURL:      "mongodb://mongo.example.com:27017",
-				MongoDB:       "production",
-				MongoUser:     "app_user",
-				MongoPassword: "secure_password_123",
+				MongoURL: "mongodb://mongo.example.com:27017", MongoDB: "production",
+				MongoUser: "app_user", MongoPassword: "secure_password_123",
 			},
 			fields: map[string]string{
-				"MongoURL":      "mongodb://mongo.example.com:27017",
-				"MongoDB":       "production",
-				"MongoUser":     "app_user",
-				"MongoPassword": "secure_password_123",
+				"MongoURL": "mongodb://mongo.example.com:27017", "MongoDB": "production",
+				"MongoUser": "app_user", "MongoPassword": "secure_password_123",
 			},
 		},
 		{
 			name: "localhost dev",
 			cfg: Config{
-				MongoURL:      "mongodb://localhost:27017",
-				MongoDB:       "dev",
-				MongoUser:     "dev",
-				MongoPassword: "dev",
+				MongoURL: "mongodb://localhost:27017", MongoDB: "dev",
+				MongoUser: "dev", MongoPassword: "dev",
 			},
 			fields: map[string]string{
-				"MongoURL":      "mongodb://localhost:27017",
-				"MongoDB":       "dev",
-				"MongoUser":     "dev",
-				"MongoPassword": "dev",
+				"MongoURL": "mongodb://localhost:27017", "MongoDB": "dev",
+				"MongoUser": "dev", "MongoPassword": "dev",
 			},
 		},
 	}
+}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			if tc.cfg.MongoURL != tc.fields["MongoURL"] {
-				t.Errorf("MongoURL mismatch")
-			}
-			if tc.cfg.MongoDB != tc.fields["MongoDB"] {
-				t.Errorf("MongoDB mismatch")
-			}
-			if tc.cfg.MongoUser != tc.fields["MongoUser"] {
-				t.Errorf("MongoUser mismatch")
-			}
-			if tc.cfg.MongoPassword != tc.fields["MongoPassword"] {
-				t.Errorf("MongoPassword mismatch")
-			}
-		})
+func assertConfigFields(t *testing.T, cfg Config, fields map[string]string) {
+	t.Helper()
+	if cfg.MongoURL != fields["MongoURL"] {
+		t.Errorf("MongoURL mismatch")
+	}
+	if cfg.MongoDB != fields["MongoDB"] {
+		t.Errorf("MongoDB mismatch")
+	}
+	if cfg.MongoUser != fields["MongoUser"] {
+		t.Errorf("MongoUser mismatch")
+	}
+	if cfg.MongoPassword != fields["MongoPassword"] {
+		t.Errorf("MongoPassword mismatch")
 	}
 }
 

@@ -25,15 +25,34 @@ func TestDemoHandler(t *testing.T) {
 	ctx := context.Background()
 	fixtures := NewTestFixtures()
 
-	// -------------------------------------------------------------------------
-	// Core Functionality Tests
-	// -------------------------------------------------------------------------
+	t.Run("core functionality", func(t *testing.T) {
+		testDemoHandlerCoreFunctionality(t, handler, ctx, fixtures)
+	})
+
+	t.Run("ID preservation", func(t *testing.T) {
+		testDemoHandlerIDPreservation(t, handler, ctx, fixtures)
+	})
+
+	t.Run("date handling", func(t *testing.T) {
+		testDemoHandlerDateHandling(t, handler, ctx, fixtures)
+	})
+
+	t.Run("edge cases", func(t *testing.T) {
+		testDemoHandlerEdgeCases(t, handler, ctx, fixtures)
+	})
+
+	t.Run("concurrent calls", func(t *testing.T) {
+		RunConcurrentHandlerTest(t, handler, func(id int) *demoEvent {
+			return fixtures.DemoEvent(id, 2024, 1, 1)
+		}, 10)
+	})
+}
+
+func testDemoHandlerCoreFunctionality(t *testing.T, handler demoHandlerFunc, ctx context.Context, fixtures *TestFixtures) {
+	t.Helper()
 
 	t.Run("basic functionality", func(t *testing.T) {
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEvent(123, 2024, 6, 15),
-		}
-
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(123, 2024, 6, 15)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "demoHandler returned error")
 		AssertResultCount(t, len(result), 1)
@@ -42,13 +61,9 @@ func TestDemoHandler(t *testing.T) {
 	})
 
 	t.Run("metadata enrichment", func(t *testing.T) {
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEvent(456, 2023, 12, 25),
-		}
-
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(456, 2023, 12, 25)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "demoHandler returned error")
-
 		AssertMetadataContains(t, result[0].Metadata, "handler", "exampleRecordHandler")
 		AssertMetadataContains(t, result[0].Metadata, "next_queue", "demo_processed_events")
 		AssertMetadataHasKey(t, result[0].Metadata, "processed_at")
@@ -56,115 +71,69 @@ func TestDemoHandler(t *testing.T) {
 
 	t.Run("time is set to now", func(t *testing.T) {
 		before := time.Now()
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEvent(200, 2024, 6, 1),
-		}
-
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(200, 2024, 6, 1)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "handler returned error")
-		after := time.Now()
-
-		AssertTimeInRange(t, result[0].Message.Time, before, after)
+		AssertTimeInRange(t, result[0].Message.Time, before, time.Now())
 	})
+}
 
-	// -------------------------------------------------------------------------
-	// ID Preservation Tests
-	// -------------------------------------------------------------------------
+func testDemoHandlerIDPreservation(t *testing.T, handler demoHandlerFunc, ctx context.Context, fixtures *TestFixtures) {
+	t.Helper()
+	for _, id := range []int{0, 1, 100, -1, 999999} {
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(id, 2024, 1, 1)}
+		result, err := handler(ctx, evt)
+		AssertNoError(t, err, "handler returned error for ID")
+		AssertEqual(t, result[0].Message.ID, id, "ID mismatch")
+	}
+}
 
-	t.Run("preserves various ID values", func(t *testing.T) {
-		testIDs := []int{0, 1, 100, -1, 999999}
-		for _, id := range testIDs {
-			evt := protoflow.JSONMessageContext[*demoEvent]{
-				Payload: fixtures.DemoEvent(id, 2024, 1, 1),
-			}
+func testDemoHandlerDateHandling(t *testing.T, handler demoHandlerFunc, ctx context.Context, _ *TestFixtures) {
+	t.Helper()
 
-			result, err := handler(ctx, evt)
-			AssertNoError(t, err, "handler returned error for ID")
-			AssertEqual(t, result[0].Message.ID, id, "ID mismatch")
-		}
-	})
-
-	// -------------------------------------------------------------------------
-	// Date Handling Tests
-	// -------------------------------------------------------------------------
-
-	t.Run("handles varying dates", func(t *testing.T) {
-		dates := []*domain.Date{
-			{Year: 2020, Month: 1, Day: 1},
-			{Year: 2024, Month: 6, Day: 15},
-			{Year: 2030, Month: 12, Day: 31},
-		}
-
+	t.Run("varying dates", func(t *testing.T) {
+		dates := []*domain.Date{{Year: 2020, Month: 1, Day: 1}, {Year: 2024, Month: 6, Day: 15}, {Year: 2030, Month: 12, Day: 31}}
 		for i, date := range dates {
-			evt := protoflow.JSONMessageContext[*demoEvent]{
-				Payload: &demoEvent{ID: i, Date: date},
-			}
-
+			evt := protoflow.JSONMessageContext[*demoEvent]{Payload: &demoEvent{ID: i, Date: date}}
 			result, err := handler(ctx, evt)
 			AssertNoError(t, err, "handler returned error for date")
 			AssertEqual(t, result[0].Message.Date.Year, date.Year, "Date year mismatch")
 		}
 	})
 
-	t.Run("handles zero date values", func(t *testing.T) {
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: &demoEvent{
-				ID:   0,
-				Date: &domain.Date{Year: 0, Month: 0, Day: 0},
-			},
-		}
-
+	t.Run("zero date values", func(t *testing.T) {
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: &demoEvent{ID: 0, Date: &domain.Date{Year: 0, Month: 0, Day: 0}}}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "handler returned error")
 		AssertResultCount(t, len(result), 1)
 	})
+}
 
-	// -------------------------------------------------------------------------
-	// Edge Case Tests
-	// -------------------------------------------------------------------------
+func testDemoHandlerEdgeCases(t *testing.T, handler demoHandlerFunc, ctx context.Context, fixtures *TestFixtures) {
+	t.Helper()
 
 	t.Run("negative ID", func(t *testing.T) {
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEvent(-999, 2024, 1, 1),
-		}
-
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(-999, 2024, 1, 1)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "handler returned error")
 		AssertEqual(t, result[0].Message.ID, -999, "ID mismatch")
 	})
 
 	t.Run("large ID", func(t *testing.T) {
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEvent(999999999, 2024, 1, 1),
-		}
-
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(999999999, 2024, 1, 1)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "handler returned error")
 		AssertEqual(t, result[0].Message.ID, 999999999, "ID mismatch")
 	})
 
 	t.Run("nil date handling", func(t *testing.T) {
-		// This may panic depending on implementation
-		defer func() {
-			_ = recover()
-		}()
-
-		evt := protoflow.JSONMessageContext[*demoEvent]{
-			Payload: fixtures.DemoEventNilDate(1),
-		}
+		defer func() { _ = recover() }()
+		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEventNilDate(1)}
 		_, _ = handler(ctx, evt)
 	})
-
-	// -------------------------------------------------------------------------
-	// Concurrency Tests
-	// -------------------------------------------------------------------------
-
-	t.Run("concurrent calls", func(t *testing.T) {
-		RunConcurrentHandlerTest(t, handler, func(id int) *demoEvent {
-			return fixtures.DemoEvent(id, 2024, 1, 1)
-		}, 10)
-	})
 }
+
+type demoHandlerFunc = func(context.Context, protoflow.JSONMessageContext[*demoEvent]) ([]protoflow.JSONMessageOutput[*processedDemoEvent], error)
 
 // =============================================================================
 // DEMO EVENT STRUCT TESTS

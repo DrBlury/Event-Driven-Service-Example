@@ -67,69 +67,48 @@ func TestExampleCollectionConstant(t *testing.T) {
 func TestStoreExampleRecordWithVariousRecords(t *testing.T) {
 	t.Parallel()
 
-	db := &Database{
-		DB:  nil,
-		Cfg: &Config{},
-	}
+	db := &Database{DB: nil, Cfg: &Config{}}
 
-	testCases := []struct {
-		name   string
-		record *domain.ExampleRecord
-		nilErr bool
-	}{
-		{
-			name:   "nil record",
-			record: nil,
-			nilErr: true,
-		},
-		{
-			name: "minimal record",
-			record: &domain.ExampleRecord{
-				RecordId: "minimal-1",
-			},
-			nilErr: false,
-		},
-		{
-			name: "record with title",
-			record: &domain.ExampleRecord{
-				RecordId: "title-1",
-				Title:    "Test Title",
-			},
-			nilErr: false,
-		},
-		{
-			name: "full record",
-			record: &domain.ExampleRecord{
-				RecordId:    "full-1",
-				Title:       "Full Record",
-				Description: "Full description",
-				Tags:        []string{"tag1", "tag2"},
-				Meta: &domain.ExampleMeta{
-					RequestedBy:      "test-user",
-					RequiresFollowUp: true,
-					Priority:         5,
-				},
-			},
-			nilErr: false,
-		},
-	}
-
-	for _, tc := range testCases {
+	for _, tc := range storeExampleRecordTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			func() {
-				defer func() {
-					_ = recover()
-				}()
-				err := db.StoreExampleRecord(context.Background(), tc.record)
-				if tc.nilErr {
-					if err == nil {
-						t.Error("Expected error for nil record")
-					}
-				}
-			}()
+			runStoreExampleRecordTest(t, db, tc.record, tc.nilErr)
 		})
 	}
+}
+
+type storeRecordTestCase struct {
+	name   string
+	record *domain.ExampleRecord
+	nilErr bool
+}
+
+func storeExampleRecordTestCases() []storeRecordTestCase {
+	return []storeRecordTestCase{
+		{name: "nil record", record: nil, nilErr: true},
+		{name: "minimal record", record: &domain.ExampleRecord{RecordId: "minimal-1"}, nilErr: false},
+		{name: "record with title", record: &domain.ExampleRecord{RecordId: "title-1", Title: "Test Title"}, nilErr: false},
+		{name: "full record", record: buildFullExampleRecord(), nilErr: false},
+	}
+}
+
+func buildFullExampleRecord() *domain.ExampleRecord {
+	return &domain.ExampleRecord{
+		RecordId: "full-1", Title: "Full Record", Description: "Full description",
+		Tags: []string{"tag1", "tag2"},
+		Meta: &domain.ExampleMeta{RequestedBy: "test-user", RequiresFollowUp: true, Priority: 5},
+	}
+}
+
+func runStoreExampleRecordTest(t *testing.T, db *Database, record *domain.ExampleRecord, expectNilErr bool) {
+	t.Helper()
+	func() {
+		defer func() { _ = recover() }()
+		err := db.StoreExampleRecord(context.Background(), record)
+		if expectNilErr && err == nil {
+			t.Error("Expected error for nil record")
+		}
+	}()
 }
 
 func TestStoreOutgoingMessageNilDB(t *testing.T) {

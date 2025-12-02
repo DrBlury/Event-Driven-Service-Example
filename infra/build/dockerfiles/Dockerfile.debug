@@ -32,6 +32,7 @@ RUN addgroup -g ${GID} service && \
   "service"
 
 # Install delve debugger and air for hot-reloading
+# hadolint ignore=DL3062
 RUN GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest && \
   GOBIN=/usr/local/bin go install github.com/air-verse/air@latest
 
