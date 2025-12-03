@@ -168,6 +168,7 @@ The GitHub Actions CI pipeline runs the following checks on every push and pull 
 
 ## Documentation Map
 
+- [CODE_METRICS.md](CODE_METRICS.md) – automated code metrics and complexity analysis (updated on every commit).
 - `docs/setup.md` – deeper setup walkthroughs (IDE tooling, credentials, etc.).
 - `docs/infrastructure.md` – Terraform module structure and deployment topology.
 - `docs/protobuf.md` – rationale for protobuf-first domain modeling.
