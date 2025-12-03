@@ -542,6 +542,14 @@ func (m *mockServerImpl) CreateExampleRecord(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (m *mockServerImpl) GetAsyncAPIHTML(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServerImpl) GetAsyncAPIJSON(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServerImpl) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
@@ -707,6 +715,14 @@ func (m *mockStrictServerImpl) CreateExampleRecord(ctx context.Context, request 
 	return CreateExampleRecord201JSONResponse{Message: &msg}, nil
 }
 
+func (m *mockStrictServerImpl) GetAsyncAPIHTML(ctx context.Context, request GetAsyncAPIHTMLRequestObject) (GetAsyncAPIHTMLResponseObject, error) {
+	return GetAsyncAPIHTML200TexthtmlResponse{Body: strings.NewReader("<html></html>")}, nil
+}
+
+func (m *mockStrictServerImpl) GetAsyncAPIJSON(ctx context.Context, request GetAsyncAPIJSONRequestObject) (GetAsyncAPIJSONResponseObject, error) {
+	return GetAsyncAPIJSON200JSONResponse{"asyncapi": "3.0.0"}, nil
+}
+
 func (m *mockStrictServerImpl) GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error) {
 	return GetHealthz200JSONResponse{Status: "healthy"}, nil
 }
@@ -841,6 +857,14 @@ func TestStrictHandlerCreateExampleRecordInvalidJSON(t *testing.T) {
 type mockStrictServerImplWithError struct{}
 
 func (m *mockStrictServerImplWithError) CreateExampleRecord(ctx context.Context, request CreateExampleRecordRequestObject) (CreateExampleRecordResponseObject, error) {
+	return nil, errors.New("internal error")
+}
+
+func (m *mockStrictServerImplWithError) GetAsyncAPIHTML(ctx context.Context, request GetAsyncAPIHTMLRequestObject) (GetAsyncAPIHTMLResponseObject, error) {
+	return nil, errors.New("internal error")
+}
+
+func (m *mockStrictServerImplWithError) GetAsyncAPIJSON(ctx context.Context, request GetAsyncAPIJSONRequestObject) (GetAsyncAPIJSONResponseObject, error) {
 	return nil, errors.New("internal error")
 }
 
