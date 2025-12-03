@@ -1,0 +1,253 @@
+asyncapi: 3.0.0
+
+info:
+  title: Event-Driven Service - Async Events
+  version: 1.0.0
+  description: |
+    Asynchronous event contracts for the Event-Driven Service.
+
+    This service processes events from multiple sources:
+    - **Inbound events**: External systems publish events for processing
+    - **Outbound events**: Results and notifications published after processing
+
+    Supports multiple message brokers: Kafka, RabbitMQ, NATS, AWS SNS/SQS.
+
+    ## CloudEvents Compliance
+
+    All messages follow the [CloudEvents v1.0 specification](https://github.com/cloudevents/spec/blob/v1.0/spec.md).
+    Messages are serialized as JSON with the payload in the `data` field:
+
+    ```json
+    {
+      "specversion": "1.0",
+      "type": "example.record.submitted",
+      "source": "event-driven-service",
+      "id": "01HX7QDXKS8MN4VKXQJF3J6YRP",
+      "time": "2025-12-03T10:30:00Z",
+      "datacontenttype": "application/json",
+      "data": { ... payload ... },
+      "pf_correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+      "pf_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+    }
+    ```
+
+    ### Protoflow Extensions (pf_*)
+
+    - `pf_correlation_id` - Request correlation ID for tracing
+    - `pf_trace_id` - OpenTelemetry trace ID
+    - `pf_parent_id` - OpenTelemetry parent span ID
+    - `pf_attempt` - Current retry attempt (1-based)
+    - `pf_max_attempts` - Maximum retry attempts
+    - `pf_delay_ms` - Delay before processing (milliseconds)
+    - `pf_dead_letter` - Flag indicating DLQ message
+  contact:
+    name: DrBlury
+    url: https://github.com/DrBlury/Event-Driven-Service-Example
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: localhost:9092
+    protocol: kafka
+    description: Apache Kafka broker for local development
+    tags:
+      - name: env:local
+
+  rabbitmq:
+    host: localhost:5672
+    protocol: amqp
+    description: RabbitMQ broker for local development
+    tags:
+      - name: env:local
+
+  nats:
+    host: localhost:4222
+    protocol: nats
+    description: NATS server for local development
+    tags:
+      - name: env:local
+
+  aws-sqs:
+    host: sqs.{region}.amazonaws.com
+    protocol: sqs
+    description: AWS SQS for production
+    variables:
+      region:
+        default: eu-central-1
+        description: AWS region
+    tags:
+      - name: env:production
+
+# =============================================
+# Channels - Events we send and receive
+# =============================================
+channels:
+  # Inbound Channels
+  example-record-submitted:
+    address: example.record.submitted
+    description: |
+      Receives new example records for processing.
+      External systems publish to this channel to submit records.
+    messages:
+      ExampleRecordSubmitted:
+        $ref: "#/components/messages/ExampleRecordSubmitted"
+    bindings:
+      kafka:
+        topic: example.record.submitted
+        partitions: 3
+        replicas: 1
+      amqp:
+        is: routingKey
+        exchange:
+          name: events
+          type: topic
+
+  example-record-updated:
+    address: example.record.updated
+    description: |
+      Receives updates to existing example records.
+      Triggers re-processing of the record.
+    messages:
+      ExampleRecordUpdated:
+        $ref: "#/components/messages/ExampleRecordUpdated"
+
+  example-batch-requested:
+    address: example.batch.requested
+    description: |
+      Receives batch processing requests.
+      Triggers processing of multiple records.
+    messages:
+      ExampleBatchRequested:
+        $ref: "#/components/messages/ExampleBatchRequested"
+
+  # Outbound Channels
+  example-record-processed:
+    address: example.record.processed
+    description: |
+      Published when an example record has been successfully processed.
+      Consumers can use this for downstream workflows.
+    messages:
+      ExampleRecordProcessed:
+        $ref: "#/components/messages/ExampleRecordProcessed"
+
+  example-record-failed:
+    address: example.record.failed
+    description: |
+      Published when processing of an example record fails.
+      Contains error details for debugging and alerting.
+    messages:
+      ExampleRecordFailed:
+        $ref: "#/components/messages/ExampleRecordFailed"
+
+  example-batch-completed:
+    address: example.batch.completed
+    description: |
+      Published when a batch processing request completes.
+      Contains summary of processed records.
+    messages:
+      ExampleBatchCompleted:
+        $ref: "#/components/messages/ExampleBatchCompleted"
+
+# =============================================
+# Operations - Actions we perform
+# =============================================
+operations:
+  # Receive Operations
+  receiveExampleRecordSubmitted:
+    action: receive
+    channel:
+      $ref: "#/channels/example-record-submitted"
+    summary: Process a newly submitted example record
+    description: |
+      Handles incoming example records from external systems.
+      Validates the record, stores it, and triggers processing.
+    traits:
+      - $ref: "#/components/operationTraits/commonReceive"
+
+  receiveExampleRecordUpdated:
+    action: receive
+    channel:
+      $ref: "#/channels/example-record-updated"
+    summary: Process an updated example record
+    traits:
+      - $ref: "#/components/operationTraits/commonReceive"
+
+  receiveExampleBatchRequested:
+    action: receive
+    channel:
+      $ref: "#/channels/example-batch-requested"
+    summary: Process a batch of example records
+    traits:
+      - $ref: "#/components/operationTraits/commonReceive"
+
+  # Send Operations
+  sendExampleRecordProcessed:
+    action: send
+    channel:
+      $ref: "#/channels/example-record-processed"
+    summary: Notify that a record was processed successfully
+    traits:
+      - $ref: "#/components/operationTraits/commonSend"
+
+  sendExampleRecordFailed:
+    action: send
+    channel:
+      $ref: "#/channels/example-record-failed"
+    summary: Notify that record processing failed
+    traits:
+      - $ref: "#/components/operationTraits/commonSend"
+
+  sendExampleBatchCompleted:
+    action: send
+    channel:
+      $ref: "#/channels/example-batch-completed"
+    summary: Notify that batch processing completed
+    traits:
+      - $ref: "#/components/operationTraits/commonSend"
+
+components:
+  messages:
+    ExampleRecordSubmitted:
+      $ref: "./messages/example-record-submitted.yml"
+    ExampleRecordUpdated:
+      $ref: "./messages/example-record-updated.yml"
+    ExampleBatchRequested:
+      $ref: "./messages/example-batch-requested.yml"
+    ExampleRecordProcessed:
+      $ref: "./messages/example-record-processed.yml"
+    ExampleRecordFailed:
+      $ref: "./messages/example-record-failed.yml"
+    ExampleBatchCompleted:
+      $ref: "./messages/example-batch-completed.yml"
+
+  schemas:
+    ExampleRecord:
+      $ref: "./schemas/types/example-record.yml"
+    ExampleMeta:
+      $ref: "./schemas/types/example-meta.yml"
+    ExampleResult:
+      $ref: "./schemas/types/example-result.yml"
+    Date:
+      $ref: "./schemas/types/date.yml"
+    ExampleRecordUpdate:
+      $ref: "./schemas/types/example-record-update.yml"
+    BatchRequest:
+      $ref: "./schemas/types/batch-request.yml"
+    BatchResult:
+      $ref: "./schemas/types/batch-result.yml"
+    ProcessingError:
+      $ref: "./schemas/errors/processing-error.yml"
+
+  messageTraits:
+    commonHeaders:
+      $ref: "./components/message-traits.yml#/commonHeaders"
+
+  operationTraits:
+    commonReceive:
+      $ref: "./components/operation-traits.yml#/commonReceive"
+    commonSend:
+      $ref: "./components/operation-traits.yml#/commonSend"

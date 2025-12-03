@@ -1,0 +1,25 @@
+---
+get:
+  tags:
+    - APIInfo
+  summary: Get AsyncAPI documentation UI
+  description: |
+    Renders an interactive HTML documentation page for the AsyncAPI specification.
+    Similar to Scalar for OpenAPI, this provides a visual explorer for event contracts.
+  operationId: getAsyncAPIHTML
+  responses:
+    "200":
+      description: Interactive AsyncAPI documentation page
+      content:
+        text/html:
+          schema:
+            type: string
+            description: HTML page with embedded AsyncAPI documentation viewer
+    "400":
+      description: The AsyncAPI request was malformed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../../schemas/_index.yml#/ProblemDetails"
+
+  security: []

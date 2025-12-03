@@ -1,0 +1,28 @@
+---
+type: object
+description: Request to process multiple records
+required:
+  - batch_id
+  - record_ids
+properties:
+  batch_id:
+    type: string
+    description: Unique batch identifier
+    example: "batch_456"
+  record_ids:
+    type: array
+    items:
+      type: string
+    description: IDs of records to process
+    example: ["rec_123", "rec_124", "rec_125"]
+  options:
+    type: object
+    properties:
+      parallel:
+        type: boolean
+        default: false
+        description: Process records in parallel
+      stop_on_error:
+        type: boolean
+        default: false
+        description: Stop batch on first error

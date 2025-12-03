@@ -1,0 +1,22 @@
+---
+# =============================================
+# Operation Traits
+# =============================================
+
+commonReceive:
+  bindings:
+    kafka:
+      groupId:
+        type: string
+        enum:
+          - event-driven-service
+    amqp:
+      ack: true
+
+commonSend:
+  bindings:
+    kafka:
+      clientId:
+        type: string
+        enum:
+          - event-driven-service

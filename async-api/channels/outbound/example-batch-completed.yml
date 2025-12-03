@@ -1,0 +1,8 @@
+---
+address: example.batch.completed
+description: |
+  Published when a batch processing request completes.
+  Contains summary of processed records.
+messages:
+  ExampleBatchCompleted:
+    $ref: "#/components/messages/ExampleBatchCompleted"

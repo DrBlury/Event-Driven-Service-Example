@@ -1,0 +1,140 @@
+---
+# =============================================
+# CloudEvents v1.0 Message Traits
+# =============================================
+# All messages are wrapped in CloudEvents envelope format
+# See: https://github.com/cloudevents/spec/blob/v1.0/spec.md
+
+cloudEventsEnvelope:
+  contentType: application/cloudevents+json
+  headers:
+    type: object
+    description: |
+      CloudEvents v1.0 context attributes.
+      The actual payload is in the `data` field of the CloudEvents envelope.
+    required:
+      - specversion
+      - type
+      - source
+      - id
+    properties:
+      # Required CloudEvents attributes
+      specversion:
+        type: string
+        const: "1.0"
+        description: CloudEvents specification version
+      type:
+        type: string
+        description: Event type identifier (e.g., "example.record.submitted")
+        examples:
+          - example.record.submitted
+          - example.record.processed
+      source:
+        type: string
+        format: uri-reference
+        description: Identifies the context in which the event occurred
+        examples:
+          - event-driven-service
+          - /services/example
+      id:
+        type: string
+        description: Unique event identifier (ULID format)
+        examples:
+          - 01HX7QDXKS8MN4VKXQJF3J6YRP
+      time:
+        type: string
+        format: date-time
+        description: Timestamp when the event occurred (RFC 3339)
+        examples:
+          - "2025-12-03T10:30:00Z"
+
+      # Optional CloudEvents attributes
+      subject:
+        type: string
+        description: Subject of the event in context of the producer
+        examples:
+          - record-123
+      datacontenttype:
+        type: string
+        default: application/json
+        description: Content type of the data field
+        examples:
+          - application/json
+          - application/protobuf
+      dataschema:
+        type: string
+        format: uri
+        description: URI identifying the schema for data field
+
+      # Protoflow extensions (pf_*)
+      pf_correlation_id:
+        type: string
+        format: uuid
+        description: Request correlation ID for distributed tracing
+        examples:
+          - 550e8400-e29b-41d4-a716-446655440000
+      pf_trace_id:
+        type: string
+        description: OpenTelemetry trace ID (32 hex characters)
+        pattern: "^[a-f0-9]{32}$"
+        examples:
+          - 4bf92f3577b34da6a3ce929d0e0e4736
+      pf_parent_id:
+        type: string
+        description: OpenTelemetry parent span ID (16 hex characters)
+        pattern: "^[a-f0-9]{16}$"
+        examples:
+          - 00f067aa0ba902b7
+      pf_attempt:
+        type: integer
+        minimum: 1
+        description: Current retry attempt number (1-based)
+        default: 1
+      pf_max_attempts:
+        type: integer
+        minimum: 1
+        description: Maximum number of retry attempts
+        default: 3
+      pf_delay_ms:
+        type: integer
+        minimum: 0
+        description: Delay before processing this message (milliseconds)
+      pf_dead_letter:
+        type: boolean
+        description: Flag indicating this message was moved to dead letter queue
+        default: false
+
+# Legacy trait for backwards compatibility (deprecated)
+commonHeaders:
+  headers:
+    type: object
+    deprecated: true
+    description: |
+      DEPRECATED: Use cloudEventsEnvelope instead.
+      Legacy header format kept for reference.
+    required:
+      - correlation_id
+      - timestamp
+    properties:
+      correlation_id:
+        type: string
+        format: uuid
+        description: Unique ID to trace requests across services
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      source:
+        type: string
+        description: Service that published the message
+        example: "event-driven-service"
+      timestamp:
+        type: string
+        format: date-time
+        description: When the message was created
+        example: "2025-12-03T10:30:00Z"
+      trace_id:
+        type: string
+        description: OpenTelemetry trace ID
+        example: "4bf92f3577b34da6a3ce929d0e0e4736"
+      span_id:
+        type: string
+        description: OpenTelemetry span ID
+        example: "00f067aa0ba902b7"

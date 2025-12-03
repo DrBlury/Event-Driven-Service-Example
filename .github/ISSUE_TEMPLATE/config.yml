@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/DrBlury/Event-Driven-Service-Example/discussions
+    about: Ask questions and discuss ideas
+  - name: 📚 Documentation
+    url: https://github.com/DrBlury/Event-Driven-Service-Example#readme
+    about: Read the documentation before opening an issue

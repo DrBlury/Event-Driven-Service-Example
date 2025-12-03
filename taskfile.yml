@@ -14,6 +14,9 @@ vars:
   src_dir: src
   golang_image: golang:1.25.4
   redocly_cli_image: redocly/cli:2.11.1
+  asyncapi_cli_image: asyncapi/cli:2.16.0
+  modelina_cli_version: "latest"
+  yq_image: mikefarah/yq:4
   buf_image: bufbuild/buf:1.60.0
   scc_image: ghcr.io/lhoupert/scc:v0.0.2
   trivy_image: aquasec/trivy:0.58.0
@@ -277,12 +280,13 @@ tasks:
       - echo "Go security scan complete"
 
   lint-all:
-    desc: "Run all linters (Go, API, Proto, Dockerfiles, Actions)"
+    desc: "Run all linters (Go, API, AsyncAPI, Proto, Dockerfiles, Actions)"
     summary: |
-      Runs all available linters in sequence: golangci-lint, Redocly, buf, Hadolint, and actionlint.
+      Runs all available linters in sequence: golangci-lint, Redocly, AsyncAPI, buf, Hadolint, and actionlint.
     deps:
       - lint-go
       - lint-api
+      - lint-asyncapi
       - lint-proto
       - hadolint
       - actionlint
@@ -342,10 +346,10 @@ tasks:
     deps:
       - gen-schema-index
     summary: |
-      Ensures the API contract at api/api.yml is valid and consistent.
+      Ensures the API contract at api/api.yml is valid and consistent using the redocly.yaml configuration.
     cmds:
       - echo "Linting OpenAPI specification"
-      - docker run --rm -v ./api/:/spec {{.redocly_cli_image}} lint api.yml
+      - docker run --rm -v ./api/:/spec {{.redocly_cli_image}} lint api.yml --config redocly.yaml
 
   lint-proto:
     desc: "Lint protobuf specs with buf"
@@ -354,6 +358,75 @@ tasks:
     cmds:
       - echo "Linting protobuf specifications"
       - docker run --rm -v "$(pwd)/{{.proto_dir}}:/workspace" -w /workspace {{.buf_image}} lint
+
+  lint-asyncapi:
+    desc: "Lint and validate the AsyncAPI specification"
+    summary: |
+      Bundles the multi-file AsyncAPI spec (resolving all $ref references), then validates
+      the bundled result for correctness and best practices.
+    cmds:
+      - echo "Bundling AsyncAPI specification for validation"
+      - mkdir -p async-api/bundle
+      - docker run --rm -v "$(pwd)/async-api:/app" {{.asyncapi_cli_image}} bundle /app/asyncapi.yml -o /app/bundle/asyncapi.bundled.yml
+      - echo "Validating bundled AsyncAPI specification"
+      - docker run --rm -v "$(pwd)/async-api:/app" {{.asyncapi_cli_image}} validate /app/bundle/asyncapi.bundled.yml
+      - echo "AsyncAPI specification is valid"
+
+  bundle-asyncapi:
+    desc: "Bundle AsyncAPI spec into JSON for serving via API"
+    summary: |
+      Bundles the multi-file AsyncAPI spec (resolving all $ref references) into a single JSON file
+      for embedding in the apihandler package.
+    cmds:
+      - echo "Bundling AsyncAPI specification to JSON"
+      - mkdir -p src/internal/server/handler/apihandler async-api/bundle
+      - docker run --rm -v "$(pwd)/async-api:/app" {{.asyncapi_cli_image}} bundle /app/asyncapi.yml -o /app/bundle/asyncapi.bundled.yml
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace {{.yq_image}} -o=json ./async-api/bundle/asyncapi.bundled.yml > src/internal/server/handler/apihandler/asyncapi.json
+      - echo "AsyncAPI JSON generated at src/internal/server/handler/apihandler/asyncapi.json"
+
+  gen-asyncapi-models:
+    desc: "Generate Go models from AsyncAPI message payloads (experimental)"
+    summary: |
+      Uses AsyncAPI Modelina to generate Go structs from the message schemas defined in the AsyncAPI spec.
+
+      NOTE: This project uses protobuf for domain models (gen-buf), which is recommended.
+      AsyncAPI models are generated for reference/comparison but the canonical types
+      should come from proto/domain/v1. Use this task only if you need standalone
+      event models without protobuf.
+    cmds:
+      - echo "Generating Go models from AsyncAPI specification"
+      - mkdir -p src/internal/events/models
+      - |
+        npx -y @asyncapi/modelina-cli generate golang ./async-api/asyncapi.yml \
+          --output src/internal/events/models \
+          --packageName models \
+          --goIncludeComments \
+          --goIncludeTags
+      - echo "Go models generated at src/internal/events/models"
+      - echo "NOTE - Consider using protobuf-generated models from src/internal/domain instead"
+
+  gen-asyncapi:
+    desc: "Lint and bundle AsyncAPI spec (uses protobuf for models)"
+    summary: |
+      Validates the AsyncAPI spec and bundles to JSON for serving via /info/asyncapi.json.
+
+      This project uses protobuf (gen-buf) for domain models rather than AsyncAPI codegen.
+      The AsyncAPI spec serves as documentation for event contracts.
+    deps:
+      - lint-asyncapi
+    cmds:
+      - task: bundle-asyncapi
+      - echo "AsyncAPI assets linted and bundled"
+
+  gen-asyncapi-docs:
+    desc: "Generate HTML documentation from AsyncAPI spec"
+    summary: |
+      Generates static HTML documentation from the AsyncAPI spec for viewing event contracts.
+    cmds:
+      - echo "Generating AsyncAPI documentation"
+      - mkdir -p async-api/docs
+      - docker run --rm -v "$(pwd)/async-api:/app" {{.asyncapi_cli_image}} generate fromTemplate /app/asyncapi.yml @asyncapi/html-template -o /app/docs
+      - echo "Documentation generated at async-api/docs/index.html"
 
   build-oapi-codegen-image:
     desc: "Build the local oapi-codegen helper image"
@@ -366,14 +439,14 @@ tasks:
   gen-api-std:
     desc: "Generate Go server interfaces from the OpenAPI spec"
     summary: |
-      Bundles the OpenAPI spec with Redocly, runs oapi-codegen against the generated JSON, and removes intermediate artifacts.
+      Bundles the OpenAPI spec with Redocly using the redocly.yaml config, runs oapi-codegen against the generated JSON, and removes intermediate artifacts.
     deps:
       - build-oapi-codegen-image
       - gen-schema-index
     cmds:
       - echo "Bundling OpenAPI spec and generating server interfaces"
       - mkdir -p src/internal/server/_gen
-      - docker run --rm -v "$(pwd):/workspace" -w /workspace {{.redocly_cli_image}} bundle api/api.yml --output src/internal/server/_gen/openapi.json --ext json
+      - docker run --rm -v "$(pwd):/workspace" -w /workspace/api {{.redocly_cli_image}} bundle api.yml --config redocly.yaml --output /workspace/src/internal/server/_gen/openapi.json --ext json
       - docker run --rm -v "$(pwd):/workspace" -w /workspace/src drblury/oapi-codegen -config ../server-std.cfg.yml ./internal/server/_gen/openapi.json
       - rm src/internal/server/_gen/openapi.json
       - echo "Server interfaces generated under src/internal/server/gen"
@@ -408,6 +481,21 @@ tasks:
       - docker run --rm -u "$(id -u):$(id -g)" -e BUF_CACHE_DIR=/tmp/buf-cache -v "$(pwd):/workspace" -w /workspace/proto {{.buf_image}} generate
       - echo "Protobuf code generated under ./src/internal/domain"
     silent: true
+
+  gen-all:
+    desc: "Regenerate all code from specs (protobuf, OpenAPI, AsyncAPI)"
+    summary: |
+      Complete code generation workflow that regenerates:
+      - Protobuf Go bindings from proto/ definitions
+      - HTTP server interfaces from OpenAPI spec
+      - Event models from AsyncAPI spec
+      Run this after modifying any API or event contract.
+    deps:
+      - gen-buf
+      - gen-api
+      - gen-asyncapi
+    cmds:
+      - echo "All code generation complete"
 
   scc:
     desc: "Show source code statistics using scc"

@@ -1,0 +1,31 @@
+---
+type: object
+description: Error details when processing fails
+required:
+  - record_id
+  - error_code
+  - message
+properties:
+  record_id:
+    type: string
+    example: "rec_123"
+  error_code:
+    type: string
+    enum:
+      - VALIDATION_ERROR
+      - NOT_FOUND
+      - PROCESSING_ERROR
+      - TIMEOUT
+      - INTERNAL_ERROR
+    example: "VALIDATION_ERROR"
+  message:
+    type: string
+    example: "Title is required"
+  details:
+    type: object
+    additionalProperties: true
+    description: Additional error context
+  retryable:
+    type: boolean
+    description: Whether the operation can be retried
+    example: false

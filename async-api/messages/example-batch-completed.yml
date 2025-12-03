@@ -1,0 +1,28 @@
+---
+name: ExampleBatchCompleted
+title: Example Batch Completed
+summary: Batch processing completed
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/types/batch-result.yml"
+examples:
+  - name: batchCompleted
+    summary: Batch processing completed (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.batch.completed"
+      source: "event-driven-service"
+      id: "01HX7QJ012JKL4VKXQJF3J6YRU"
+      time: "2025-12-03T12:05:00Z"
+      subject: "batch_001"
+      datacontenttype: "application/json"
+      pf_correlation_id: "770e8400-e29b-41d4-a716-446655440002"
+      pf_trace_id: "6df92f3577b34da6a3ce929d0e0e4738"
+    payload:
+      batch_id: "batch_001"
+      total_records: 3
+      successful: 2
+      failed: 1
+      completed_at: "2025-12-03T12:05:00Z"

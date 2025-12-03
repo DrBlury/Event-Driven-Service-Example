@@ -1,0 +1,26 @@
+---
+type: object
+description: An example record for processing (matches proto ExampleRecord)
+required:
+  - record_id
+  - title
+properties:
+  record_id:
+    type: string
+    description: Unique identifier for the record
+    example: "rec_123"
+  title:
+    type: string
+    description: Title of the record
+    example: "Sample Record"
+  description:
+    type: string
+    description: Detailed description
+    example: "This is a sample record"
+  meta:
+    $ref: "./example-meta.yml"
+  tags:
+    type: array
+    items:
+      type: string
+    example: ["urgent", "review"]

@@ -1,0 +1,8 @@
+---
+address: example.record.failed
+description: |
+  Published when processing of an example record fails.
+  Contains error details for debugging and alerting.
+messages:
+  ExampleRecordFailed:
+    $ref: "#/components/messages/ExampleRecordFailed"

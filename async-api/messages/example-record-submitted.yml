@@ -1,0 +1,36 @@
+---
+name: ExampleRecordSubmitted
+title: Example Record Submitted
+summary: A new example record submitted for processing
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/types/example-record.yml"
+examples:
+  - name: standardSubmission
+    summary: Standard record submission (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.record.submitted"
+      source: "external-service"
+      id: "01HX7QDXKS8MN4VKXQJF3J6YRP"
+      time: "2025-12-03T10:30:00Z"
+      datacontenttype: "application/json"
+      pf_correlation_id: "550e8400-e29b-41d4-a716-446655440000"
+      pf_trace_id: "4bf92f3577b34da6a3ce929d0e0e4736"
+    payload:
+      record_id: "rec_123"
+      title: "Sample Record"
+      description: "This is a sample record for processing"
+      meta:
+        requested_by: "user@example.com"
+        desired_start_date:
+          year: 2025
+          month: 12
+          day: 15
+        requires_follow_up: true
+        priority: 1
+      tags:
+        - "urgent"
+        - "review"

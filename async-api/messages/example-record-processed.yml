@@ -1,0 +1,31 @@
+---
+name: ExampleRecordProcessed
+title: Example Record Processed
+summary: Record was successfully processed
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/types/example-result.yml"
+examples:
+  - name: successfulProcessing
+    summary: Record processed successfully (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.record.processed"
+      source: "event-driven-service"
+      id: "01HX7QG456DEF4VKXQJF3J6YRS"
+      time: "2025-12-03T10:30:05Z"
+      subject: "rec_123"
+      datacontenttype: "application/json"
+      pf_correlation_id: "550e8400-e29b-41d4-a716-446655440000"
+      pf_trace_id: "4bf92f3577b34da6a3ce929d0e0e4736"
+      pf_attempt: 1
+    payload:
+      record_id: "rec_123"
+      status: "completed"
+      note: "Record processed successfully"
+      processed_on:
+        year: 2025
+        month: 12
+        day: 3

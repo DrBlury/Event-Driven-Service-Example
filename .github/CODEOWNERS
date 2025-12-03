@@ -1,0 +1,25 @@
+# CODEOWNERS - Define code ownership for automatic review requests
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @DrBlury
+
+# Go source code
+/src/ @DrBlury
+
+# Infrastructure and deployment
+/infra/ @DrBlury
+
+# API definitions
+/api/ @DrBlury
+
+# Protobuf definitions
+/proto/ @DrBlury
+
+# CI/CD workflows
+/.github/workflows/ @DrBlury
+/.github/actions/ @DrBlury
+
+# Security-sensitive files
+/SECURITY.md @DrBlury
+/.github/dependabot.yml @DrBlury

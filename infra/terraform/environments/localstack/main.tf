@@ -24,6 +24,7 @@ provider "aws" {
     sns = "http://localstack:4566"
     sqs = "http://localstack:4566"
     sts = "http://localstack:4566"
+    kms = "http://localstack:4566"
   }
 }
 

@@ -1,0 +1,27 @@
+---
+name: ExampleRecordUpdated
+title: Example Record Updated
+summary: An existing example record has been updated
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/types/example-record-update.yml"
+examples:
+  - name: recordUpdate
+    summary: Record update event (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.record.updated"
+      source: "external-service"
+      id: "01HX7QEXYZ9MN4VKXQJF3J6YRQ"
+      time: "2025-12-03T11:00:00Z"
+      subject: "rec_123"
+      datacontenttype: "application/json"
+      pf_correlation_id: "660e8400-e29b-41d4-a716-446655440001"
+      pf_trace_id: "5cf92f3577b34da6a3ce929d0e0e4737"
+    payload:
+      record_id: "rec_123"
+      updates:
+        title: "Updated Title"
+        description: "Updated description"

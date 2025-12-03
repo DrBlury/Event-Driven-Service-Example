@@ -151,7 +151,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-aws v1.0.1 // indirect
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.40.0 // indirect
-	github.com/drblury/apiweaver v0.2.1
+	github.com/drblury/apiweaver v0.2.3
 	github.com/drblury/protoflow v0.5.0
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect

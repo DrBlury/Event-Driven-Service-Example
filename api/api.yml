@@ -15,6 +15,14 @@ servers:
   - url: "/"
     description: This server
 
+tags:
+  - name: APIInfo
+    description: Endpoints for retrieving API metadata and documentation
+  - name: Examples
+    description: Example endpoints demonstrating the event-driven workflow
+  - name: Probes
+    description: Kubernetes health and readiness probes
+
 components:
   securitySchemes:
     bearerAuth:

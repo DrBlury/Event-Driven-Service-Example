@@ -1,0 +1,22 @@
+---
+type: object
+description: Result of processing an example record (matches proto ExampleResult)
+required:
+  - record_id
+  - status
+properties:
+  record_id:
+    type: string
+    example: "rec_123"
+  status:
+    type: string
+    enum:
+      - completed
+      - skipped
+      - partial
+    example: "completed"
+  note:
+    type: string
+    example: "Record processed successfully"
+  processed_on:
+    $ref: "./date.yml"

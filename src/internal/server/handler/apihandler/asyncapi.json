@@ -1,0 +1,3475 @@
+{
+  "asyncapi": "3.0.0",
+  "info": {
+    "title": "Event-Driven Service - Async Events",
+    "version": "1.0.0",
+    "description": "Asynchronous event contracts for the Event-Driven Service.\n\nThis service processes events from multiple sources:\n- **Inbound events**: External systems publish events for processing\n- **Outbound events**: Results and notifications published after processing\n\nSupports multiple message brokers: Kafka, RabbitMQ, NATS, AWS SNS/SQS.\n\n## CloudEvents Compliance\n\nAll messages follow the [CloudEvents v1.0 specification](https://github.com/cloudevents/spec/blob/v1.0/spec.md).\nMessages are serialized as JSON with the payload in the `data` field:\n\n```json\n{\n  \"specversion\": \"1.0\",\n  \"type\": \"example.record.submitted\",\n  \"source\": \"event-driven-service\",\n  \"id\": \"01HX7QDXKS8MN4VKXQJF3J6YRP\",\n  \"time\": \"2025-12-03T10:30:00Z\",\n  \"datacontenttype\": \"application/json\",\n  \"data\": { ... payload ... },\n  \"pf_correlation_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"pf_trace_id\": \"4bf92f3577b34da6a3ce929d0e0e4736\"\n}\n```\n\n### Protoflow Extensions (pf_*)\n\n- `pf_correlation_id` - Request correlation ID for tracing\n- `pf_trace_id` - OpenTelemetry trace ID\n- `pf_parent_id` - OpenTelemetry parent span ID\n- `pf_attempt` - Current retry attempt (1-based)\n- `pf_max_attempts` - Maximum retry attempts\n- `pf_delay_ms` - Delay before processing (milliseconds)\n- `pf_dead_letter` - Flag indicating DLQ message\n",
+    "contact": {
+      "name": "DrBlury",
+      "url": "https://github.com/DrBlury/Event-Driven-Service-Example"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "defaultContentType": "application/json",
+  "servers": {
+    "kafka": {
+      "host": "localhost:9092",
+      "protocol": "kafka",
+      "description": "Apache Kafka broker for local development",
+      "tags": [
+        {
+          "name": "env:local"
+        }
+      ]
+    },
+    "rabbitmq": {
+      "host": "localhost:5672",
+      "protocol": "amqp",
+      "description": "RabbitMQ broker for local development",
+      "tags": [
+        {
+          "name": "env:local"
+        }
+      ]
+    },
+    "nats": {
+      "host": "localhost:4222",
+      "protocol": "nats",
+      "description": "NATS server for local development",
+      "tags": [
+        {
+          "name": "env:local"
+        }
+      ]
+    },
+    "aws-sqs": {
+      "host": "sqs.{region}.amazonaws.com",
+      "protocol": "sqs",
+      "description": "AWS SQS for production",
+      "variables": {
+        "region": {
+          "default": "eu-central-1",
+          "description": "AWS region"
+        }
+      },
+      "tags": [
+        {
+          "name": "env:production"
+        }
+      ]
+    }
+  },
+  "channels": {
+    "example-record-submitted": {
+      "address": "example.record.submitted",
+      "description": "Receives new example records for processing.\nExternal systems publish to this channel to submit records.\n",
+      "messages": {
+        "ExampleRecordSubmitted": {
+          "name": "ExampleRecordSubmitted",
+          "title": "Example Record Submitted",
+          "summary": "A new example record submitted for processing",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "An example record for processing (matches proto ExampleRecord)",
+            "required": [
+              "record_id",
+              "title"
+            ],
+            "properties": {
+              "record_id": {
+                "type": "string",
+                "description": "Unique identifier for the record",
+                "example": "rec_123"
+              },
+              "title": {
+                "type": "string",
+                "description": "Title of the record",
+                "example": "Sample Record"
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed description",
+                "example": "This is a sample record"
+              },
+              "meta": {
+                "type": "object",
+                "description": "Metadata for an example record (matches proto ExampleMeta)",
+                "properties": {
+                  "requested_by": {
+                    "type": "string",
+                    "description": "Email or ID of requester",
+                    "example": "user@example.com"
+                  },
+                  "desired_start_date": {
+                    "type": "object",
+                    "description": "Date representation (matches proto Date)",
+                    "properties": {
+                      "year": {
+                        "type": "integer",
+                        "example": 2025
+                      },
+                      "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12,
+                        "example": 12
+                      },
+                      "day": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31,
+                        "example": 3
+                      }
+                    }
+                  },
+                  "requires_follow_up": {
+                    "type": "boolean",
+                    "description": "Whether follow-up is needed",
+                    "example": true
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Priority level (1=highest)",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 1
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "urgent",
+                  "review"
+                ]
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "standardSubmission",
+              "summary": "Standard record submission (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.record.submitted",
+                "source": "external-service",
+                "id": "01HX7QDXKS8MN4VKXQJF3J6YRP",
+                "time": "2025-12-03T10:30:00Z",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+                "pf_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+              },
+              "payload": {
+                "record_id": "rec_123",
+                "title": "Sample Record",
+                "description": "This is a sample record for processing",
+                "meta": {
+                  "requested_by": "user@example.com",
+                  "desired_start_date": {
+                    "year": 2025,
+                    "month": 12,
+                    "day": 15
+                  },
+                  "requires_follow_up": true,
+                  "priority": 1
+                },
+                "tags": [
+                  "urgent",
+                  "review"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "bindings": {
+        "kafka": {
+          "topic": "example.record.submitted",
+          "partitions": 3,
+          "replicas": 1
+        },
+        "amqp": {
+          "is": "routingKey",
+          "exchange": {
+            "name": "events",
+            "type": "topic"
+          }
+        }
+      }
+    },
+    "example-record-updated": {
+      "address": "example.record.updated",
+      "description": "Receives updates to existing example records.\nTriggers re-processing of the record.\n",
+      "messages": {
+        "ExampleRecordUpdated": {
+          "name": "ExampleRecordUpdated",
+          "title": "Example Record Updated",
+          "summary": "An existing example record has been updated",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "Partial update to an existing record",
+            "required": [
+              "record_id"
+            ],
+            "properties": {
+              "record_id": {
+                "type": "string",
+                "description": "ID of record to update"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "meta": {
+                "type": "object",
+                "description": "Metadata for an example record (matches proto ExampleMeta)",
+                "properties": {
+                  "requested_by": {
+                    "type": "string",
+                    "description": "Email or ID of requester",
+                    "example": "user@example.com"
+                  },
+                  "desired_start_date": {
+                    "type": "object",
+                    "description": "Date representation (matches proto Date)",
+                    "properties": {
+                      "year": {
+                        "type": "integer",
+                        "example": 2025
+                      },
+                      "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12,
+                        "example": 12
+                      },
+                      "day": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31,
+                        "example": 3
+                      }
+                    }
+                  },
+                  "requires_follow_up": {
+                    "type": "boolean",
+                    "description": "Whether follow-up is needed",
+                    "example": true
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Priority level (1=highest)",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 1
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "recordUpdate",
+              "summary": "Record update event (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.record.updated",
+                "source": "external-service",
+                "id": "01HX7QEXYZ9MN4VKXQJF3J6YRQ",
+                "time": "2025-12-03T11:00:00Z",
+                "subject": "rec_123",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "660e8400-e29b-41d4-a716-446655440001",
+                "pf_trace_id": "5cf92f3577b34da6a3ce929d0e0e4737"
+              },
+              "payload": {
+                "record_id": "rec_123",
+                "updates": {
+                  "title": "Updated Title",
+                  "description": "Updated description"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "example-batch-requested": {
+      "address": "example.batch.requested",
+      "description": "Receives batch processing requests.\nTriggers processing of multiple records.\n",
+      "messages": {
+        "ExampleBatchRequested": {
+          "name": "ExampleBatchRequested",
+          "title": "Example Batch Requested",
+          "summary": "Request to process multiple records",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "Request to process multiple records",
+            "required": [
+              "batch_id",
+              "record_ids"
+            ],
+            "properties": {
+              "batch_id": {
+                "type": "string",
+                "description": "Unique batch identifier",
+                "example": "batch_456"
+              },
+              "record_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "IDs of records to process",
+                "example": [
+                  "rec_123",
+                  "rec_124",
+                  "rec_125"
+                ]
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "parallel": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Process records in parallel"
+                  },
+                  "stop_on_error": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Stop batch on first error"
+                  }
+                }
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "batchRequest",
+              "summary": "Batch processing request (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.batch.requested",
+                "source": "external-service",
+                "id": "01HX7QF123ABC4VKXQJF3J6YRR",
+                "time": "2025-12-03T12:00:00Z",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "770e8400-e29b-41d4-a716-446655440002",
+                "pf_trace_id": "6df92f3577b34da6a3ce929d0e0e4738"
+              },
+              "payload": {
+                "batch_id": "batch_001",
+                "record_ids": [
+                  "rec_123",
+                  "rec_456",
+                  "rec_789"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "example-record-processed": {
+      "address": "example.record.processed",
+      "description": "Published when an example record has been successfully processed.\nConsumers can use this for downstream workflows.\n",
+      "messages": {
+        "ExampleRecordProcessed": {
+          "name": "ExampleRecordProcessed",
+          "title": "Example Record Processed",
+          "summary": "Record was successfully processed",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "Result of processing an example record (matches proto ExampleResult)",
+            "required": [
+              "record_id",
+              "status"
+            ],
+            "properties": {
+              "record_id": {
+                "type": "string",
+                "example": "rec_123"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "skipped",
+                  "partial"
+                ],
+                "example": "completed"
+              },
+              "note": {
+                "type": "string",
+                "example": "Record processed successfully"
+              },
+              "processed_on": {
+                "type": "object",
+                "description": "Date representation (matches proto Date)",
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "example": 2025
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 12
+                  },
+                  "day": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 31,
+                    "example": 3
+                  }
+                }
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "successfulProcessing",
+              "summary": "Record processed successfully (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.record.processed",
+                "source": "event-driven-service",
+                "id": "01HX7QG456DEF4VKXQJF3J6YRS",
+                "time": "2025-12-03T10:30:05Z",
+                "subject": "rec_123",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+                "pf_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+                "pf_attempt": 1
+              },
+              "payload": {
+                "record_id": "rec_123",
+                "status": "completed",
+                "note": "Record processed successfully",
+                "processed_on": {
+                  "year": 2025,
+                  "month": 12,
+                  "day": 3
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "example-record-failed": {
+      "address": "example.record.failed",
+      "description": "Published when processing of an example record fails.\nContains error details for debugging and alerting.\n",
+      "messages": {
+        "ExampleRecordFailed": {
+          "name": "ExampleRecordFailed",
+          "title": "Example Record Failed",
+          "summary": "Record processing failed",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "Error details when processing fails",
+            "required": [
+              "record_id",
+              "error_code",
+              "message"
+            ],
+            "properties": {
+              "record_id": {
+                "type": "string",
+                "example": "rec_123"
+              },
+              "error_code": {
+                "type": "string",
+                "enum": [
+                  "VALIDATION_ERROR",
+                  "NOT_FOUND",
+                  "PROCESSING_ERROR",
+                  "TIMEOUT",
+                  "INTERNAL_ERROR"
+                ],
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "Title is required"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Additional error context"
+              },
+              "retryable": {
+                "type": "boolean",
+                "description": "Whether the operation can be retried",
+                "example": false
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "processingFailed",
+              "summary": "Record processing failed (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.record.failed",
+                "source": "event-driven-service",
+                "id": "01HX7QH789GHI4VKXQJF3J6YRT",
+                "time": "2025-12-03T10:30:10Z",
+                "subject": "rec_456",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "880e8400-e29b-41d4-a716-446655440003",
+                "pf_trace_id": "7ef92f3577b34da6a3ce929d0e0e4739",
+                "pf_attempt": 3,
+                "pf_max_attempts": 3,
+                "pf_dead_letter": true
+              },
+              "payload": {
+                "record_id": "rec_456",
+                "error_code": "PROCESSING_FAILED",
+                "error_message": "Failed to process record after 3 attempts",
+                "failed_at": "2025-12-03T10:30:10Z",
+                "retryable": false
+              }
+            }
+          ]
+        }
+      }
+    },
+    "example-batch-completed": {
+      "address": "example.batch.completed",
+      "description": "Published when a batch processing request completes.\nContains summary of processed records.\n",
+      "messages": {
+        "ExampleBatchCompleted": {
+          "name": "ExampleBatchCompleted",
+          "title": "Example Batch Completed",
+          "summary": "Batch processing completed",
+          "contentType": "application/cloudevents+json",
+          "traits": [
+            {
+              "contentType": "application/cloudevents+json",
+              "headers": {
+                "type": "object",
+                "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+                "required": [
+                  "specversion",
+                  "type",
+                  "source",
+                  "id"
+                ],
+                "properties": {
+                  "specversion": {
+                    "type": "string",
+                    "const": "1.0",
+                    "description": "CloudEvents specification version"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                    "examples": [
+                      "example.record.submitted",
+                      "example.record.processed"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri-reference",
+                    "description": "Identifies the context in which the event occurred",
+                    "examples": [
+                      "event-driven-service",
+                      "/services/example"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Unique event identifier (ULID format)",
+                    "examples": [
+                      "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                    ]
+                  },
+                  "time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp when the event occurred (RFC 3339)",
+                    "examples": [
+                      "2025-12-03T10:30:00Z"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the event in context of the producer",
+                    "examples": [
+                      "record-123"
+                    ]
+                  },
+                  "datacontenttype": {
+                    "type": "string",
+                    "default": "application/json",
+                    "description": "Content type of the data field",
+                    "examples": [
+                      "application/json",
+                      "application/protobuf"
+                    ]
+                  },
+                  "dataschema": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URI identifying the schema for data field"
+                  },
+                  "pf_correlation_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Request correlation ID for distributed tracing",
+                    "examples": [
+                      "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                  },
+                  "pf_trace_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry trace ID (32 hex characters)",
+                    "pattern": "^[a-f0-9]{32}$",
+                    "examples": [
+                      "4bf92f3577b34da6a3ce929d0e0e4736"
+                    ]
+                  },
+                  "pf_parent_id": {
+                    "type": "string",
+                    "description": "OpenTelemetry parent span ID (16 hex characters)",
+                    "pattern": "^[a-f0-9]{16}$",
+                    "examples": [
+                      "00f067aa0ba902b7"
+                    ]
+                  },
+                  "pf_attempt": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Current retry attempt number (1-based)",
+                    "default": 1
+                  },
+                  "pf_max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of retry attempts",
+                    "default": 3
+                  },
+                  "pf_delay_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Delay before processing this message (milliseconds)"
+                  },
+                  "pf_dead_letter": {
+                    "type": "boolean",
+                    "description": "Flag indicating this message was moved to dead letter queue",
+                    "default": false
+                  }
+                }
+              }
+            }
+          ],
+          "payload": {
+            "type": "object",
+            "description": "Result of batch processing",
+            "required": [
+              "batch_id",
+              "total",
+              "succeeded",
+              "failed"
+            ],
+            "properties": {
+              "batch_id": {
+                "type": "string",
+                "example": "batch_456"
+              },
+              "total": {
+                "type": "integer",
+                "description": "Total records in batch",
+                "example": 3
+              },
+              "succeeded": {
+                "type": "integer",
+                "description": "Successfully processed",
+                "example": 2
+              },
+              "failed": {
+                "type": "integer",
+                "description": "Failed to process",
+                "example": 1
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Result of processing an example record (matches proto ExampleResult)",
+                  "required": [
+                    "record_id",
+                    "status"
+                  ],
+                  "properties": {
+                    "record_id": {
+                      "type": "string",
+                      "example": "rec_123"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "completed",
+                        "skipped",
+                        "partial"
+                      ],
+                      "example": "completed"
+                    },
+                    "note": {
+                      "type": "string",
+                      "example": "Record processed successfully"
+                    },
+                    "processed_on": {
+                      "type": "object",
+                      "description": "Date representation (matches proto Date)",
+                      "properties": {
+                        "year": {
+                          "type": "integer",
+                          "example": 2025
+                        },
+                        "month": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 12,
+                          "example": 12
+                        },
+                        "day": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 31,
+                          "example": 3
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Error details when processing fails",
+                  "required": [
+                    "record_id",
+                    "error_code",
+                    "message"
+                  ],
+                  "properties": {
+                    "record_id": {
+                      "type": "string",
+                      "example": "rec_123"
+                    },
+                    "error_code": {
+                      "type": "string",
+                      "enum": [
+                        "VALIDATION_ERROR",
+                        "NOT_FOUND",
+                        "PROCESSING_ERROR",
+                        "TIMEOUT",
+                        "INTERNAL_ERROR"
+                      ],
+                      "example": "VALIDATION_ERROR"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Title is required"
+                    },
+                    "details": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Additional error context"
+                    },
+                    "retryable": {
+                      "type": "boolean",
+                      "description": "Whether the operation can be retried",
+                      "example": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "examples": [
+            {
+              "name": "batchCompleted",
+              "summary": "Batch processing completed (CloudEvents envelope)",
+              "headers": {
+                "specversion": "1.0",
+                "type": "example.batch.completed",
+                "source": "event-driven-service",
+                "id": "01HX7QJ012JKL4VKXQJF3J6YRU",
+                "time": "2025-12-03T12:05:00Z",
+                "subject": "batch_001",
+                "datacontenttype": "application/json",
+                "pf_correlation_id": "770e8400-e29b-41d4-a716-446655440002",
+                "pf_trace_id": "6df92f3577b34da6a3ce929d0e0e4738"
+              },
+              "payload": {
+                "batch_id": "batch_001",
+                "total_records": 3,
+                "successful": 2,
+                "failed": 1,
+                "completed_at": "2025-12-03T12:05:00Z"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "operations": {
+    "receiveExampleRecordSubmitted": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/example-record-submitted"
+      },
+      "summary": "Process a newly submitted example record",
+      "description": "Handles incoming example records from external systems.\nValidates the record, stores it, and triggers processing.\n",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "groupId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            },
+            "amqp": {
+              "ack": true
+            }
+          }
+        }
+      ]
+    },
+    "receiveExampleRecordUpdated": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/example-record-updated"
+      },
+      "summary": "Process an updated example record",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "groupId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            },
+            "amqp": {
+              "ack": true
+            }
+          }
+        }
+      ]
+    },
+    "receiveExampleBatchRequested": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/example-batch-requested"
+      },
+      "summary": "Process a batch of example records",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "groupId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            },
+            "amqp": {
+              "ack": true
+            }
+          }
+        }
+      ]
+    },
+    "sendExampleRecordProcessed": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/example-record-processed"
+      },
+      "summary": "Notify that a record was processed successfully",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "clientId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sendExampleRecordFailed": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/example-record-failed"
+      },
+      "summary": "Notify that record processing failed",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "clientId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sendExampleBatchCompleted": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/example-batch-completed"
+      },
+      "summary": "Notify that batch processing completed",
+      "traits": [
+        {
+          "bindings": {
+            "kafka": {
+              "clientId": {
+                "type": "string",
+                "enum": [
+                  "event-driven-service"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "messages": {
+      "ExampleRecordSubmitted": {
+        "name": "ExampleRecordSubmitted",
+        "title": "Example Record Submitted",
+        "summary": "A new example record submitted for processing",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "An example record for processing (matches proto ExampleRecord)",
+          "required": [
+            "record_id",
+            "title"
+          ],
+          "properties": {
+            "record_id": {
+              "type": "string",
+              "description": "Unique identifier for the record",
+              "example": "rec_123"
+            },
+            "title": {
+              "type": "string",
+              "description": "Title of the record",
+              "example": "Sample Record"
+            },
+            "description": {
+              "type": "string",
+              "description": "Detailed description",
+              "example": "This is a sample record"
+            },
+            "meta": {
+              "type": "object",
+              "description": "Metadata for an example record (matches proto ExampleMeta)",
+              "properties": {
+                "requested_by": {
+                  "type": "string",
+                  "description": "Email or ID of requester",
+                  "example": "user@example.com"
+                },
+                "desired_start_date": {
+                  "type": "object",
+                  "description": "Date representation (matches proto Date)",
+                  "properties": {
+                    "year": {
+                      "type": "integer",
+                      "example": 2025
+                    },
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12,
+                      "example": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31,
+                      "example": 3
+                    }
+                  }
+                },
+                "requires_follow_up": {
+                  "type": "boolean",
+                  "description": "Whether follow-up is needed",
+                  "example": true
+                },
+                "priority": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Priority level (1=highest)",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "example": 1
+                }
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "example": [
+                "urgent",
+                "review"
+              ]
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "standardSubmission",
+            "summary": "Standard record submission (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.record.submitted",
+              "source": "external-service",
+              "id": "01HX7QDXKS8MN4VKXQJF3J6YRP",
+              "time": "2025-12-03T10:30:00Z",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+              "pf_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+            },
+            "payload": {
+              "record_id": "rec_123",
+              "title": "Sample Record",
+              "description": "This is a sample record for processing",
+              "meta": {
+                "requested_by": "user@example.com",
+                "desired_start_date": {
+                  "year": 2025,
+                  "month": 12,
+                  "day": 15
+                },
+                "requires_follow_up": true,
+                "priority": 1
+              },
+              "tags": [
+                "urgent",
+                "review"
+              ]
+            }
+          }
+        ]
+      },
+      "ExampleRecordUpdated": {
+        "name": "ExampleRecordUpdated",
+        "title": "Example Record Updated",
+        "summary": "An existing example record has been updated",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "Partial update to an existing record",
+          "required": [
+            "record_id"
+          ],
+          "properties": {
+            "record_id": {
+              "type": "string",
+              "description": "ID of record to update"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "object",
+              "description": "Metadata for an example record (matches proto ExampleMeta)",
+              "properties": {
+                "requested_by": {
+                  "type": "string",
+                  "description": "Email or ID of requester",
+                  "example": "user@example.com"
+                },
+                "desired_start_date": {
+                  "type": "object",
+                  "description": "Date representation (matches proto Date)",
+                  "properties": {
+                    "year": {
+                      "type": "integer",
+                      "example": 2025
+                    },
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12,
+                      "example": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31,
+                      "example": 3
+                    }
+                  }
+                },
+                "requires_follow_up": {
+                  "type": "boolean",
+                  "description": "Whether follow-up is needed",
+                  "example": true
+                },
+                "priority": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Priority level (1=highest)",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "example": 1
+                }
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "recordUpdate",
+            "summary": "Record update event (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.record.updated",
+              "source": "external-service",
+              "id": "01HX7QEXYZ9MN4VKXQJF3J6YRQ",
+              "time": "2025-12-03T11:00:00Z",
+              "subject": "rec_123",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "660e8400-e29b-41d4-a716-446655440001",
+              "pf_trace_id": "5cf92f3577b34da6a3ce929d0e0e4737"
+            },
+            "payload": {
+              "record_id": "rec_123",
+              "updates": {
+                "title": "Updated Title",
+                "description": "Updated description"
+              }
+            }
+          }
+        ]
+      },
+      "ExampleBatchRequested": {
+        "name": "ExampleBatchRequested",
+        "title": "Example Batch Requested",
+        "summary": "Request to process multiple records",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "Request to process multiple records",
+          "required": [
+            "batch_id",
+            "record_ids"
+          ],
+          "properties": {
+            "batch_id": {
+              "type": "string",
+              "description": "Unique batch identifier",
+              "example": "batch_456"
+            },
+            "record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "IDs of records to process",
+              "example": [
+                "rec_123",
+                "rec_124",
+                "rec_125"
+              ]
+            },
+            "options": {
+              "type": "object",
+              "properties": {
+                "parallel": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Process records in parallel"
+                },
+                "stop_on_error": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Stop batch on first error"
+                }
+              }
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "batchRequest",
+            "summary": "Batch processing request (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.batch.requested",
+              "source": "external-service",
+              "id": "01HX7QF123ABC4VKXQJF3J6YRR",
+              "time": "2025-12-03T12:00:00Z",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "770e8400-e29b-41d4-a716-446655440002",
+              "pf_trace_id": "6df92f3577b34da6a3ce929d0e0e4738"
+            },
+            "payload": {
+              "batch_id": "batch_001",
+              "record_ids": [
+                "rec_123",
+                "rec_456",
+                "rec_789"
+              ]
+            }
+          }
+        ]
+      },
+      "ExampleRecordProcessed": {
+        "name": "ExampleRecordProcessed",
+        "title": "Example Record Processed",
+        "summary": "Record was successfully processed",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "Result of processing an example record (matches proto ExampleResult)",
+          "required": [
+            "record_id",
+            "status"
+          ],
+          "properties": {
+            "record_id": {
+              "type": "string",
+              "example": "rec_123"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "completed",
+                "skipped",
+                "partial"
+              ],
+              "example": "completed"
+            },
+            "note": {
+              "type": "string",
+              "example": "Record processed successfully"
+            },
+            "processed_on": {
+              "type": "object",
+              "description": "Date representation (matches proto Date)",
+              "properties": {
+                "year": {
+                  "type": "integer",
+                  "example": 2025
+                },
+                "month": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12,
+                  "example": 12
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 31,
+                  "example": 3
+                }
+              }
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "successfulProcessing",
+            "summary": "Record processed successfully (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.record.processed",
+              "source": "event-driven-service",
+              "id": "01HX7QG456DEF4VKXQJF3J6YRS",
+              "time": "2025-12-03T10:30:05Z",
+              "subject": "rec_123",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+              "pf_trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+              "pf_attempt": 1
+            },
+            "payload": {
+              "record_id": "rec_123",
+              "status": "completed",
+              "note": "Record processed successfully",
+              "processed_on": {
+                "year": 2025,
+                "month": 12,
+                "day": 3
+              }
+            }
+          }
+        ]
+      },
+      "ExampleRecordFailed": {
+        "name": "ExampleRecordFailed",
+        "title": "Example Record Failed",
+        "summary": "Record processing failed",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "Error details when processing fails",
+          "required": [
+            "record_id",
+            "error_code",
+            "message"
+          ],
+          "properties": {
+            "record_id": {
+              "type": "string",
+              "example": "rec_123"
+            },
+            "error_code": {
+              "type": "string",
+              "enum": [
+                "VALIDATION_ERROR",
+                "NOT_FOUND",
+                "PROCESSING_ERROR",
+                "TIMEOUT",
+                "INTERNAL_ERROR"
+              ],
+              "example": "VALIDATION_ERROR"
+            },
+            "message": {
+              "type": "string",
+              "example": "Title is required"
+            },
+            "details": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Additional error context"
+            },
+            "retryable": {
+              "type": "boolean",
+              "description": "Whether the operation can be retried",
+              "example": false
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "processingFailed",
+            "summary": "Record processing failed (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.record.failed",
+              "source": "event-driven-service",
+              "id": "01HX7QH789GHI4VKXQJF3J6YRT",
+              "time": "2025-12-03T10:30:10Z",
+              "subject": "rec_456",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "880e8400-e29b-41d4-a716-446655440003",
+              "pf_trace_id": "7ef92f3577b34da6a3ce929d0e0e4739",
+              "pf_attempt": 3,
+              "pf_max_attempts": 3,
+              "pf_dead_letter": true
+            },
+            "payload": {
+              "record_id": "rec_456",
+              "error_code": "PROCESSING_FAILED",
+              "error_message": "Failed to process record after 3 attempts",
+              "failed_at": "2025-12-03T10:30:10Z",
+              "retryable": false
+            }
+          }
+        ]
+      },
+      "ExampleBatchCompleted": {
+        "name": "ExampleBatchCompleted",
+        "title": "Example Batch Completed",
+        "summary": "Batch processing completed",
+        "contentType": "application/cloudevents+json",
+        "traits": [
+          {
+            "contentType": "application/cloudevents+json",
+            "headers": {
+              "type": "object",
+              "description": "CloudEvents v1.0 context attributes.\nThe actual payload is in the `data` field of the CloudEvents envelope.\n",
+              "required": [
+                "specversion",
+                "type",
+                "source",
+                "id"
+              ],
+              "properties": {
+                "specversion": {
+                  "type": "string",
+                  "const": "1.0",
+                  "description": "CloudEvents specification version"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Event type identifier (e.g., \"example.record.submitted\")",
+                  "examples": [
+                    "example.record.submitted",
+                    "example.record.processed"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Identifies the context in which the event occurred",
+                  "examples": [
+                    "event-driven-service",
+                    "/services/example"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Unique event identifier (ULID format)",
+                  "examples": [
+                    "01HX7QDXKS8MN4VKXQJF3J6YRP"
+                  ]
+                },
+                "time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Timestamp when the event occurred (RFC 3339)",
+                  "examples": [
+                    "2025-12-03T10:30:00Z"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "description": "Subject of the event in context of the producer",
+                  "examples": [
+                    "record-123"
+                  ]
+                },
+                "datacontenttype": {
+                  "type": "string",
+                  "default": "application/json",
+                  "description": "Content type of the data field",
+                  "examples": [
+                    "application/json",
+                    "application/protobuf"
+                  ]
+                },
+                "dataschema": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URI identifying the schema for data field"
+                },
+                "pf_correlation_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Request correlation ID for distributed tracing",
+                  "examples": [
+                    "550e8400-e29b-41d4-a716-446655440000"
+                  ]
+                },
+                "pf_trace_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry trace ID (32 hex characters)",
+                  "pattern": "^[a-f0-9]{32}$",
+                  "examples": [
+                    "4bf92f3577b34da6a3ce929d0e0e4736"
+                  ]
+                },
+                "pf_parent_id": {
+                  "type": "string",
+                  "description": "OpenTelemetry parent span ID (16 hex characters)",
+                  "pattern": "^[a-f0-9]{16}$",
+                  "examples": [
+                    "00f067aa0ba902b7"
+                  ]
+                },
+                "pf_attempt": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Current retry attempt number (1-based)",
+                  "default": 1
+                },
+                "pf_max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum number of retry attempts",
+                  "default": 3
+                },
+                "pf_delay_ms": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Delay before processing this message (milliseconds)"
+                },
+                "pf_dead_letter": {
+                  "type": "boolean",
+                  "description": "Flag indicating this message was moved to dead letter queue",
+                  "default": false
+                }
+              }
+            }
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "description": "Result of batch processing",
+          "required": [
+            "batch_id",
+            "total",
+            "succeeded",
+            "failed"
+          ],
+          "properties": {
+            "batch_id": {
+              "type": "string",
+              "example": "batch_456"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total records in batch",
+              "example": 3
+            },
+            "succeeded": {
+              "type": "integer",
+              "description": "Successfully processed",
+              "example": 2
+            },
+            "failed": {
+              "type": "integer",
+              "description": "Failed to process",
+              "example": 1
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "Result of processing an example record (matches proto ExampleResult)",
+                "required": [
+                  "record_id",
+                  "status"
+                ],
+                "properties": {
+                  "record_id": {
+                    "type": "string",
+                    "example": "rec_123"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "skipped",
+                      "partial"
+                    ],
+                    "example": "completed"
+                  },
+                  "note": {
+                    "type": "string",
+                    "example": "Record processed successfully"
+                  },
+                  "processed_on": {
+                    "type": "object",
+                    "description": "Date representation (matches proto Date)",
+                    "properties": {
+                      "year": {
+                        "type": "integer",
+                        "example": 2025
+                      },
+                      "month": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 12,
+                        "example": 12
+                      },
+                      "day": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31,
+                        "example": 3
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "Error details when processing fails",
+                "required": [
+                  "record_id",
+                  "error_code",
+                  "message"
+                ],
+                "properties": {
+                  "record_id": {
+                    "type": "string",
+                    "example": "rec_123"
+                  },
+                  "error_code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_ERROR",
+                      "NOT_FOUND",
+                      "PROCESSING_ERROR",
+                      "TIMEOUT",
+                      "INTERNAL_ERROR"
+                    ],
+                    "example": "VALIDATION_ERROR"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Title is required"
+                  },
+                  "details": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Additional error context"
+                  },
+                  "retryable": {
+                    "type": "boolean",
+                    "description": "Whether the operation can be retried",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "examples": [
+          {
+            "name": "batchCompleted",
+            "summary": "Batch processing completed (CloudEvents envelope)",
+            "headers": {
+              "specversion": "1.0",
+              "type": "example.batch.completed",
+              "source": "event-driven-service",
+              "id": "01HX7QJ012JKL4VKXQJF3J6YRU",
+              "time": "2025-12-03T12:05:00Z",
+              "subject": "batch_001",
+              "datacontenttype": "application/json",
+              "pf_correlation_id": "770e8400-e29b-41d4-a716-446655440002",
+              "pf_trace_id": "6df92f3577b34da6a3ce929d0e0e4738"
+            },
+            "payload": {
+              "batch_id": "batch_001",
+              "total_records": 3,
+              "successful": 2,
+              "failed": 1,
+              "completed_at": "2025-12-03T12:05:00Z"
+            }
+          }
+        ]
+      }
+    },
+    "schemas": {
+      "ExampleRecord": {
+        "type": "object",
+        "description": "An example record for processing (matches proto ExampleRecord)",
+        "required": [
+          "record_id",
+          "title"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "description": "Unique identifier for the record",
+            "example": "rec_123"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the record",
+            "example": "Sample Record"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description",
+            "example": "This is a sample record"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Metadata for an example record (matches proto ExampleMeta)",
+            "properties": {
+              "requested_by": {
+                "type": "string",
+                "description": "Email or ID of requester",
+                "example": "user@example.com"
+              },
+              "desired_start_date": {
+                "type": "object",
+                "description": "Date representation (matches proto Date)",
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "example": 2025
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 12
+                  },
+                  "day": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 31,
+                    "example": 3
+                  }
+                }
+              },
+              "requires_follow_up": {
+                "type": "boolean",
+                "description": "Whether follow-up is needed",
+                "example": true
+              },
+              "priority": {
+                "type": "integer",
+                "format": "int32",
+                "description": "Priority level (1=highest)",
+                "minimum": 1,
+                "maximum": 5,
+                "example": 1
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "urgent",
+              "review"
+            ]
+          }
+        }
+      },
+      "ExampleMeta": {
+        "type": "object",
+        "description": "Metadata for an example record (matches proto ExampleMeta)",
+        "properties": {
+          "requested_by": {
+            "type": "string",
+            "description": "Email or ID of requester",
+            "example": "user@example.com"
+          },
+          "desired_start_date": {
+            "type": "object",
+            "description": "Date representation (matches proto Date)",
+            "properties": {
+              "year": {
+                "type": "integer",
+                "example": 2025
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12,
+                "example": 12
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31,
+                "example": 3
+              }
+            }
+          },
+          "requires_follow_up": {
+            "type": "boolean",
+            "description": "Whether follow-up is needed",
+            "example": true
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Priority level (1=highest)",
+            "minimum": 1,
+            "maximum": 5,
+            "example": 1
+          }
+        }
+      },
+      "ExampleResult": {
+        "type": "object",
+        "description": "Result of processing an example record (matches proto ExampleResult)",
+        "required": [
+          "record_id",
+          "status"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "example": "rec_123"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "skipped",
+              "partial"
+            ],
+            "example": "completed"
+          },
+          "note": {
+            "type": "string",
+            "example": "Record processed successfully"
+          },
+          "processed_on": {
+            "type": "object",
+            "description": "Date representation (matches proto Date)",
+            "properties": {
+              "year": {
+                "type": "integer",
+                "example": 2025
+              },
+              "month": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12,
+                "example": 12
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31,
+                "example": 3
+              }
+            }
+          }
+        }
+      },
+      "Date": {
+        "type": "object",
+        "description": "Date representation (matches proto Date)",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "example": 2025
+          },
+          "month": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12,
+            "example": 12
+          },
+          "day": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31,
+            "example": 3
+          }
+        }
+      },
+      "ExampleRecordUpdate": {
+        "type": "object",
+        "description": "Partial update to an existing record",
+        "required": [
+          "record_id"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "description": "ID of record to update"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Metadata for an example record (matches proto ExampleMeta)",
+            "properties": {
+              "requested_by": {
+                "type": "string",
+                "description": "Email or ID of requester",
+                "example": "user@example.com"
+              },
+              "desired_start_date": {
+                "type": "object",
+                "description": "Date representation (matches proto Date)",
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "example": 2025
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 12
+                  },
+                  "day": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 31,
+                    "example": 3
+                  }
+                }
+              },
+              "requires_follow_up": {
+                "type": "boolean",
+                "description": "Whether follow-up is needed",
+                "example": true
+              },
+              "priority": {
+                "type": "integer",
+                "format": "int32",
+                "description": "Priority level (1=highest)",
+                "minimum": 1,
+                "maximum": 5,
+                "example": 1
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BatchRequest": {
+        "type": "object",
+        "description": "Request to process multiple records",
+        "required": [
+          "batch_id",
+          "record_ids"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "Unique batch identifier",
+            "example": "batch_456"
+          },
+          "record_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IDs of records to process",
+            "example": [
+              "rec_123",
+              "rec_124",
+              "rec_125"
+            ]
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "parallel": {
+                "type": "boolean",
+                "default": false,
+                "description": "Process records in parallel"
+              },
+              "stop_on_error": {
+                "type": "boolean",
+                "default": false,
+                "description": "Stop batch on first error"
+              }
+            }
+          }
+        }
+      },
+      "BatchResult": {
+        "type": "object",
+        "description": "Result of batch processing",
+        "required": [
+          "batch_id",
+          "total",
+          "succeeded",
+          "failed"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "example": "batch_456"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total records in batch",
+            "example": 3
+          },
+          "succeeded": {
+            "type": "integer",
+            "description": "Successfully processed",
+            "example": 2
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Failed to process",
+            "example": 1
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Result of processing an example record (matches proto ExampleResult)",
+              "required": [
+                "record_id",
+                "status"
+              ],
+              "properties": {
+                "record_id": {
+                  "type": "string",
+                  "example": "rec_123"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "completed",
+                    "skipped",
+                    "partial"
+                  ],
+                  "example": "completed"
+                },
+                "note": {
+                  "type": "string",
+                  "example": "Record processed successfully"
+                },
+                "processed_on": {
+                  "type": "object",
+                  "description": "Date representation (matches proto Date)",
+                  "properties": {
+                    "year": {
+                      "type": "integer",
+                      "example": 2025
+                    },
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12,
+                      "example": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31,
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Error details when processing fails",
+              "required": [
+                "record_id",
+                "error_code",
+                "message"
+              ],
+              "properties": {
+                "record_id": {
+                  "type": "string",
+                  "example": "rec_123"
+                },
+                "error_code": {
+                  "type": "string",
+                  "enum": [
+                    "VALIDATION_ERROR",
+                    "NOT_FOUND",
+                    "PROCESSING_ERROR",
+                    "TIMEOUT",
+                    "INTERNAL_ERROR"
+                  ],
+                  "example": "VALIDATION_ERROR"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Title is required"
+                },
+                "details": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Additional error context"
+                },
+                "retryable": {
+                  "type": "boolean",
+                  "description": "Whether the operation can be retried",
+                  "example": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "ProcessingError": {
+        "type": "object",
+        "description": "Error details when processing fails",
+        "required": [
+          "record_id",
+          "error_code",
+          "message"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "example": "rec_123"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_ERROR",
+              "NOT_FOUND",
+              "PROCESSING_ERROR",
+              "TIMEOUT",
+              "INTERNAL_ERROR"
+            ],
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "example": "Title is required"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Additional error context"
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "Whether the operation can be retried",
+            "example": false
+          }
+        }
+      }
+    },
+    "messageTraits": {
+      "commonHeaders": {
+        "headers": {
+          "type": "object",
+          "deprecated": true,
+          "description": "DEPRECATED: Use cloudEventsEnvelope instead.\nLegacy header format kept for reference.\n",
+          "required": [
+            "correlation_id",
+            "timestamp"
+          ],
+          "properties": {
+            "correlation_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Unique ID to trace requests across services",
+              "example": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "source": {
+              "type": "string",
+              "description": "Service that published the message",
+              "example": "event-driven-service"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the message was created",
+              "example": "2025-12-03T10:30:00Z"
+            },
+            "trace_id": {
+              "type": "string",
+              "description": "OpenTelemetry trace ID",
+              "example": "4bf92f3577b34da6a3ce929d0e0e4736"
+            },
+            "span_id": {
+              "type": "string",
+              "description": "OpenTelemetry span ID",
+              "example": "00f067aa0ba902b7"
+            }
+          }
+        }
+      }
+    },
+    "operationTraits": {
+      "commonReceive": {
+        "bindings": {
+          "kafka": {
+            "groupId": {
+              "type": "string",
+              "enum": [
+                "event-driven-service"
+              ]
+            }
+          },
+          "amqp": {
+            "ack": true
+          }
+        }
+      },
+      "commonSend": {
+        "bindings": {
+          "kafka": {
+            "clientId": {
+              "type": "string",
+              "enum": [
+                "event-driven-service"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

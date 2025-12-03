@@ -1,0 +1,18 @@
+---
+address: example.record.submitted
+description: |
+  Receives new example records for processing.
+  External systems publish to this channel to submit records.
+messages:
+  ExampleRecordSubmitted:
+    $ref: "#/components/messages/ExampleRecordSubmitted"
+bindings:
+  kafka:
+    topic: example.record.submitted
+    partitions: 3
+    replicas: 1
+  amqp:
+    is: routingKey
+    exchange:
+      name: events
+      type: topic

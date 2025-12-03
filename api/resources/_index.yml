@@ -11,6 +11,12 @@
 /info/openapi.html:
   $ref: "./info/openapi_html.yml"
 
+/info/asyncapi.json:
+  $ref: "./info/async-api-json.yml"
+
+/info/asyncapi.html:
+  $ref: "./info/async-api-html.yml"
+
 /healthz:
   $ref: "./probes/healthz.yml"
 

@@ -1,0 +1,32 @@
+---
+type: object
+description: Result of batch processing
+required:
+  - batch_id
+  - total
+  - succeeded
+  - failed
+properties:
+  batch_id:
+    type: string
+    example: "batch_456"
+  total:
+    type: integer
+    description: Total records in batch
+    example: 3
+  succeeded:
+    type: integer
+    description: Successfully processed
+    example: 2
+  failed:
+    type: integer
+    description: Failed to process
+    example: 1
+  results:
+    type: array
+    items:
+      $ref: "./example-result.yml"
+  errors:
+    type: array
+    items:
+      $ref: "../errors/processing-error.yml"

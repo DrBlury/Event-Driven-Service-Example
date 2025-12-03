@@ -1,0 +1,31 @@
+---
+name: ExampleRecordFailed
+title: Example Record Failed
+summary: Record processing failed
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/errors/processing-error.yml"
+examples:
+  - name: processingFailed
+    summary: Record processing failed (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.record.failed"
+      source: "event-driven-service"
+      id: "01HX7QH789GHI4VKXQJF3J6YRT"
+      time: "2025-12-03T10:30:10Z"
+      subject: "rec_456"
+      datacontenttype: "application/json"
+      pf_correlation_id: "880e8400-e29b-41d4-a716-446655440003"
+      pf_trace_id: "7ef92f3577b34da6a3ce929d0e0e4739"
+      pf_attempt: 3
+      pf_max_attempts: 3
+      pf_dead_letter: true
+    payload:
+      record_id: "rec_456"
+      error_code: "PROCESSING_FAILED"
+      error_message: "Failed to process record after 3 attempts"
+      failed_at: "2025-12-03T10:30:10Z"
+      retryable: false

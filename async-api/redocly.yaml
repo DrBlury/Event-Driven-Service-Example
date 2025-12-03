@@ -1,0 +1,22 @@
+# AsyncAPI Configuration
+# Documentation: https://redocly.com/docs/cli/configuration/
+
+extends:
+  - recommended
+
+apis:
+  events@latest:
+    root: asyncapi.yml
+
+rules:
+  # Channel rules
+  channels-kebab-case: error
+
+  # Operation rules
+  operation-operationId: error
+
+  # Message rules
+  message-examples: warn
+
+  # Schema rules
+  no-invalid-schema-examples: error

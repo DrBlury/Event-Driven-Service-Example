@@ -1,0 +1,27 @@
+---
+name: ExampleBatchRequested
+title: Example Batch Requested
+summary: Request to process multiple records
+contentType: application/cloudevents+json
+traits:
+  - $ref: "../components/message-traits.yml#/cloudEventsEnvelope"
+payload:
+  $ref: "../schemas/types/batch-request.yml"
+examples:
+  - name: batchRequest
+    summary: Batch processing request (CloudEvents envelope)
+    headers:
+      specversion: "1.0"
+      type: "example.batch.requested"
+      source: "external-service"
+      id: "01HX7QF123ABC4VKXQJF3J6YRR"
+      time: "2025-12-03T12:00:00Z"
+      datacontenttype: "application/json"
+      pf_correlation_id: "770e8400-e29b-41d4-a716-446655440002"
+      pf_trace_id: "6df92f3577b34da6a3ce929d0e0e4738"
+    payload:
+      batch_id: "batch_001"
+      record_ids:
+        - "rec_123"
+        - "rec_456"
+        - "rec_789"

@@ -1,0 +1,16 @@
+# MCP (Model Context Protocol) Server Configuration
+# Additional context sources for Copilot in this repository
+
+servers:
+  # Context7 - Library documentation lookup
+  context7:
+    description: Fetch up-to-date documentation for libraries used in this project
+    usage: |
+      Use Context7 to get current documentation for:
+      - Go standard library
+      - Watermill (event streaming)
+      - MongoDB Go driver
+      - OpenTelemetry Go SDK
+      - Chi router
+      - Testify (testing)
+      - Viper (configuration)

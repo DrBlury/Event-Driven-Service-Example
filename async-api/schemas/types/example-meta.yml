@@ -1,0 +1,21 @@
+---
+type: object
+description: Metadata for an example record (matches proto ExampleMeta)
+properties:
+  requested_by:
+    type: string
+    description: Email or ID of requester
+    example: "user@example.com"
+  desired_start_date:
+    $ref: "./date.yml"
+  requires_follow_up:
+    type: boolean
+    description: Whether follow-up is needed
+    example: true
+  priority:
+    type: integer
+    format: int32
+    description: Priority level (1=highest)
+    minimum: 1
+    maximum: 5
+    example: 1

@@ -1,18 +1,39 @@
 # Main CI workflow - uses modular reusable workflows
 # Generated code (protobuf, OpenAPI) is committed to the repo for simplicity
+#
+# Strategy:
+# - Push to main (hotfixes): Fast path - only essential checks (build, test, lint)
+# - Pull requests: Full path - includes security scanning, SBOM, and additional linting
 name: Service CI
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
   workflow_dispatch:
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ============================================
-  # Verify Generated Code is Up-to-Date
+  # FAST PATH - Always runs (push + PR)
   # ============================================
+
+  # Verify Generated Code is Up-to-Date
   verify-generated:
     name: Verify Generated Code
     permissions:
@@ -23,11 +44,10 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ============================================
   # Go Module Lint & Build
-  # ============================================
   go-lint-build:
     name: Go Lint & Build
+    needs: verify-generated
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-go-lint-build.yml
@@ -36,11 +56,10 @@ jobs:
       cache-dependency-path: src/go.sum
       working-directory: src
 
-  # ============================================
   # Go Tests with Coverage
-  # ============================================
   go-test:
     name: Go Test
+    needs: verify-generated
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-go-test.yml
@@ -53,10 +72,13 @@ jobs:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================
-  # Go Security Scanning (gosec + govulncheck)
+  # FULL PATH - PR only (thorough checks)
   # ============================================
+
+  # Go Security Scanning (gosec + govulncheck)
   go-security:
     name: Go Security
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-go-security.yml
@@ -65,20 +87,18 @@ jobs:
       cache-dependency-path: src/go.sum
       working-directory: src
 
-  # ============================================
   # General Security Scanning (Trivy + Trufflehog)
-  # ============================================
   security-scan:
     name: Security Scan
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-security-scan.yml
 
-  # ============================================
   # Linting (Dockerfiles, Actions, Protobuf)
-  # ============================================
   lint:
     name: Lint
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-lint.yml
@@ -87,11 +107,10 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ============================================
   # SBOM Generation & Vulnerability Scanning
-  # ============================================
   sbom:
     name: SBOM & Grype
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
       security-events: write

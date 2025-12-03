@@ -1,0 +1,19 @@
+---
+type: object
+description: Partial update to an existing record
+required:
+  - record_id
+properties:
+  record_id:
+    type: string
+    description: ID of record to update
+  title:
+    type: string
+  description:
+    type: string
+  meta:
+    $ref: "./example-meta.yml"
+  tags:
+    type: array
+    items:
+      type: string

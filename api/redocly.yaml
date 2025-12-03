@@ -1,0 +1,101 @@
+# Redocly Configuration
+# Documentation: https://redocly.com/docs/cli/configuration/
+
+# Specify the OpenAPI version
+extends:
+  - recommended
+
+# Define APIs for linting and bundling
+apis:
+  main@latest:
+    root: api.yml
+
+# Linting rules following best practices
+rules:
+  # Structural rules
+  info-contact: warn
+  info-license: error
+
+  # Operation rules
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-operationId-url-safe: error
+  operation-summary: error
+  operation-description: error
+  operation-singular-tag: error
+  operation-tag-defined: error
+
+  # Tag rules
+  tag-description: error
+  tags-alphabetical: error
+
+  # Path rules
+  path-declaration-must-exist: error
+  path-not-include-query: error
+  path-parameters-defined: error
+  no-path-trailing-slash: error
+  path-segment-plural:
+    severity: error
+    exceptions:
+      # Industry-standard singular paths
+      - info
+      - version
+      - status
+      - healthz
+      - readyz
+      # OpenAPI spec endpoints use file-like naming
+      - openapi.json
+      - openapi.html
+      # AsyncAPI spec endpoints use file-like naming
+      - asyncapi.json
+      - asyncapi.html
+
+  # Parameter rules
+  parameter-description: error
+  path-http-verbs-order: error
+
+  # Schema rules
+  spec-components-invalid-map-name: error
+  no-invalid-schema-examples: error
+  no-invalid-media-type-examples: error
+
+  # Security rules
+  security-defined: error
+  # Naming conventions
+  paths-kebab-case: error
+
+  # Response rules
+  no-undefined-server-variable: error
+  no-empty-servers: error
+  no-server-example.com: error
+  no-server-trailing-slash: error
+
+  # Reference rules
+  no-unresolved-refs: error
+  no-ambiguous-paths: error
+
+  # Boolean string rules
+  boolean-parameter-prefixes: off
+
+  # Request body rules
+  request-mime-type:
+    severity: warn
+    allowedValues:
+      - application/json
+      - multipart/form-data
+      - application/x-www-form-urlencoded
+
+  # Response MIME types - includes RFC 7807 problem+json and OpenAPI spec types
+  response-mime-type:
+    severity: warn
+    allowedValues:
+      - application/json
+      - application/problem+json
+      - application/vnd.oai.openapi+json;version=3.1
+      - application/schema+json
+      - text/html
+      - text/plain
+
+# Resolve references during bundling
+resolve:
+  doNotResolveExamples: false

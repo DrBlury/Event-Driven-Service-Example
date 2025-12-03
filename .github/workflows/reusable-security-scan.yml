@@ -34,6 +34,7 @@ jobs:
         name: Trivy
         if: ${{ inputs.run-trivy }}
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         permissions:
             contents: read
         steps:
@@ -50,6 +51,7 @@ jobs:
         name: Trufflehog
         if: ${{ inputs.run-trufflehog }}
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         permissions:
             contents: read
         steps:

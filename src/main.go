@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+
+	// Import all protoflow transports for auto-registration
+	_ "github.com/drblury/protoflow/transport/transports"
 )
 
 // Application metadata that is set at compile time.
