@@ -1,92 +1,96 @@
-Docker Compose layout and usage
-================================
+# Docker Compose Infrastructure
 
-This folder uses a base Compose file with small, mode-specific override
-files to avoid duplication and follow the Docker multiple-compose-files
-recommendation.
+This directory contains modular Docker Compose configurations for local development.
 
-Files
------
-
-- docker-compose.yml
-  - Base file containing the shared services: app, mongo, mongo-express,
-    openobserve.
-
-- docker-compose.kafka.yml
-  - Kafka mode: adds `kafka` and `kafdrop`, and makes `app` use
-    PUBSUB_SYSTEM=kafka.
-
-- docker-compose.rabbitmq.yml
-  - RabbitMQ mode: adds `rabbitmq` and makes `app` use
-    PUBSUB_SYSTEM=rabbitmq.
-
-- docker-compose.aws.yml
-  - AWS/localstack mode: adds `localstack` and `terraform`, and sets
-    PUBSUB_SYSTEM=aws for `app`.
-
-- docker-compose.nats.yml
-  - NATS mode: adds `nats` and sets PUBSUB_SYSTEM=nats for `app`.
-
-- docker-compose.http.yml
-  - HTTP mode: adds `mockserver` and sets PUBSUB_SYSTEM=http for `app`.
-
-- docker-compose.io.yml
-  - IO mode: sets PUBSUB_SYSTEM=io for `app`.
-
-Examples
---------
-
-Start Kafka mode (base + kafka override):
+## Quick Start
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.kafka.yml up
+task up-kafka       # Start with Kafka
+task up-rabbitmq    # Start with RabbitMQ
+task up-aws         # Start with LocalStack (AWS)
+task up-nats        # Start with NATS
+task up-http        # Start with HTTP/MockServer
+task up-io          # Start with in-memory queues
 ```
 
-Start RabbitMQ mode (base + rabbitmq override):
+## Architecture
+
+**Base file** (`docker-compose.yml`): Common services (app, MongoDB, OpenObserve)
+
+**Overlay files**: Add messaging backend and related tools
+
+- `docker-compose.kafka.yml` - Kafka + Kafdrop UI
+- `docker-compose.rabbitmq.yml` - RabbitMQ + Management UI
+- `docker-compose.aws.yml` - LocalStack + Terraform provisioner
+- `docker-compose.nats.yml` - NATS server
+- `docker-compose.http.yml` - MockServer
+- `docker-compose.io.yml` - In-memory mode (no external messaging)
+- `docker-compose.debug.yml` - Development mode with hot reload
+
+## Manual Usage
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.rabbitmq.yml up
+# Kafka stack
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml up
+
+# With debug mode (hot reload)
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml -f docker-compose.debug.yml up
 ```
 
-Start AWS/localstack mode (base + aws override):
+## Data Persistence
+
+All persistent data is stored in `../../_volume_data/`:
+
+```text
+_volume_data/
+├── mongo/          # MongoDB data
+├── kafka/          # Kafka logs
+├── rabbitmq/       # RabbitMQ data
+├── localstack/     # LocalStack state
+└── openobserve/    # Observability data
+```
+
+**Reset all data:**
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.aws.yml up
+docker compose down -v
+rm -rf ../../_volume_data/
 ```
 
-Start NATS mode:
+## Service Ports
+
+| Service | Port | Description |
+| ------- | ---- | ----------- |
+| app | 8080 | HTTP API |
+| app | 8085 | Protoflow metadata API (if enabled) |
+| mongo-express | 8081 | MongoDB web UI |
+| kafdrop | 9000 | Kafka web UI |
+| rabbitmq | 15672 | RabbitMQ management UI |
+| openobserve | 5080 | Observability UI |
+| localstack | 4566 | AWS service emulator |
+
+## Environment Configuration
+
+Environment files are stored in `../env/`:
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.nats.yml up
+# Generate from examples
+task gen-env-files
+
+# Edit as needed
+vim ../env/app.env
+vim ../env/kafka.env
+# etc.
 ```
 
-Start HTTP mode:
+## Detailed Documentation
 
-```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.http.yml up
-```
+See [Infrastructure Guide](../../docs/infrastructure.md) for comprehensive information on:
 
-Start IO mode:
+- Service details and configuration
+- Networking and ports
+- Terraform integration
+- Troubleshooting
+- Best practices
 
-```bash
-docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.io.yml up
-```
 
-Notes
------
-
-- If you need to override settings for development (ports, volumes, env) you
-  can add a `docker-compose.override.yml` or pass an additional `-f` file.
-- The `app` service's PUBSUB_SYSTEM is set by the mode-specific files so the
-  code can switch between Kafka, RabbitMQ or AWS (localstack) without
-  duplicating the full `app` service definition.
-- The `app` service now also exposes port `8085` which proxies Protoflow's
-  metadata API (`/api/handlers`).
-
-Volume & infra changes
------------------------
-
-- Persistent data for services is now consolidated under the repository root
-  `_volume_data/` folder. Subfolders include `mongo`, `kafka`, `rabbitmq`,
-  `localstack`, and `openobserve`. Compose files mount from
-  these new paths (e.g. `../../_volume_data/mongo`).
