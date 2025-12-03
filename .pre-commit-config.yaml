@@ -236,3 +236,16 @@ repos:
           - ci
           - chore
           - revert
+
+  # =============================================================================
+  # Code Metrics Hooks - Generate SCC statistics
+  # =============================================================================
+  - repo: local
+    hooks:
+      - id: generate-scc-report
+        name: generate-scc-report (code metrics)
+        entry: scripts/generate-scc-report.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
