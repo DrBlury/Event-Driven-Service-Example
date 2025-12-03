@@ -105,7 +105,10 @@ type processedDemoEvent struct {
 
 func demoHandler() protoflow.JSONMessageHandler[*demoEvent, *processedDemoEvent] {
 	return func(ctx context.Context, evt protoflow.JSONMessageContext[*demoEvent]) ([]protoflow.JSONMessageOutput[*processedDemoEvent], error) {
-		_ = ctx
+		// Context is available for cancellation checks and passing to downstream calls
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 
 		slog.Info("Received date",
 			"year", evt.Payload.Date.Year,

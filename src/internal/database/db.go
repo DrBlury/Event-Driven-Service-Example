@@ -8,7 +8,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type Database struct {
@@ -60,9 +59,5 @@ func (db *Database) Ping(ctx context.Context) error {
 		return errors.New("mongo client is nil")
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	return client.Ping(ctx, readpref.Primary())
+	return client.Ping(ctx, nil)
 }
