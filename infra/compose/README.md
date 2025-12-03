@@ -11,7 +11,7 @@ task up-aws         # Start with LocalStack (AWS)
 task up-nats        # Start with NATS
 task up-http        # Start with HTTP/MockServer
 task up-io          # Start with in-memory queues
-```text
+```
 
 ## Architecture
 
@@ -81,7 +81,7 @@ task gen-env-files
 vim ../env/app.env
 vim ../env/kafka.env
 # etc.
-```text
+```
 
 ## Detailed Documentation
 

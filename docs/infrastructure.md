@@ -556,7 +556,7 @@ task up-<stack>
 ### LocalStack Not Applying Terraform
 
 1. Check Terraform service logs: `docker compose logs terraform`
-2. Verify LocalStack health: `curl <http://localhost:4566/_localstack/health`>
+2. Verify LocalStack health: `curl http://localhost:4566/_localstack/health`
 3. Manually apply: `docker compose exec terraform terraform apply`
 
 ## Best Practices

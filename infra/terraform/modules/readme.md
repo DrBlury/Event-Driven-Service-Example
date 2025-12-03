@@ -55,8 +55,6 @@ module "sns" {
 **Terraform Registry:**
 
 ```hcl
-
-```hcl
 module "sns" {
   source  = "app.terraform.io/org/sns/aws"
   version = "~> 1.0"
