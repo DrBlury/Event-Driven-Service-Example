@@ -166,15 +166,13 @@ The GitHub Actions CI pipeline runs the following checks on every push and pull 
 - **Terraform**: Use `infra/terraform` to study how the service could be provisioned in real environments. Modules and environment definitions live under `infra/terraform/environments` and `infra/terraform/modules`.
 - **Pipelines**: GitHub Actions workflows exercise linting, tests, and container builds. `act` mirrors those runs locally.
 
-## Documentation Map
+## Documentation
 
-- [CODE_METRICS.md](CODE_METRICS.md) – automated code metrics and complexity analysis (updated on every commit).
-- `docs/setup.md` – deeper setup walkthroughs (IDE tooling, credentials, etc.).
-- `docs/infrastructure.md` – Terraform module structure and deployment topology.
-- `docs/protobuf.md` – rationale for protobuf-first domain modeling.
-- `docs/pubsub.md` – how Kafka, RabbitMQ, and AWS are wired via Protoflow.
-- `docs/watermill.md` – Watermill and OTEL integration stories.
-- `docs/message_processing.md` – handler flowcharts, middleware ordering, and poison queue handling.
+- **[Configuration Guide](docs/configuration.md)** – comprehensive reference for all environment variables and settings
+- **[Infrastructure Guide](docs/infrastructure.md)** – Docker Compose stacks, Terraform modules, and deployment patterns
+- **[Code Metrics](docs/code-metrics.md)** – automated code complexity analysis (updated on every commit)
+- **[Contributing](.github/CONTRIBUTING.md)** – development workflow and contribution guidelines
+- **[Security Policy](SECURITY.md)** – vulnerability reporting and security best practices
 
 ## Helpful Utilities
 
