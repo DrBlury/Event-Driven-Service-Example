@@ -38,7 +38,7 @@ func TestDatabasePing(t *testing.T) {
 	t.Run("nil context uses background", func(t *testing.T) {
 		t.Parallel()
 		db := &Database{DB: nil, Cfg: &Config{}}
-		err := db.Ping(context.TODO()) // Use context.TODO() instead of nil for staticcheck compliance
+		err := db.Ping(context.Background()) // Use context.Background() for test contexts
 		if err == nil {
 			t.Error("Ping() with nil DB and nil context should return error")
 		}
