@@ -28,6 +28,14 @@ mkdir -p "${REPO_ROOT}/docs"
     docker run --rm -v "${REPO_ROOT}:/pwd" "${SCC_IMAGE}" scc /pwd
     echo '```'
     echo ""
+    echo "## Metrics by File"
+    echo ""
+    echo "Per-file breakdown sorted by complexity (excluding test files):"
+    echo ""
+    echo '```'
+    docker run --rm -v "${REPO_ROOT}:/pwd" "${SCC_IMAGE}" scc --by-file --sort complexity --exclude-file _test.go /pwd
+    echo '```'
+    echo ""
     echo "## Detailed Statistics"
     echo ""
     echo "For JSON format output, use:"
