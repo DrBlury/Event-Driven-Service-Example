@@ -19,11 +19,13 @@ if cfg.Metrics.Enabled {
 meter := otel.Meter("component-name")
 counter := meter.Int64Counter("requests_total")
 counter.Add(ctx, 1)
+
 ```
 
 ## Configuration
 
 ```go
+
 type Config struct {
     Enabled             bool
     OTELMetricsExporter string  // "console", "otlp", "prometheus"
@@ -32,33 +34,46 @@ type Config struct {
     ServiceName         string  // Resource attribute
     ServiceVersion      string  // Resource attribute
 }
+
 ```
 
 ## Exporters
 
 ### Console
+
 Pretty-printed JSON output for development:
+
 ```go
+
 cfg.OTELMetricsExporter = "console"
+
 ```
 
 ### OTLP
+
 Send metrics to OpenTelemetry collector:
+
 ```go
+
 cfg.OTELMetricsExporter = "otlp"
 cfg.OtelEndpoint = "http://localhost:5081"
+
 ```
 
 ### Prometheus
+
 Expose Prometheus-compatible metrics endpoint:
+
 ```go
+
 cfg.OTELMetricsExporter = "prometheus"
+
 ```
 
 ## Environment Variables
 
 | Variable | Values | Description |
-|----------|--------|-------------|
+| ---------- | -------- | ------------- |
 | `OTEL_METRICS_EXPORTER` | `console`, `otlp`, `prometheus` | Exporter backend |
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | URL | OTLP endpoint for metrics |
 | `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | Headers | Custom headers (key=value pairs) |
@@ -67,6 +82,7 @@ cfg.OTELMetricsExporter = "prometheus"
 ## Usage Example
 
 ```go
+
 // Initialize (typically in main)
 metricsCfg := &metrics.Config{
     Enabled:             true,
@@ -103,6 +119,7 @@ requestCounter.Add(ctx, 1, metric.WithAttributes(
 requestDuration.Record(ctx, 42.5, metric.WithAttributes(
     attribute.String("method", "GET"),
 ))
+
 ```
 
 ## Best Practices
@@ -110,9 +127,11 @@ requestDuration.Record(ctx, 42.5, metric.WithAttributes(
 1. **Use semantic conventions** for metric names and attributes
 2. **Add units** to histogram metrics
 3. **Use appropriate instruments:**
+
    - Counter: Monotonically increasing values (requests, errors)
    - Histogram: Distribution of values (latency, request size)
    - Gauge: Current value (CPU usage, queue depth)
+
 4. **Keep cardinality low** on attribute values
 5. **Use resource attributes** for service-level metadata
 
@@ -126,4 +145,3 @@ requestDuration.Record(ctx, 42.5, metric.WithAttributes(
 - [Configuration Guide](../../../../docs/configuration.md) - Complete configuration reference
 - [OpenTelemetry Metrics](https://opentelemetry.io/docs/specs/otel/metrics/) - Specification
 - [Go Metrics API](https://pkg.go.dev/go.opentelemetry.io/otel/metric) - API reference
-

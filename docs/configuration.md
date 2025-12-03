@@ -121,6 +121,7 @@ OTEL_EXPORTER_OTLP_LOGS_HEADERS="Authorization=Basic <base64>,stream-name=servic
 | `MONGO_PASSWORD` | `example` | MongoDB password |
 
 Example connection string:
+
 ```bash
 MONGO_URL=mongodb://root:example@mongo:27017/serviceflow?authSource=admin
 ```
@@ -200,6 +201,7 @@ Configuration is in `.air.toml`:
 - **Rebuild delay**: 1000ms
 
 Start with hot reload:
+
 ```bash
 task debug              # With selected system
 SYSTEM=kafka task debug # Explicitly select Kafka
@@ -230,7 +232,7 @@ Event contract documentation:
 
 ## Environment File Structure
 
-```
+```text
 infra/env/
 ├── app.env                    # Application configuration
 ├── kafka.env                  # Kafka broker settings

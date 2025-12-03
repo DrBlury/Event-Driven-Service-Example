@@ -15,11 +15,12 @@ cd environments/localstack
 terraform init
 terraform plan
 terraform apply
+
 ```
 
 ## Structure
 
-```
+```text
 terraform/
 ├── modules/              # Reusable Terraform modules
 │   ├── iam/             # IAM roles and policies
@@ -32,16 +33,19 @@ terraform/
 ## Modules
 
 ### IAM Module
+
 Creates IAM roles and policies for AWS services.
 
 **Path:** `modules/iam/`
 
 ### SNS Module
+
 Provisions SNS topics with configurable access policies.
 
 **Path:** `modules/sns/`
 
 ### SQS Module
+
 Creates SQS queues with dead-letter queue support and SNS subscriptions.
 
 **Path:** `modules/sqs/`
@@ -49,19 +53,22 @@ Creates SQS queues with dead-letter queue support and SNS subscriptions.
 ## LocalStack Environment
 
 **What it provisions:**
+
 - SNS topics for event publishing
 - SQS queues for event consumption
 - Queue subscriptions to topics
 - IAM policies for service access
 
 **Resources created:**
+
 - SNS: `example-events-topic`
 - SQS: `example-events-queue`, `example-events-dlq`
 - Subscriptions: SQS → SNS
 
 **Access:**
-- LocalStack endpoint: http://localhost:4566
-- Health check: http://localhost:4566/_localstack/health
+
+- LocalStack endpoint: <http://localhost:4566>
+- Health check: <http://localhost:4566/_localstack/health>
 
 ## Adapting for Production
 
@@ -74,11 +81,12 @@ module "sns" {
   source = "git::https://github.com/org/terraform-modules.git//sns?ref=v1.0.0"
   # ... configuration
 }
+
 ```
 
 ### 2. Create Environment Configs
 
-```
+```text
 environments/
 ├── dev/
 ├── staging/
@@ -88,6 +96,7 @@ environments/
 ### 3. Use Remote State
 
 ```hcl
+
 terraform {
   backend "s3" {
     bucket = "company-terraform-state"
@@ -95,6 +104,7 @@ terraform {
     region = "us-east-1"
   }
 }
+
 ```
 
 ### 4. Manage Secrets Externally
@@ -108,10 +118,12 @@ terraform {
 ## Prerequisites
 
 **For LocalStack (via Docker):**
+
 - Docker Compose
 - `task up-aws` handles everything
 
 **For manual Terraform:**
+
 ```bash
 # Install Terraform v1.5+
 brew install terraform  # macOS
@@ -144,14 +156,15 @@ terraform show
 
 # List resources
 terraform state list
+
 ```
 
 ## Detailed Documentation
 
 See [Infrastructure Guide](../../docs/infrastructure.md) for:
+
 - Complete Terraform workflow
 - Module usage examples
 - Production deployment patterns
 - Security best practices
 - Troubleshooting
-

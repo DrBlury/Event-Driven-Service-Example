@@ -11,13 +11,14 @@ task up-aws         # Start with LocalStack (AWS)
 task up-nats        # Start with NATS
 task up-http        # Start with HTTP/MockServer
 task up-io          # Start with in-memory queues
-```
+```text
 
 ## Architecture
 
 **Base file** (`docker-compose.yml`): Common services (app, MongoDB, OpenObserve)
 
 **Overlay files**: Add messaging backend and related tools
+
 - `docker-compose.kafka.yml` - Kafka + Kafdrop UI
 - `docker-compose.rabbitmq.yml` - RabbitMQ + Management UI
 - `docker-compose.aws.yml` - LocalStack + Terraform provisioner
@@ -40,7 +41,7 @@ docker compose -f docker-compose.yml -f docker-compose.kafka.yml -f docker-compo
 
 All persistent data is stored in `../../_volume_data/`:
 
-```
+```text
 _volume_data/
 ├── mongo/          # MongoDB data
 ├── kafka/          # Kafka logs
@@ -50,6 +51,7 @@ _volume_data/
 ```
 
 **Reset all data:**
+
 ```bash
 docker compose down -v
 rm -rf ../../_volume_data/
@@ -58,7 +60,7 @@ rm -rf ../../_volume_data/
 ## Service Ports
 
 | Service | Port | Description |
-|---------|------|-------------|
+| ------- | ---- | ----------- |
 | app | 8080 | HTTP API |
 | app | 8085 | Protoflow metadata API (if enabled) |
 | mongo-express | 8081 | MongoDB web UI |
@@ -79,14 +81,16 @@ task gen-env-files
 vim ../env/app.env
 vim ../env/kafka.env
 # etc.
-```
+```text
 
 ## Detailed Documentation
 
 See [Infrastructure Guide](../../docs/infrastructure.md) for comprehensive information on:
+
 - Service details and configuration
 - Networking and ports
 - Terraform integration
 - Troubleshooting
 - Best practices
+
 

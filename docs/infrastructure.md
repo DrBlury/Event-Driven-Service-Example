@@ -41,7 +41,7 @@ task down-aws         # Stop AWS/LocalStack stack
 
 The infrastructure uses a modular compose setup:
 
-```
+```text
 infra/compose/
 ├── docker-compose.yml          # Base: app, MongoDB, OpenObserve
 ├── docker-compose.kafka.yml    # Kafka + Kafdrop overlay
@@ -54,11 +54,13 @@ infra/compose/
 ```
 
 **Benefits:**
+
 - No duplication across stack definitions
 - Easy to add new messaging backends
 - Clean separation of concerns
 
 **Manual Usage:**
+
 ```bash
 # Start Kafka stack manually
 docker compose -f infra/compose/docker-compose.yml \
@@ -75,35 +77,41 @@ docker compose -f infra/compose/docker-compose.yml \
 ### Kafka Stack
 
 **Services:**
+
 - `kafka`: Kafka broker (port 9092)
 - `kafdrop`: Web UI for Kafka (port 9000)
 
 **Access:**
+
 - Kafka: `localhost:9092`
-- Kafdrop UI: http://localhost:9000
+- Kafdrop UI: <http://localhost:9000>
 
 **Configuration:** `infra/env/kafka.env`, `infra/env/kafdrop.env`
 
 ### RabbitMQ Stack
 
 **Services:**
+
 - `rabbitmq`: RabbitMQ broker with management plugin
 
 **Access:**
+
 - AMQP: `localhost:5672`
-- Management UI: http://localhost:15672 (guest/guest)
+- Management UI: <http://localhost:15672> (guest/guest)
 
 **Configuration:** `infra/env/rabbitmq.env`
 
 ### AWS/LocalStack Stack
 
 **Services:**
+
 - `localstack`: AWS service emulator (SNS, SQS, S3, etc.)
 - `terraform`: Applies Terraform configuration to LocalStack
 
 **Access:**
+
 - LocalStack: `localhost:4566`
-- Health: http://localhost:4566/_localstack/health
+- Health: <http://localhost:4566/_localstack/health>
 
 **Configuration:** `infra/env/localstack.env`
 
@@ -113,31 +121,37 @@ The stack automatically runs `terraform init` and `terraform apply` to provision
 ### NATS Stack
 
 **Services:**
+
 - `nats`: NATS server
 
 **Access:**
+
 - NATS: `localhost:4222`
 - Monitoring: `localhost:8222`
 
 ### HTTP Stack
 
 **Services:**
+
 - `mockserver`: HTTP mock server for event delivery
 
 **Access:**
+
 - MockServer: `localhost:1080`
-- Dashboard: http://localhost:1080/mockserver/dashboard
+- Dashboard: <http://localhost:1080/mockserver/dashboard>
 
 ### MongoDB
 
 **Configuration:**
+
 - Database: `serviceflow`
 - User: `root` / Password: `example`
 - Connection: `mongodb://root:example@mongo:27017/serviceflow?authSource=admin`
 
 **Access:**
+
 - MongoDB: `localhost:27017`
-- Mongo Express UI: http://localhost:8081
+- Mongo Express UI: <http://localhost:8081>
 
 **Configuration:** `infra/env/mongo.env`, `infra/env/mongo-express.env`
 
@@ -146,7 +160,8 @@ The stack automatically runs `terraform init` and `terraform apply` to provision
 Observability backend for logs, traces, and metrics.
 
 **Access:**
-- UI: http://localhost:5080
+
+- UI: <http://localhost:5080>
 - OTLP gRPC: `localhost:5081`
 - Credentials: `root@example.com` / `Complexpass#123`
 
@@ -154,6 +169,7 @@ Observability backend for logs, traces, and metrics.
 
 **Integration:**
 Set these environment variables in `app.env`:
+
 ```bash
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT="http://openobserve:5081"
 OTEL_EXPORTER_OTLP_LOGS_HEADERS="Authorization=Basic <base64>,stream-name=service-name,organization=default"
@@ -163,7 +179,7 @@ OTEL_EXPORTER_OTLP_LOGS_HEADERS="Authorization=Basic <base64>,stream-name=servic
 
 All persistent data is stored in `_volume_data/` at the repository root:
 
-```
+```text
 _volume_data/
 ├── mongo/          # MongoDB data
 ├── kafka/          # Kafka logs and data
@@ -173,6 +189,7 @@ _volume_data/
 ```
 
 **Note:** `_volume_data/` is in `.gitignore`. To reset all data:
+
 ```bash
 docker compose down -v
 rm -rf _volume_data/
@@ -190,6 +207,7 @@ SYSTEM=kafka task debug # Explicitly select Kafka
 ```
 
 **Configuration:** `.air.toml`
+
 - Watches: `src/` directory
 - Excludes: tests, vendor, generated code
 - Rebuild delay: 1000ms
@@ -202,9 +220,9 @@ Enable the Protoflow metadata API to inspect registered handlers:
 # In infra/env/app.env
 PROTOFLOW_WEBUI_ENABLED=true
 PROTOFLOW_WEBUI_PORT=8085
-```
+```text
 
-Access: http://localhost:8085/api/handlers
+Access: <http://localhost:8085/api/handlers>
 
 ### Debug Without Hot Reload
 
@@ -221,7 +239,8 @@ task dev-no-reload
 Terraform modules provision cloud resources. The LocalStack environment demonstrates the patterns.
 
 **Structure:**
-```
+
+```text
 infra/terraform/
 ├── modules/
 │   ├── iam/        # IAM roles and policies
@@ -234,22 +253,26 @@ infra/terraform/
 ### LocalStack Deployment
 
 The Terraform configuration creates:
+
 - SNS topics for event publishing
 - SQS queues for event consumption
 - Queue-to-topic subscriptions
 
 **Automated (via Docker Compose):**
+
 ```bash
 task up-aws
 ```
 
 The `terraform` service automatically runs:
+
 ```bash
 terraform init
 terraform apply -auto-approve
 ```
 
 **Manual Execution:**
+
 ```bash
 cd infra/terraform/environments/localstack
 terraform init
@@ -258,6 +281,7 @@ terraform apply
 ```
 
 **Prerequisites:**
+
 ```bash
 # Install Terraform v1.5+
 brew install terraform  # macOS
@@ -275,6 +299,7 @@ export AWS_SECRET_ACCESS_KEY=test
 Creates roles and policies for networking components.
 
 **Usage:**
+
 ```hcl
 module "iam" {
   source = "../../modules/iam"
@@ -287,6 +312,7 @@ module "iam" {
 Creates SNS topics and access policies.
 
 **Usage:**
+
 ```hcl
 module "sns" {
   source      = "../../modules/sns"
@@ -300,6 +326,7 @@ module "sns" {
 Creates SQS queues with dead-letter queue support.
 
 **Usage:**
+
 ```hcl
 module "sqs" {
   source     = "../../modules/sqs"
@@ -313,6 +340,7 @@ module "sqs" {
 For production deployment:
 
 1. **Move modules to a shared repository:**
+
    ```hcl
    module "sns" {
      source = "git::https://github.com/org/terraform-modules//sns?ref=v1.0.0"
@@ -320,6 +348,7 @@ For production deployment:
    ```
 
 2. **Create environment-specific configurations:**
+
    ```
    infra/terraform/environments/
    ├── dev/
@@ -328,6 +357,7 @@ For production deployment:
    ```
 
 3. **Use remote state:**
+
    ```hcl
    terraform {
      backend "s3" {
@@ -350,11 +380,13 @@ For production deployment:
 **Dockerfile:** `infra/build/dockerfiles/Dockerfile`
 
 **Multi-stage build:**
+
 1. **Base**: Go 1.23 with dependencies
 2. **Builder**: Compiles the Go binary
 3. **Runtime**: Minimal distroless image with binary
 
 **Build:**
+
 ```bash
 docker build -f infra/build/dockerfiles/Dockerfile -t event-service:latest .
 ```
@@ -375,6 +407,7 @@ The repository includes workflows in `.github/workflows/`:
 - Security: Trivy, gosec, govulncheck, Trufflehog
 
 **Local CI Emulation:**
+
 ```bash
 task ci  # Runs all GitHub Actions locally via act
 ```
@@ -393,6 +426,7 @@ pre-commit run --all-files
 ```
 
 **Hooks include:**
+
 - golangci-lint, gofmt, goimports
 - buf-lint (protobuf)
 - terraform fmt/validate
@@ -451,6 +485,7 @@ All services communicate via Docker's default bridge network. Service names act 
 ### Port Mapping
 
 **Exposed Ports:**
+
 - 8080: Application HTTP API
 - 8085: Protoflow metadata API (if enabled)
 - 8081: Mongo Express
@@ -460,6 +495,7 @@ All services communicate via Docker's default bridge network. Service names act 
 - 5081: OpenObserve OTLP endpoint
 
 **Internal Ports:**
+
 - 27017: MongoDB
 - 9092: Kafka
 - 5672: RabbitMQ AMQP
@@ -520,7 +556,7 @@ task up-<stack>
 ### LocalStack Not Applying Terraform
 
 1. Check Terraform service logs: `docker compose logs terraform`
-2. Verify LocalStack health: `curl http://localhost:4566/_localstack/health`
+2. Verify LocalStack health: `curl <http://localhost:4566/_localstack/health`>
 3. Manually apply: `docker compose exec terraform terraform apply`
 
 ## Best Practices

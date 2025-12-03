@@ -19,11 +19,13 @@ if cfg.Tracing.Enabled {
 tracer := otel.Tracer("component-name")
 ctx, span := tracer.Start(ctx, "operation-name")
 defer span.End()
+
 ```
 
 ## Configuration
 
 ```go
+
 type Config struct {
     Enabled            bool
     OTELTracesExporter string  // "console", "otlp", or empty (disabled)
@@ -32,35 +34,48 @@ type Config struct {
     ServiceName        string  // Resource attribute
     ServiceVersion     string  // Resource attribute
 }
+
 ```
 
 ## Exporters
 
 ### Console
+
 Pretty-printed trace output for development:
+
 ```go
+
 cfg.OTELTracesExporter = "console"
+
 ```
 
 ### OTLP
+
 Send traces to OpenTelemetry collector:
+
 ```go
+
 cfg.OTELTracesExporter = "otlp"
 cfg.OtelEndpoint = "http://localhost:5081"
+
 ```
 
 ### Disabled
+
 Use no-op provider (no overhead):
+
 ```go
+
 cfg.Enabled = false
 // or
 cfg.OTELTracesExporter = ""
+
 ```
 
 ## Environment Variables
 
 | Variable | Values | Description |
-|----------|--------|-------------|
+| ---------- | -------- | ------------- |
 | `TRACING_ENABLED` | `true`, `false` | Enable distributed tracing |
 | `OTEL_TRACES_EXPORTER` | `console`, `otlp` | Exporter backend |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | URL | OTLP endpoint for traces |
@@ -69,6 +84,7 @@ cfg.OTELTracesExporter = ""
 ## Usage Example
 
 ```go
+
 // Initialize (typically in main)
 tracingCfg := &tracing.Config{
     Enabled:            true,
@@ -112,6 +128,7 @@ func processData(ctx context.Context) {
     defer span.End()
     // ... work ...
 }
+
 ```
 
 ## Automatic Instrumentation
@@ -119,6 +136,7 @@ func processData(ctx context.Context) {
 For HTTP servers and clients, use instrumentation libraries:
 
 ```go
+
 import "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 // Wrap HTTP handler
@@ -128,6 +146,7 @@ handler := otelhttp.NewHandler(myHandler, "my-operation")
 client := &http.Client{
     Transport: otelhttp.NewTransport(http.DefaultTransport),
 }
+
 ```
 
 ## Best Practices
@@ -143,6 +162,7 @@ client := &http.Client{
 ## Span Lifecycle
 
 ```go
+
 ctx, span := tracer.Start(ctx, "operation")
 defer span.End()  // Always defer End()
 
@@ -162,6 +182,7 @@ if err != nil {
     span.RecordError(err)
     span.SetStatus(codes.Error, err.Error())
 }
+
 ```
 
 ## Related Packages
@@ -175,4 +196,3 @@ if err != nil {
 - [OpenTelemetry Tracing](https://opentelemetry.io/docs/specs/otel/trace/) - Specification
 - [Go Tracing API](https://pkg.go.dev/go.opentelemetry.io/otel/trace) - API reference
 - [Instrumentation Libraries](https://opentelemetry.io/ecosystem/registry/?language=go&component=instrumentation) - Pre-built integrations
-
