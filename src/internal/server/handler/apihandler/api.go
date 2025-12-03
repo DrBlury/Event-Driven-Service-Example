@@ -122,7 +122,26 @@ func NewAPIHandler(
 	baseURL string,
 	docsTemplatePath string,
 ) *APIHandler {
-	resp := responder.NewResponder(
+	resp := createResponder(logger)
+	swaggerProvider := createSwaggerProvider()
+	infoProvider := func() any { return info }
+	customTmpl := parseDocsTemplate(docsTemplatePath, logger)
+
+	uiHandlers := createUIHandlers(resp, baseURL, infoProvider, swaggerProvider, customTmpl)
+	asyncAPIHandler := createAsyncAPIHandler(resp, baseURL)
+
+	return &APIHandler{
+		InfoHandler:     uiHandlers[UIStoplight],
+		AppLogic:        appLogic,
+		log:             logger,
+		baseURL:         baseURL,
+		uiHandlers:      uiHandlers,
+		asyncAPIHandler: asyncAPIHandler,
+	}
+}
+
+func createResponder(logger *slog.Logger) *responder.Responder {
+	return responder.NewResponder(
 		responder.WithLogger(logger),
 		responder.WithErrorClassifier(func(err error) (int, bool) {
 			switch {
@@ -139,20 +158,25 @@ func NewAPIHandler(
 			return 0, false
 		}),
 	)
+}
 
-	swaggerProvider := func() ([]byte, error) {
+func createSwaggerProvider() func() ([]byte, error) {
+	return func() ([]byte, error) {
 		swagger, err := generator.GetSwagger()
 		if err != nil {
 			return nil, err
 		}
 		return swagger.MarshalJSON()
 	}
+}
 
-	infoProvider := func() any {
-		return info
-	}
-
-	// Map of UI type to template
+func createUIHandlers(
+	resp *responder.Responder,
+	baseURL string,
+	infoProvider func() any,
+	swaggerProvider func() ([]byte, error),
+	customTmpl *template.Template,
+) map[string]*infohandler.InfoHandler {
 	uiTemplates := map[string]*template.Template{
 		UIStoplight: stoplightTemplate,
 		UIScalar:    scalarTemplate,
@@ -160,54 +184,48 @@ func NewAPIHandler(
 		UIRedoc:     redocTemplate,
 	}
 
-	// Check for custom template override
-	customTmpl := parseDocsTemplate(docsTemplatePath, logger)
-
-	// Create handlers for each UI type
 	uiHandlers := make(map[string]*infohandler.InfoHandler)
 	for key, tmpl := range uiTemplates {
 		templateToUse := tmpl
 		if customTmpl != nil {
-			templateToUse = customTmpl // Custom template overrides all UI types
+			templateToUse = customTmpl
 		}
-
-		options := []infohandler.InfoOption{
-			infohandler.WithInfoResponder(resp),
-			infohandler.WithBaseURL(baseURL),
-			infohandler.WithInfoProvider(infoProvider),
-			infohandler.WithSwaggerProvider(swaggerProvider),
-			infohandler.WithOpenAPITemplate(templateToUse),
-			infohandler.WithOpenAPITemplateData(func(_ *http.Request, base string) any {
-				return map[string]any{
-					"BaseURL": base,
-					"SpecURL": openAPISpecURL(base),
-				}
-			}),
-		}
-
-		uiHandlers[key] = infohandler.NewInfoHandler(options...)
+		uiHandlers[key] = createInfoHandler(resp, baseURL, infoProvider, swaggerProvider, templateToUse)
 	}
 
-	// Default handler (Stoplight)
-	defaultHandler := uiHandlers[UIStoplight]
+	return uiHandlers
+}
 
-	// Create AsyncAPI handler using apiweaver's built-in support
-	asyncAPIHandler := infohandler.NewInfoHandler(
+func createInfoHandler(
+	resp *responder.Responder,
+	baseURL string,
+	infoProvider func() any,
+	swaggerProvider func() ([]byte, error),
+	tmpl *template.Template,
+) *infohandler.InfoHandler {
+	return infohandler.NewInfoHandler(
+		infohandler.WithInfoResponder(resp),
+		infohandler.WithBaseURL(baseURL),
+		infohandler.WithInfoProvider(infoProvider),
+		infohandler.WithSwaggerProvider(swaggerProvider),
+		infohandler.WithOpenAPITemplate(tmpl),
+		infohandler.WithOpenAPITemplateData(func(_ *http.Request, base string) any {
+			return map[string]any{
+				"BaseURL": base,
+				"SpecURL": openAPISpecURL(base),
+			}
+		}),
+	)
+}
+
+func createAsyncAPIHandler(resp *responder.Responder, baseURL string) *infohandler.InfoHandler {
+	return infohandler.NewInfoHandler(
 		infohandler.WithInfoResponder(resp),
 		infohandler.WithBaseURL(baseURL),
 		infohandler.WithAsyncAPIProvider(func() ([]byte, error) {
 			return asyncAPISpec, nil
 		}),
 	)
-
-	return &APIHandler{
-		InfoHandler:     defaultHandler,
-		AppLogic:        appLogic,
-		log:             logger,
-		baseURL:         baseURL,
-		uiHandlers:      uiHandlers,
-		asyncAPIHandler: asyncAPIHandler,
-	}
 }
 
 // GetOpenAPIHTML serves the OpenAPI documentation with UI selection via query parameter.
