@@ -1,7 +1,10 @@
-edition = "2024";
+edition = "2023";
 
 package domain.v1;
 
+import "google/protobuf/descriptor.proto";
+
+option features.field_presence = IMPLICIT;
 option go_package = "drblury/event-driven-service/internal/domain";
 
 message Date {
