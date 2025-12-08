@@ -1,10 +1,12 @@
-syntax = "proto3";
+edition = "2023";
 
 package domain.v1;
 
-option go_package = "drblury/event-driven-service/internal/domain";
-
+import "google/protobuf/descriptor.proto";
 import "domain/v1/date.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "drblury/event-driven-service/internal/domain";
 
 // ExampleRecord demonstrates the payload this sample service works with.
 message ExampleRecord {
