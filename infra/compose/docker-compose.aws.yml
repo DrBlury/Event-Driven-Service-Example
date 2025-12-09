@@ -30,7 +30,7 @@ services:
       - ../../_volume_data/localstack:/persisted-data
     stop_grace_period: 60s
     healthcheck:
-      test: ["CMD", "sh", "-c", "awslocal sts get-caller-identity || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 3s
       timeout: 1s
       start_period: 3s
