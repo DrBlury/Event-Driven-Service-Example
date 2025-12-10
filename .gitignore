@@ -5,3 +5,4 @@ _volume_data/
 .DS_Store
 coverage.out
 sbom/
+proto/.buf-deps/

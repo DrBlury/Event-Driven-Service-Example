@@ -7,6 +7,7 @@
 package domain
 
 import (
+	date "google.golang.org/genproto/googleapis/type/date"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	_ "google.golang.org/protobuf/types/descriptorpb"
@@ -103,7 +104,7 @@ func (x *ExampleRecord) GetTags() []string {
 type ExampleMeta struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	RequestedBy      string                 `protobuf:"bytes,1,opt,name=requested_by,json=requestedBy" json:"requested_by,omitempty"`
-	DesiredStartDate *Date                  `protobuf:"bytes,2,opt,name=desired_start_date,json=desiredStartDate" json:"desired_start_date,omitempty"`
+	DesiredStartDate *date.Date             `protobuf:"bytes,2,opt,name=desired_start_date,json=desiredStartDate" json:"desired_start_date,omitempty"`
 	RequiresFollowUp bool                   `protobuf:"varint,3,opt,name=requires_follow_up,json=requiresFollowUp" json:"requires_follow_up,omitempty"`
 	Priority         int32                  `protobuf:"varint,4,opt,name=priority" json:"priority,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -147,7 +148,7 @@ func (x *ExampleMeta) GetRequestedBy() string {
 	return ""
 }
 
-func (x *ExampleMeta) GetDesiredStartDate() *Date {
+func (x *ExampleMeta) GetDesiredStartDate() *date.Date {
 	if x != nil {
 		return x.DesiredStartDate
 	}
@@ -174,7 +175,7 @@ type ExampleResult struct {
 	RecordId      string                 `protobuf:"bytes,1,opt,name=record_id,json=recordId" json:"record_id,omitempty"`
 	Status        string                 `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 	Note          string                 `protobuf:"bytes,3,opt,name=note" json:"note,omitempty"`
-	ProcessedOn   *Date                  `protobuf:"bytes,4,opt,name=processed_on,json=processedOn" json:"processed_on,omitempty"`
+	ProcessedOn   *date.Date             `protobuf:"bytes,4,opt,name=processed_on,json=processedOn" json:"processed_on,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -230,7 +231,7 @@ func (x *ExampleResult) GetNote() string {
 	return ""
 }
 
-func (x *ExampleResult) GetProcessedOn() *Date {
+func (x *ExampleResult) GetProcessedOn() *date.Date {
 	if x != nil {
 		return x.ProcessedOn
 	}
@@ -241,23 +242,23 @@ var File_domain_v1_example_proto protoreflect.FileDescriptor
 
 const file_domain_v1_example_proto_rawDesc = "" +
 	"\n" +
-	"\x17domain/v1/example.proto\x12\tdomain.v1\x1a google/protobuf/descriptor.proto\x1a\x14domain/v1/date.proto\"\xa4\x01\n" +
+	"\x17domain/v1/example.proto\x12\tdomain.v1\x1a google/protobuf/descriptor.proto\x1a\x16google/type/date.proto\"\xa4\x01\n" +
 	"\rExampleRecord\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12*\n" +
 	"\x04meta\x18\x04 \x01(\v2\x16.domain.v1.ExampleMetaR\x04meta\x12\x12\n" +
-	"\x04tags\x18\x05 \x03(\tR\x04tags\"\xb9\x01\n" +
+	"\x04tags\x18\x05 \x03(\tR\x04tags\"\xbb\x01\n" +
 	"\vExampleMeta\x12!\n" +
-	"\frequested_by\x18\x01 \x01(\tR\vrequestedBy\x12=\n" +
-	"\x12desired_start_date\x18\x02 \x01(\v2\x0f.domain.v1.DateR\x10desiredStartDate\x12,\n" +
+	"\frequested_by\x18\x01 \x01(\tR\vrequestedBy\x12?\n" +
+	"\x12desired_start_date\x18\x02 \x01(\v2\x11.google.type.DateR\x10desiredStartDate\x12,\n" +
 	"\x12requires_follow_up\x18\x03 \x01(\bR\x10requiresFollowUp\x12\x1a\n" +
-	"\bpriority\x18\x04 \x01(\x05R\bpriority\"\x8c\x01\n" +
+	"\bpriority\x18\x04 \x01(\x05R\bpriority\"\x8e\x01\n" +
 	"\rExampleResult\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x12\n" +
-	"\x04note\x18\x03 \x01(\tR\x04note\x122\n" +
-	"\fprocessed_on\x18\x04 \x01(\v2\x0f.domain.v1.DateR\vprocessedOnB3Z,drblury/event-driven-service/internal/domain\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x04note\x18\x03 \x01(\tR\x04note\x124\n" +
+	"\fprocessed_on\x18\x04 \x01(\v2\x11.google.type.DateR\vprocessedOnB3Z,drblury/event-driven-service/internal/domain\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var (
 	file_domain_v1_example_proto_rawDescOnce sync.Once
@@ -276,12 +277,12 @@ var file_domain_v1_example_proto_goTypes = []any{
 	(*ExampleRecord)(nil), // 0: domain.v1.ExampleRecord
 	(*ExampleMeta)(nil),   // 1: domain.v1.ExampleMeta
 	(*ExampleResult)(nil), // 2: domain.v1.ExampleResult
-	(*Date)(nil),          // 3: domain.v1.Date
+	(*date.Date)(nil),     // 3: google.type.Date
 }
 var file_domain_v1_example_proto_depIdxs = []int32{
 	1, // 0: domain.v1.ExampleRecord.meta:type_name -> domain.v1.ExampleMeta
-	3, // 1: domain.v1.ExampleMeta.desired_start_date:type_name -> domain.v1.Date
-	3, // 2: domain.v1.ExampleResult.processed_on:type_name -> domain.v1.Date
+	3, // 1: domain.v1.ExampleMeta.desired_start_date:type_name -> google.type.Date
+	3, // 2: domain.v1.ExampleResult.processed_on:type_name -> google.type.Date
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -294,7 +295,6 @@ func file_domain_v1_example_proto_init() {
 	if File_domain_v1_example_proto != nil {
 		return
 	}
-	file_domain_v1_date_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

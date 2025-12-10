@@ -1,5 +1,6 @@
 {
   "files.associations": {
     ".trufflehog-exclude": "ignore"
-  }
+  },
+  "protobuf.protoc.path": "/Users/julian.bensch/Library/Application Support/Code/User/globalStorage/drblury.protobuf-vsc/bin/protoc"
 }
