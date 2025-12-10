@@ -3,7 +3,6 @@ edition = "2023";
 package domain.v1;
 
 import "google/protobuf/descriptor.proto";
-import "domain/v1/date.proto";
 import "google/type/date.proto";
 
 option features.field_presence = IMPLICIT;
