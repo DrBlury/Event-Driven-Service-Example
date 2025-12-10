@@ -8,7 +8,7 @@ option features.field_presence = IMPLICIT;
 option go_package = "drblury/event-driven-service/internal/domain";
 
 message Date {
-  int32 year = 1;
+  int32 year  = 1;
   int32 month = 2;
-  int32 day = 3;
+  int32 day   = 3;
 }
