@@ -52,7 +52,7 @@ jobs:
                   formats: ${{ inputs.sbom-formats }}
 
             - name: Upload SBOMs as artifacts
-              uses: actions/upload-artifact@v5
+              uses: actions/upload-artifact@v6
               with:
                   name: sbom-artifacts
                   path: |
@@ -71,7 +71,7 @@ jobs:
 
             - name: Upload Grype SARIF as artifact
               if: ${{ inputs.run-grype && always() }}
-              uses: actions/upload-artifact@v5
+              uses: actions/upload-artifact@v6
               with:
                   name: grype-sarif
                   path: ${{ steps.grype-scan.outputs.sarif }}
