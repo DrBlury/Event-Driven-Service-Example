@@ -7,8 +7,8 @@
 ARG CGO_ENABLED=0
 
 # Builder image: Use bookworm (Debian/glibc) for CGO, alpine for static builds
-FROM golang:1.25-alpine AS builder-static
-FROM golang:1.25-bookworm AS builder-cgo
+FROM golang:1.26-alpine AS builder-static
+FROM golang:1.26-bookworm AS builder-cgo
 FROM builder-static AS builder-0
 FROM builder-cgo AS builder-1
 # hadolint ignore=DL3006
