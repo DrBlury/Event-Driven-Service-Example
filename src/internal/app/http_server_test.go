@@ -111,8 +111,9 @@ func TestRegisterHTTPServerLifecycleStartsAndStopsServer(t *testing.T) {
 		t.Fatalf("app.Stop returned error: %v", err)
 	}
 
-	_, err = client.Get("http://" + addr + "/info/openapi.json")
+	resp, err = client.Get("http://" + addr + "/info/openapi.json")
 	if err == nil {
+		resp.Body.Close()
 		t.Fatal("expected request failure after shutdown")
 	}
 }
