@@ -103,7 +103,7 @@ func RegisterLifecycle(lc fx.Lifecycle, svc *protoflow.Service, logger *slog.Log
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			runCtx, cancel = context.WithCancel(context.Background())
+			runCtx, cancel = newLifecycleContext()
 			logEventServiceStartup(logger, svc)
 
 			wg.Add(1)
@@ -143,6 +143,10 @@ func RegisterLifecycle(lc fx.Lifecycle, svc *protoflow.Service, logger *slog.Log
 			}
 		},
 	})
+}
+
+func newLifecycleContext() (context.Context, context.CancelFunc) {
+	return context.WithCancel(context.Background())
 }
 
 // StartEventService runs the event consumer loop until the context is cancelled.
