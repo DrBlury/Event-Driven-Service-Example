@@ -129,13 +129,16 @@ func provideDatabase(lc fx.Lifecycle, cfg *database.Config, logger *slog.Logger)
 		return nil, errors.New("database configuration is required")
 	}
 
-	db, err := database.NewDatabase(cfg, log, context.Background())
-	if err != nil {
-		log.Error("failed to connect to database", "error", err)
-		return nil, err
-	}
+	db := &database.Database{Cfg: cfg}
 
 	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if err := db.Connect(ctx, log); err != nil {
+				log.Error("failed to connect to database", "error", err)
+				return err
+			}
+			return nil
+		},
 		OnStop: func(ctx context.Context) error {
 			if err := db.Close(ctx); err != nil {
 				log.Error("failed to disconnect from database", "error", err)

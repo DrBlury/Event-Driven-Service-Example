@@ -40,7 +40,6 @@ func (a *AppLogic) HandleExample(ctx context.Context, record *domain.ExampleReco
 }
 
 // EmitExampleEvent publishes the example payload so downstream processors can pick it up.
-// This method acquires a read lock to safely access shared configuration.
 func (a *AppLogic) emitExampleEvent(ctx context.Context, record *domain.ExampleRecord) error {
 	if a == nil {
 		return errors.New("applogic is nil")

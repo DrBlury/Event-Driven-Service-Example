@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
 
+	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/logging/metrics"
@@ -130,6 +132,29 @@ func TestRegisterTelemetryHooksRejectsInvalidMetricsExporter(t *testing.T) {
 
 	if err := app.Start(context.Background()); err == nil {
 		t.Fatal("expected startup error")
+	}
+}
+
+func TestProvideDatabaseUsesLifecycleStartContext(t *testing.T) {
+	app := fx.New(
+		fx.Supply(&database.Config{
+			MongoURL: "mongodb://localhost:27017/?serverSelectionTimeoutMS=5000",
+			MongoDB:  "testdb",
+		}),
+		fx.Supply(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))),
+		fx.Provide(provideDatabase),
+		fx.Invoke(func(*database.Database) {}),
+	)
+	if err := app.Err(); err != nil {
+		t.Fatalf("fx.New returned error: %v", err)
+	}
+
+	startCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := app.Start(startCtx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("app.Start error = %v, want context canceled", err)
 	}
 }
 

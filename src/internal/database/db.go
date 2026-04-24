@@ -16,33 +16,63 @@ type Database struct {
 }
 
 func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Database, error) {
-	logger.Info("Connecting to MongoDB", "url", cfg.MongoURL, "db", cfg.MongoDB, "user", cfg.MongoUser)
+	db := &Database{Cfg: cfg}
+
+	if err := db.Connect(ctx, logger); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+// Connect initializes the MongoDB client and verifies connectivity.
+func (db *Database) Connect(ctx context.Context, logger *slog.Logger) error {
+	if db == nil {
+		return errors.New("database not configured")
+	}
+	if db.Cfg == nil {
+		return errors.New("database configuration is required")
+	}
+	if db.DB != nil {
+		return nil
+	}
+
+	log := logger
+	if log == nil {
+		log = slog.Default()
+	}
+
+	log.Info("Connecting to MongoDB", "url", db.Cfg.MongoURL, "db", db.Cfg.MongoDB, "user", db.Cfg.MongoUser)
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	clientOpts := options.Client().ApplyURI(cfg.MongoURL)
-
+	clientOpts := options.Client().ApplyURI(db.Cfg.MongoURL)
 	clientOpts.Auth = &options.Credential{
-		Username: cfg.MongoUser,
-		Password: cfg.MongoPassword,
+		Username: db.Cfg.MongoUser,
+		Password: db.Cfg.MongoPassword,
+	}
+
+	if err := clientOpts.Validate(); err != nil {
+		log.Error("MongoDB client options validation failed", "error", err)
+		return err
 	}
 
 	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
-		logger.Error("MongoDB connection failed", "error", err)
-		return nil, err
+		log.Error("MongoDB connection failed", "error", err)
+		return err
 	}
-	// Ping the database to verify connection
 	if err := client.Ping(ctx, nil); err != nil {
-		logger.Error("MongoDB ping failed", "error", err)
-		return nil, err
+		log.Error("MongoDB ping failed", "error", err)
+		_ = client.Disconnect(ctx)
+		return err
 	}
-	logger.Info("Connected to MongoDB successfully")
-	return &Database{
-		DB:  client.Database(cfg.MongoDB),
-		Cfg: cfg,
-	}, nil
+
+	db.DB = client.Database(db.Cfg.MongoDB)
+	log.Info("Connected to MongoDB successfully")
+
+	return nil
 }
 
 // Close disconnects the MongoDB client.

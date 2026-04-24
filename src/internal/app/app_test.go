@@ -14,6 +14,7 @@ import (
 
 	"github.com/drblury/apiweaver/router"
 	"github.com/drblury/protoflow"
+	"go.uber.org/fx"
 )
 
 func TestLoadConfigFromMetadata(t *testing.T) {
@@ -55,15 +56,21 @@ func TestNewFromConfigStartFailsWithoutDatabaseConfig(t *testing.T) {
 }
 
 func TestNewFromConfigStartFailsWithInvalidDatabaseURL(t *testing.T) {
-	cfg := minimalConfig()
-	cfg.Database = &database.Config{
-		MongoURL:      "invalid://not-a-valid-url",
-		MongoDB:       "testdb",
-		MongoUser:     "user",
-		MongoPassword: "pass",
+	app := fx.New(
+		fx.Supply(&database.Config{
+			MongoURL:      "invalid://not-a-valid-url",
+			MongoDB:       "testdb",
+			MongoUser:     "user",
+			MongoPassword: "pass",
+		}),
+		fx.Supply(provideLogger(&logging.Config{Level: "error", Format: "json"})),
+		fx.Provide(provideDatabase),
+		fx.Invoke(func(*database.Database) {}),
+	)
+	if err := app.Err(); err != nil {
+		t.Fatalf("fx.New returned error: %v", err)
 	}
 
-	app := NewFromConfig(cfg, nil)
 	if err := app.Start(context.Background()); err == nil {
 		t.Fatal("expected startup error")
 	}

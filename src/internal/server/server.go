@@ -54,7 +54,10 @@ func (s *Server) Start(errChan chan<- error) error {
 	go func() {
 		err := s.server.Serve(listener)
 		if errChan != nil {
-			errChan <- err
+			select {
+			case errChan <- err:
+			default:
+			}
 		}
 	}()
 	return nil
