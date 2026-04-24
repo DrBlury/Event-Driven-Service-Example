@@ -3,8 +3,9 @@ package events
 import (
 	"testing"
 
-	"drblury/event-driven-service/internal/domain"
 	datepb "google.golang.org/genproto/googleapis/type/date"
+
+	"drblury/event-driven-service/internal/domain"
 )
 
 func TestNewValidator(t *testing.T) {

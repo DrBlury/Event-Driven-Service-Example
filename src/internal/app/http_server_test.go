@@ -24,14 +24,14 @@ func TestRunHTTPServer(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Server: &server.Config{Address: ":0"}}
 		errChan := make(chan error, 1)
-		runHTTPServer(nil, cfg, logger, errChan)
+		_ = runHTTPServer(nil, cfg, logger, errChan)
 	})
 
 	t.Run("nil config", func(t *testing.T) {
 		t.Parallel()
 		srv := &server.Server{}
 		errChan := make(chan error, 1)
-		runHTTPServer(srv, nil, logger, errChan)
+		_ = runHTTPServer(srv, nil, logger, errChan)
 	})
 
 	t.Run("nil server config", func(t *testing.T) {
@@ -39,18 +39,18 @@ func TestRunHTTPServer(t *testing.T) {
 		srv := &server.Server{}
 		cfg := &Config{Server: nil}
 		errChan := make(chan error, 1)
-		runHTTPServer(srv, cfg, logger, errChan)
+		_ = runHTTPServer(srv, cfg, logger, errChan)
 	})
 
 	t.Run("with nil error channel", func(t *testing.T) {
 		t.Parallel()
 		cfg := &Config{Server: &server.Config{Address: ":0"}}
-		runHTTPServer(nil, cfg, logger, nil)
+		_ = runHTTPServer(nil, cfg, logger, nil)
 	})
 
 	t.Run("all nils does not panic", func(t *testing.T) {
 		t.Parallel()
-		runHTTPServer(nil, nil, nil, nil)
+		_ = runHTTPServer(nil, nil, nil, nil)
 	})
 }
 
@@ -227,7 +227,7 @@ func TestHTTPServerLifecycle(t *testing.T) {
 		}
 
 		errChan := make(chan error, 1)
-		runHTTPServer(srv, cfg, logger, errChan)
+		_ = runHTTPServer(srv, cfg, logger, errChan)
 
 		time.Sleep(50 * time.Millisecond)
 
