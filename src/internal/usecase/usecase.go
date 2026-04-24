@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 
 	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/events"
 
 	"github.com/drblury/protoflow"
 )
@@ -16,50 +16,53 @@ type AppLogic struct {
 	log           *slog.Logger
 	eventProducer protoflow.Producer
 	exampleTopic  string
-	mu            sync.RWMutex // protects eventProducer and exampleTopic
 }
 
 func NewAppLogic(
 	db *database.Database,
 	logger *slog.Logger,
 ) (*AppLogic, error) {
+	return NewConfiguredAppLogic(db, logger, nil, nil)
+}
 
-	return &AppLogic{
-		db:  db,
-		log: logger,
-	}, nil
+func NewConfiguredAppLogic(
+	db *database.Database,
+	logger *slog.Logger,
+	eventsCfg *events.Config,
+	producer protoflow.Producer,
+) (*AppLogic, error) {
+	appLogic := &AppLogic{
+		db:            db,
+		log:           logger,
+		eventProducer: producer,
+	}
+	if eventsCfg != nil {
+		appLogic.exampleTopic = eventsCfg.ExampleConsumeQueue
+	}
+	return appLogic, nil
 }
 
 // SetEventProducer wires the event producer used by PublishEvent.
-// This method is thread-safe.
 func (a *AppLogic) SetEventProducer(producer protoflow.Producer) {
 	if a == nil {
 		return
 	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.eventProducer = producer
 }
 
 // SetExampleTopic configures the queue/topic used for outgoing example events.
-// This method is thread-safe.
 func (a *AppLogic) SetExampleTopic(topic string) {
 	if a == nil {
 		return
 	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.exampleTopic = topic
 }
 
 // ExampleTopic returns the configured example topic.
-// This method is thread-safe.
 func (a *AppLogic) ExampleTopic() string {
 	if a == nil {
 		return ""
 	}
-	a.mu.RLock()
-	defer a.mu.RUnlock()
 	return a.exampleTopic
 }
 

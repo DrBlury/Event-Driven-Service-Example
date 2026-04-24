@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"drblury/event-driven-service/internal/domain"
+	datepb "google.golang.org/genproto/googleapis/type/date"
 )
 
 func TestStoreExampleRecordNilRecord(t *testing.T) {
@@ -251,7 +252,7 @@ func TestStoreExampleRecordWithMeta(t *testing.T) {
 			RequestedBy:      "test-automation",
 			RequiresFollowUp: true,
 			Priority:         10,
-			DesiredStartDate: &domain.Date{
+			DesiredStartDate: &datepb.Date{
 				Year:  2024,
 				Month: 12,
 				Day:   25,

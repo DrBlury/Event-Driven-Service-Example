@@ -1,61 +1,113 @@
 package app
 
 import (
-	"drblury/event-driven-service/internal/events"
+	"context"
 	"os"
+
+	"drblury/event-driven-service/internal/events"
+
+	"go.uber.org/fx"
 )
 
-// Run orchestrates the application lifecycle from startup to graceful shutdown.
+type Metadata struct {
+	Version     string
+	BuildDate   string
+	Description string
+	CommitHash  string
+	CommitDate  string
+}
+
+// Run starts the Fx application, waits for a shutdown signal, and stops it gracefully.
 func Run(cfg *Config, shutdownChannel chan os.Signal) error {
-	ctx, stop := createAppContext(shutdownChannel)
-	defer stop()
+	application := NewFromConfig(cfg, shutdownChannel)
 
-	logger := initializeLogger(ctx, cfg)
+	startCtx, cancel := context.WithTimeout(context.Background(), fx.DefaultTimeout)
+	defer cancel()
 
-	if err := initializeTracing(ctx, logger, cfg); err != nil {
+	if err := application.Start(startCtx); err != nil {
 		return err
 	}
 
-	if err := initializeMetrics(ctx, cfg, logger); err != nil {
+	<-application.Wait()
+
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), fx.DefaultTimeout)
+	defer stopCancel()
+
+	if err := application.Stop(stopCtx); err != nil {
 		return err
 	}
 
-	db, err := connectToDatabase(ctx, cfg, logger)
-	if err != nil {
+	if err := application.Err(); err != nil {
 		return err
 	}
 
-	appLogic, err := initializeAppLogic(db, logger)
-	if err != nil {
-		return err
-	}
-
-	eventService, err := events.BuildEventService(ctx, cfg.Events, logger, db, appLogic, cfg.Protoflow)
-	if err != nil {
-		return err
-	}
-	// add event producer to app logic so we can emit events from use cases
-	appLogic.SetEventProducer(eventService)
-	appLogic.SetExampleTopic(cfg.Events.ExampleConsumeQueue)
-
-	httpServer, err := buildHTTPServer(cfg, appLogic, logger)
-	if err != nil {
-		return err
-	}
-
-	srvErr := make(chan error, 1)
-	runHTTPServer(httpServer, cfg, logger, srvErr)
-	monitorHTTPServerErrors(ctx, srvErr, logger)
-
-	go events.StartEventService(ctx, eventService, logger)
-	go events.RunExampleSimulation(ctx, eventService, cfg.Events)
-
-	<-ctx.Done()
-
-	if err := shutdownHTTPServer(httpServer, logger); err != nil {
-		return err
-	}
-
-	stop()
 	return nil
+}
+
+// New builds the Fx application from compile-time metadata.
+func New(metadata Metadata, shutdownChannel chan os.Signal, opts ...fx.Option) *fx.App {
+	return newFXApp(
+		shutdownChannel,
+		append(
+			[]fx.Option{
+				fx.Supply(metadata),
+				fx.Provide(loadConfigFromMetadata),
+			},
+			opts...,
+		)...,
+	)
+}
+
+// NewFromConfig builds the Fx application from an already loaded config.
+func NewFromConfig(cfg *Config, shutdownChannel chan os.Signal, opts ...fx.Option) *fx.App {
+	return newFXApp(
+		shutdownChannel,
+		append(
+			[]fx.Option{
+				fx.Supply(cfg),
+			},
+			opts...,
+		)...,
+	)
+}
+
+func newFXApp(shutdownChannel chan os.Signal, extraOpts ...fx.Option) *fx.App {
+	appOpts := []fx.Option{
+		fx.Provide(
+			splitConfig,
+			provideLogger,
+			provideDatabase,
+			events.BuildEventService,
+			provideEventProducer,
+			provideAppLogic,
+			buildHTTPServer,
+		),
+		fx.Invoke(
+			registerTelemetryHooks,
+			registerHTTPServerLifecycle,
+			events.RegisterLifecycle,
+		),
+		fx.WithLogger(provideFXLogger),
+	}
+
+	if shutdownChannel != nil {
+		appOpts = append(
+			appOpts,
+			fx.Supply(ShutdownChannel(shutdownChannel)),
+			fx.Invoke(registerShutdownChannelHook),
+		)
+	}
+
+	appOpts = append(appOpts, extraOpts...)
+	return fx.New(appOpts...)
+}
+
+func loadConfigFromMetadata(metadata Metadata) (*Config, error) {
+	return LoadConfig(
+		metadata.Version,
+		metadata.BuildDate,
+		metadata.Description,
+		metadata.CommitHash,
+		metadata.CommitDate,
+	)
 }

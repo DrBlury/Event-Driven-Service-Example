@@ -49,11 +49,8 @@ func (a *AppLogic) emitExampleEvent(ctx context.Context, record *domain.ExampleR
 		return errors.New("example payload is required")
 	}
 
-	// Acquire read lock to safely access shared fields
-	a.mu.RLock()
 	topic := a.exampleTopic
 	producer := a.eventProducer
-	a.mu.RUnlock()
 
 	if topic == "" {
 		return errors.New("example topic not configured")

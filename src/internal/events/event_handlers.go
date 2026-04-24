@@ -11,6 +11,7 @@ import (
 	"drblury/event-driven-service/internal/domain"
 
 	"github.com/drblury/protoflow"
+	datepb "google.golang.org/genproto/googleapis/type/date"
 )
 
 // registerAppEventHandlers wires the demo handlers used by this application.
@@ -74,7 +75,7 @@ func runSomeSimulation(ctx context.Context, svc *protoflow.Service, queueName st
 					RequestedBy:      "simulation-bot",
 					RequiresFollowUp: followUp,
 					Priority:         int32(rand.IntN(5) + 1), // #nosec G404 G115 -- non-security simulation data with bounded values
-					DesiredStartDate: &domain.Date{
+					DesiredStartDate: &datepb.Date{
 						Year:  int32(rand.IntN(5) + 2020), // #nosec G404 G115 -- non-security simulation data with bounded values
 						Month: int32(i%12 + 1),            // #nosec G115 -- bounded value 1-12
 						Day:   int32((i % 28) + 1),        // #nosec G115 -- bounded value 1-28
@@ -152,7 +153,7 @@ func exampleRecordHandler() protoflow.ProtoMessageHandler[*domain.ExampleRecord]
 			RecordId: e.Payload.GetRecordId(),
 			Status:   status,
 			Note:     fmt.Sprintf("processed %s", e.Payload.GetTitle()),
-			ProcessedOn: &domain.Date{
+			ProcessedOn: &datepb.Date{
 				Year:  int32(now.Year()),  // #nosec G115 -- year is bounded to reasonable values
 				Month: int32(now.Month()), // #nosec G115 -- month is bounded 1-12
 				Day:   int32(now.Day()),   // #nosec G115 -- day is bounded 1-31

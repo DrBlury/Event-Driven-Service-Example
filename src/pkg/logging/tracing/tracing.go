@@ -10,14 +10,14 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger) (*trace.TracerProvider, error) {
+func NewTracerProvider(ctx context.Context, config *Config, logger *slog.Logger) (*sdktrace.TracerProvider, error) {
 	var (
-		exporter trace.SpanExporter
+		exporter sdktrace.SpanExporter
 		err      error
 	)
 
@@ -53,18 +53,22 @@ func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger)
 		return nil, err
 	}
 
-	tracerProvider := trace.NewTracerProvider(
-		trace.WithBatcher(exporter),
-		trace.WithResource(r),
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(r),
 	)
 
 	return tracerProvider, nil
 }
 
+func newTracerProvider(ctx context.Context, config *Config, logger *slog.Logger) (*sdktrace.TracerProvider, error) {
+	return NewTracerProvider(ctx, config, logger)
+}
+
 // NewOtelTracer initialises the global OpenTelemetry tracer provider using the
 // supplied configuration and logger.
 func NewOtelTracer(ctx context.Context, logger *slog.Logger, cfg *Config) error {
-	tp, err := newTracerProvider(ctx, cfg, logger)
+	tp, err := NewTracerProvider(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}

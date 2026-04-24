@@ -45,6 +45,20 @@ func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Databa
 	}, nil
 }
 
+// Close disconnects the MongoDB client.
+func (db *Database) Close(ctx context.Context) error {
+	if db == nil || db.DB == nil {
+		return nil
+	}
+
+	client := db.DB.Client()
+	if client == nil {
+		return nil
+	}
+
+	return client.Disconnect(ctx)
+}
+
 // Ping verifies that the MongoDB client is still reachable.
 func (db *Database) Ping(ctx context.Context) error {
 	if db == nil {

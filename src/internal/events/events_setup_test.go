@@ -17,7 +17,7 @@ func TestBuildEventService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	t.Run("nil config returns error", func(t *testing.T) {
-		_, err := BuildEventService(context.Background(), nil, logger, nil, nil, nil)
+		_, err := BuildEventService(nil, logger, nil, nil)
 		if err == nil {
 			t.Error("expected error when config is nil")
 		}
@@ -28,7 +28,7 @@ func TestBuildEventService(t *testing.T) {
 
 	t.Run("nil protoflow config returns error", func(t *testing.T) {
 		cfg := &Config{}
-		_, err := BuildEventService(context.Background(), cfg, logger, nil, nil, nil)
+		_, err := BuildEventService(cfg, logger, nil, nil)
 		if err == nil {
 			t.Error("expected error when protoflow config is nil")
 		}
@@ -285,7 +285,7 @@ func TestBuildEventServiceWithVariousConfigs(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := BuildEventService(context.Background(), tc.cfg, logger, nil, nil, tc.protoflowCfg)
+			_, err := BuildEventService(tc.cfg, logger, nil, tc.protoflowCfg)
 			if tc.expectError && err == nil {
 				t.Error("expected error but got nil")
 			}
