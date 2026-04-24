@@ -7,12 +7,13 @@ import (
 	"testing"
 
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/events"
 
 	"github.com/drblury/protoflow"
 	"google.golang.org/protobuf/proto"
 )
 
-// mockProducer implements protoflow.Producer for testing
+// mockProducer implements protoflow.Producer for testing.
 type mockProducer struct {
 	published     []proto.Message
 	publishErr    error
@@ -30,8 +31,10 @@ func (m *mockProducer) PublishProto(ctx context.Context, topic string, msg proto
 
 func TestNewAppLogic(t *testing.T) {
 	logger := slog.Default()
+	producer := &mockProducer{}
+	eventsCfg := &events.Config{ExampleConsumeQueue: "example-topic"}
 
-	logic, err := NewAppLogic(nil, logger)
+	logic, err := NewAppLogic(nil, logger, eventsCfg, producer)
 	if err != nil {
 		t.Fatalf("NewAppLogic returned error: %v", err)
 	}
@@ -39,65 +42,23 @@ func TestNewAppLogic(t *testing.T) {
 		t.Fatal("NewAppLogic returned nil")
 	}
 	if logic.log != logger {
-		t.Error("Logger not set correctly")
+		t.Error("logger not set correctly")
+	}
+	if logic.eventProducer != producer {
+		t.Error("producer not set correctly")
+	}
+	if logic.ExampleTopic() != eventsCfg.ExampleConsumeQueue {
+		t.Errorf("ExampleTopic() = %q, want %q", logic.ExampleTopic(), eventsCfg.ExampleConsumeQueue)
 	}
 }
 
 func TestNewAppLogicWithNilLogger(t *testing.T) {
-	logic, err := NewAppLogic(nil, nil)
+	logic, err := NewAppLogic(nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("NewAppLogic returned error: %v", err)
 	}
 	if logic == nil {
 		t.Error("NewAppLogic returned nil")
-	}
-}
-
-func TestSetEventProducer(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
-	producer := &mockProducer{}
-
-	logic.SetEventProducer(producer)
-
-	if logic.eventProducer == nil {
-		t.Error("Event producer not set")
-	}
-}
-
-func TestSetEventProducerNilReceiver(t *testing.T) {
-	var logic *AppLogic
-	producer := &mockProducer{}
-
-	// Should not panic
-	logic.SetEventProducer(producer)
-}
-
-func TestSetExampleTopic(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
-	topic := "test-topic"
-
-	logic.SetExampleTopic(topic)
-
-	if logic.exampleTopic != topic {
-		t.Errorf("Expected topic %q, got %q", topic, logic.exampleTopic)
-	}
-}
-
-func TestSetExampleTopicNilReceiver(t *testing.T) {
-	var logic *AppLogic
-
-	// Should not panic
-	logic.SetExampleTopic("test")
-}
-
-func TestExampleTopic(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
-	topic := "test-topic"
-	logic.SetExampleTopic(topic)
-
-	got := logic.ExampleTopic()
-	if got != topic {
-		t.Errorf("ExampleTopic() = %q, want %q", got, topic)
 	}
 }
 
@@ -124,7 +85,7 @@ func TestHandleExampleNilReceiver(t *testing.T) {
 }
 
 func TestHandleExampleNilRecord(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
+	logic, _ := NewAppLogic(nil, nil, nil, nil)
 
 	err := logic.HandleExample(context.Background(), nil, "token")
 	if err == nil {
@@ -136,12 +97,8 @@ func TestHandleExampleNilRecord(t *testing.T) {
 }
 
 func TestHandleExampleWithoutDatabase(t *testing.T) {
-	// When db is nil, HandleExample returns early without emitting or storing
-	logic, _ := NewAppLogic(nil, nil)
-	record := &domain.ExampleRecord{
-		RecordId: "test-123",
-		Title:    "Test Record",
-	}
+	logic, _ := NewAppLogic(nil, nil, nil, nil)
+	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
 
 	err := logic.HandleExample(context.Background(), record, "token")
 	if err != nil {
@@ -150,22 +107,14 @@ func TestHandleExampleWithoutDatabase(t *testing.T) {
 }
 
 func TestHandleExampleWithProducerNoDb(t *testing.T) {
-	// Even with producer configured, if db is nil, it returns early
-	logic, _ := NewAppLogic(nil, nil)
 	producer := &mockProducer{}
-	logic.SetEventProducer(producer)
-	logic.SetExampleTopic("test-topic")
-
-	record := &domain.ExampleRecord{
-		RecordId: "test-123",
-		Title:    "Test Record",
-	}
+	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
+	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
 
 	err := logic.HandleExample(context.Background(), record, "token")
 	if err != nil {
 		t.Errorf("HandleExample with nil db should succeed even with producer: %v", err)
 	}
-	// Producer should NOT be called because db is nil (early return)
 	if producer.publishCalled {
 		t.Error("Producer should not be called when db is nil")
 	}
@@ -184,7 +133,7 @@ func TestDatabaseProbeNilReceiver(t *testing.T) {
 }
 
 func TestDatabaseProbeNilDatabase(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
+	logic, _ := NewAppLogic(nil, nil, nil, nil)
 
 	err := logic.DatabaseProbe(context.Background())
 	if err == nil {
@@ -206,7 +155,7 @@ func TestEmitExampleEventNilReceiver(t *testing.T) {
 }
 
 func TestEmitExampleEventNilRecord(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
+	logic, _ := NewAppLogic(nil, nil, nil, nil)
 
 	err := logic.emitExampleEvent(context.Background(), nil)
 	if err == nil {
@@ -215,7 +164,7 @@ func TestEmitExampleEventNilRecord(t *testing.T) {
 }
 
 func TestEmitExampleEventNoTopic(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
+	logic, _ := NewAppLogic(nil, nil, nil, nil)
 	record := &domain.ExampleRecord{}
 
 	err := logic.emitExampleEvent(context.Background(), record)
@@ -228,8 +177,7 @@ func TestEmitExampleEventNoTopic(t *testing.T) {
 }
 
 func TestEmitExampleEventNoProducer(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
-	logic.SetExampleTopic("test-topic")
+	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, nil)
 	record := &domain.ExampleRecord{}
 
 	err := logic.emitExampleEvent(context.Background(), record)
@@ -242,15 +190,9 @@ func TestEmitExampleEventNoProducer(t *testing.T) {
 }
 
 func TestEmitExampleEventSuccess(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
 	producer := &mockProducer{}
-	logic.SetEventProducer(producer)
-	logic.SetExampleTopic("test-topic")
-
-	record := &domain.ExampleRecord{
-		RecordId: "test-123",
-		Title:    "Test Record",
-	}
+	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
+	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
 
 	err := logic.emitExampleEvent(context.Background(), record)
 	if err != nil {
@@ -265,15 +207,9 @@ func TestEmitExampleEventSuccess(t *testing.T) {
 }
 
 func TestEmitExampleEventPublishError(t *testing.T) {
-	logic, _ := NewAppLogic(nil, nil)
 	producer := &mockProducer{publishErr: errors.New("publish failed")}
-	logic.SetEventProducer(producer)
-	logic.SetExampleTopic("test-topic")
-
-	record := &domain.ExampleRecord{
-		RecordId: "test-123",
-		Title:    "Test Record",
-	}
+	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
+	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
 
 	err := logic.emitExampleEvent(context.Background(), record)
 	if err == nil {

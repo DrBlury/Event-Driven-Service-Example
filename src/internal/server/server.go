@@ -64,5 +64,23 @@ func (s *Server) Shutdown(ctxShutDown context.Context) error {
 	if s == nil || s.server == nil {
 		return nil
 	}
-	return s.server.Shutdown(ctxShutDown)
+
+	err := s.server.Shutdown(ctxShutDown)
+	s.mu.Lock()
+	s.listener = nil
+	s.mu.Unlock()
+	return err
+}
+
+func (s *Server) Address() string {
+	if s == nil || s.server == nil {
+		return ""
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.listener != nil {
+		return s.listener.Addr().String()
+	}
+	return s.server.Addr
 }

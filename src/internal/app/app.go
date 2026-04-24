@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"os"
 
 	"drblury/event-driven-service/internal/events"
@@ -17,32 +16,24 @@ type Metadata struct {
 	CommitDate  string
 }
 
-// Run starts the Fx application, waits for a shutdown signal, and stops it gracefully.
-func Run(cfg *Config, shutdownChannel chan os.Signal) error {
-	application := NewFromConfig(cfg, shutdownChannel)
-
-	startCtx, cancel := context.WithTimeout(context.Background(), fx.DefaultTimeout)
-	defer cancel()
-
-	if err := application.Start(startCtx); err != nil {
-		return err
-	}
-
-	<-application.Wait()
-
-	stopCtx, stopCancel := context.WithTimeout(context.Background(), fx.DefaultTimeout)
-	defer stopCancel()
-
-	if err := application.Stop(stopCtx); err != nil {
-		return err
-	}
-
-	if err := application.Err(); err != nil {
-		return err
-	}
-
-	return nil
-}
+var Module = fx.Module(
+	"application",
+	fx.Provide(
+		splitConfig,
+		provideLogger,
+		provideDatabase,
+		events.BuildEventService,
+		provideEventProducer,
+		provideAppLogic,
+		buildHTTPServer,
+	),
+	fx.Invoke(
+		registerTelemetryHooks,
+		registerHTTPServerLifecycle,
+		events.RegisterLifecycle,
+	),
+	fx.WithLogger(provideFXLogger),
+)
 
 // New builds the Fx application from compile-time metadata.
 func New(metadata Metadata, shutdownChannel chan os.Signal, opts ...fx.Option) *fx.App {
@@ -63,32 +54,14 @@ func NewFromConfig(cfg *Config, shutdownChannel chan os.Signal, opts ...fx.Optio
 	return newFXApp(
 		shutdownChannel,
 		append(
-			[]fx.Option{
-				fx.Supply(cfg),
-			},
+			[]fx.Option{fx.Supply(cfg)},
 			opts...,
 		)...,
 	)
 }
 
 func newFXApp(shutdownChannel chan os.Signal, extraOpts ...fx.Option) *fx.App {
-	appOpts := []fx.Option{
-		fx.Provide(
-			splitConfig,
-			provideLogger,
-			provideDatabase,
-			events.BuildEventService,
-			provideEventProducer,
-			provideAppLogic,
-			buildHTTPServer,
-		),
-		fx.Invoke(
-			registerTelemetryHooks,
-			registerHTTPServerLifecycle,
-			events.RegisterLifecycle,
-		),
-		fx.WithLogger(provideFXLogger),
-	}
+	appOpts := []fx.Option{Module}
 
 	if shutdownChannel != nil {
 		appOpts = append(

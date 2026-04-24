@@ -243,7 +243,7 @@ func testNewAPIHandlerWithAppLogic(t *testing.T, logger *slog.Logger) {
 	t.Helper()
 
 	info := &domain.Info{Version: "1.0.0"}
-	appLogic, _ := usecase.NewAppLogic(nil, logger)
+	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "/api", "")
 
 	if handler == nil {

@@ -21,13 +21,6 @@ type AppLogic struct {
 func NewAppLogic(
 	db *database.Database,
 	logger *slog.Logger,
-) (*AppLogic, error) {
-	return NewConfiguredAppLogic(db, logger, nil, nil)
-}
-
-func NewConfiguredAppLogic(
-	db *database.Database,
-	logger *slog.Logger,
 	eventsCfg *events.Config,
 	producer protoflow.Producer,
 ) (*AppLogic, error) {
@@ -40,22 +33,6 @@ func NewConfiguredAppLogic(
 		appLogic.exampleTopic = eventsCfg.ExampleConsumeQueue
 	}
 	return appLogic, nil
-}
-
-// SetEventProducer wires the event producer used by PublishEvent.
-func (a *AppLogic) SetEventProducer(producer protoflow.Producer) {
-	if a == nil {
-		return
-	}
-	a.eventProducer = producer
-}
-
-// SetExampleTopic configures the queue/topic used for outgoing example events.
-func (a *AppLogic) SetExampleTopic(topic string) {
-	if a == nil {
-		return
-	}
-	a.exampleTopic = topic
 }
 
 // ExampleTopic returns the configured example topic.

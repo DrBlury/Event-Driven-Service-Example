@@ -7,277 +7,134 @@ import (
 	"testing"
 	"time"
 
-	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/events"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/logging/metrics"
 	"drblury/event-driven-service/pkg/logging/tracing"
+
+	"github.com/drblury/protoflow"
+	"go.uber.org/fx"
+	"google.golang.org/protobuf/proto"
 )
 
-func TestCreateAppContext(t *testing.T) {
-	t.Run("without shutdown channel", func(t *testing.T) {
-		ctx, cancel := createAppContext(nil)
-		if ctx == nil {
-			t.Fatal("createAppContext returned nil context")
-		}
-		cancel()
-	})
+func TestSplitConfig(t *testing.T) {
+	cfg := minimalConfig()
+	cfg.Logger = &logging.Config{Level: "debug", Format: "json"}
+	cfg.Tracing = &tracing.Config{Enabled: true}
+	cfg.Metrics = &metrics.Config{Enabled: true}
 
-	t.Run("with shutdown channel", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-		ctx, cancel := createAppContext(shutdown)
-		defer cancel()
-
-		if ctx == nil {
-			t.Fatal("createAppContext returned nil context")
-		}
-
-		// Trigger shutdown
-		shutdown <- os.Interrupt
-
-		// Wait for context to be done (or timeout)
-		select {
-		case <-ctx.Done():
-			// Expected
-		case <-time.After(100 * time.Millisecond):
-			// May timeout if signal not processed fast enough, which is ok
-		}
-	})
-
-	t.Run("cancel immediately", func(t *testing.T) {
-		ctx, cancel := createAppContext(nil)
-		if ctx == nil {
-			t.Fatal("createAppContext returned nil context")
-		}
-
-		cancel()
-
-		select {
-		case <-ctx.Done():
-			// Expected
-		case <-time.After(100 * time.Millisecond):
-			t.Error("Context should be done after cancel")
-		}
-	})
+	sections := splitConfig(cfg)
+	if sections.Info != cfg.Info || sections.Router != cfg.Router || sections.Server != cfg.Server {
+		t.Fatal("expected splitConfig to preserve top-level references")
+	}
+	if sections.Database != cfg.Database || sections.Logger != cfg.Logger || sections.Tracing != cfg.Tracing || sections.Metrics != cfg.Metrics {
+		t.Fatal("expected splitConfig to preserve nested references")
+	}
+	if sections.Protoflow != cfg.Protoflow || sections.Events != cfg.Events {
+		t.Fatal("expected splitConfig to preserve event references")
+	}
 }
 
-func TestInitializeLogger(t *testing.T) {
+func TestProvideLogger(t *testing.T) {
 	t.Run("nil config", func(t *testing.T) {
-		logger := initializeLogger(context.Background(), nil)
+		logger := provideLogger(nil)
 		if logger == nil {
-			t.Fatal("initializeLogger returned nil logger for nil config")
+			t.Fatal("provideLogger returned nil")
 		}
 	})
 
-	t.Run("with nil logger config", func(t *testing.T) {
-		cfg := &Config{Logger: nil}
-		logger := initializeLogger(context.Background(), cfg)
+	t.Run("configured logger", func(t *testing.T) {
+		logger := provideLogger(&logging.Config{Level: "debug", Format: "json"})
 		if logger == nil {
-			t.Fatal("initializeLogger returned nil logger")
-		}
-	})
-
-	t.Run("with logger config", func(t *testing.T) {
-		cfg := &Config{Logger: &logging.Config{Level: "debug", Format: "json"}}
-		logger := initializeLogger(context.Background(), cfg)
-		if logger == nil {
-			t.Fatal("initializeLogger returned nil logger with config")
-		}
-	})
-
-	t.Run("with pretty format", func(t *testing.T) {
-		cfg := &Config{Logger: &logging.Config{Level: "info", Format: "pretty"}}
-		logger := initializeLogger(context.Background(), cfg)
-		if logger == nil {
-			t.Fatal("initializeLogger returned nil logger with pretty format")
+			t.Fatal("provideLogger returned nil")
 		}
 	})
 }
 
-func TestInitializeTracing(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+func TestProvideFXLogger(t *testing.T) {
+	fxLogger := provideFXLogger(nil)
+	if fxLogger == nil {
+		t.Fatal("expected fx logger")
+	}
 
-	t.Run("nil config", func(t *testing.T) {
-		err := initializeTracing(context.Background(), logger, nil)
-		if err != nil {
-			t.Errorf("initializeTracing with nil config should not error: %v", err)
-		}
-	})
-
-	t.Run("nil tracing config", func(t *testing.T) {
-		cfg := &Config{Tracing: nil}
-		err := initializeTracing(context.Background(), logger, cfg)
-		if err != nil {
-			t.Errorf("initializeTracing with nil tracing config should not error: %v", err)
-		}
-	})
-
-	t.Run("with console exporter", func(t *testing.T) {
-		cfg := &Config{
-			Tracing: &tracing.Config{
-				OTELTracesExporter: "console",
-				ServiceName:        "test-service",
-				ServiceVersion:     "1.0.0",
-				Enabled:            true,
-			},
-		}
-		err := initializeTracing(context.Background(), logger, cfg)
-		if err != nil {
-			t.Errorf("initializeTracing with console exporter should not error: %v", err)
-		}
-	})
-
-	t.Run("with noop exporter", func(t *testing.T) {
-		cfg := &Config{
-			Tracing: &tracing.Config{
-				OTELTracesExporter: "noop",
-				ServiceName:        "test-service",
-				ServiceVersion:     "1.0.0",
-			},
-		}
-		err := initializeTracing(context.Background(), logger, cfg)
-		if err != nil {
-			t.Errorf("initializeTracing with noop exporter should not error: %v", err)
-		}
-	})
-
-	t.Run("with default exporter", func(t *testing.T) {
-		cfg := &Config{
-			Tracing: &tracing.Config{
-				OTELTracesExporter: "",
-				ServiceName:        "test-service",
-				ServiceVersion:     "1.0.0",
-			},
-		}
-		err := initializeTracing(context.Background(), logger, cfg)
-		if err != nil {
-			t.Errorf("initializeTracing with default exporter should not error: %v", err)
-		}
-	})
+	fxLogger = provideFXLogger(&logging.Config{Level: "debug", Format: "json"})
+	if fxLogger == nil {
+		t.Fatal("expected fx logger")
+	}
 }
 
-func TestInitializeMetrics(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-
-	t.Run("nil config", func(t *testing.T) {
-		err := initializeMetrics(context.Background(), nil, logger)
-		if err != nil {
-			t.Errorf("initializeMetrics with nil config should not error: %v", err)
-		}
-	})
-
-	t.Run("nil metrics config", func(t *testing.T) {
-		cfg := &Config{Metrics: nil}
-		err := initializeMetrics(context.Background(), cfg, logger)
-		if err != nil {
-			t.Errorf("initializeMetrics with nil metrics config should not error: %v", err)
-		}
-	})
-
-	t.Run("disabled metrics", func(t *testing.T) {
-		cfg := &Config{Metrics: &metrics.Config{Enabled: false}}
-		err := initializeMetrics(context.Background(), cfg, logger)
-		if err != nil {
-			t.Errorf("initializeMetrics with disabled metrics should not error: %v", err)
-		}
-	})
-
-	t.Run("with console exporter", func(t *testing.T) {
-		cfg := &Config{
-			Metrics: &metrics.Config{
-				Enabled:             true,
-				OTELMetricsExporter: "console",
-				ServiceName:         "test-service",
-				ServiceVersion:      "1.0.0",
-			},
-		}
-		err := initializeMetrics(context.Background(), cfg, logger)
-		if err != nil {
-			t.Errorf("initializeMetrics with console exporter should not error: %v", err)
-		}
-	})
-
-	t.Run("with invalid exporter", func(t *testing.T) {
-		cfg := &Config{
-			Metrics: &metrics.Config{
-				Enabled:             true,
-				OTELMetricsExporter: "invalid",
-				ServiceName:         "test-service",
-				ServiceVersion:      "1.0.0",
-			},
-		}
-		err := initializeMetrics(context.Background(), cfg, logger)
-		if err == nil {
-			t.Error("initializeMetrics with invalid exporter should error")
-		}
-	})
-}
-
-func TestConnectToDatabase(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-
-	t.Run("nil config", func(t *testing.T) {
-		_, err := connectToDatabase(context.Background(), nil, logger)
-		if err == nil {
-			t.Error("connectToDatabase with nil config should error")
-		}
-	})
-
-	t.Run("nil database config", func(t *testing.T) {
-		cfg := &Config{Database: nil}
-		_, err := connectToDatabase(context.Background(), cfg, logger)
-		if err == nil {
-			t.Error("connectToDatabase with nil database config should error")
-		}
-	})
-
-	t.Run("invalid URL", func(t *testing.T) {
-		cfg := &Config{Database: &database.Config{MongoURL: "invalid://not-a-valid-url"}}
-		_, err := connectToDatabase(context.Background(), cfg, logger)
-		if err == nil {
-			t.Error("connectToDatabase with invalid URL should error")
-		}
-	})
-
-	t.Run("empty config", func(t *testing.T) {
-		cfg := &Config{Database: &database.Config{MongoURL: "", MongoDB: "", MongoUser: ""}}
-		_, err := connectToDatabase(context.Background(), cfg, logger)
-		if err == nil {
-			t.Log("connectToDatabase with empty URL succeeded unexpectedly")
-		}
-	})
-}
-
-func TestInitializeAppLogic(t *testing.T) {
+func TestProvideAppLogicConfiguresEventPublishing(t *testing.T) {
+	producer := &bootstrapMockProducer{}
+	cfg := &events.Config{ExampleConsumeQueue: "example-topic"}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	t.Run("nil database", func(t *testing.T) {
-		appLogic, err := initializeAppLogic(nil, logger)
-		if err != nil {
-			t.Errorf("initializeAppLogic should not error with nil db: %v", err)
-		}
-		if appLogic == nil {
-			t.Error("initializeAppLogic returned nil")
-		}
-	})
+	logic, err := provideAppLogic(nil, logger, cfg, producer)
+	if err != nil {
+		t.Fatalf("provideAppLogic returned error: %v", err)
+	}
+	if logic == nil {
+		t.Fatal("expected app logic")
+	}
+	if logic.ExampleTopic() != cfg.ExampleConsumeQueue {
+		t.Fatalf("topic = %q, want %q", logic.ExampleTopic(), cfg.ExampleConsumeQueue)
+	}
+}
 
-	t.Run("with database", func(t *testing.T) {
-		db := &database.Database{}
-		appLogic, err := initializeAppLogic(db, logger)
-		if err != nil {
-			t.Errorf("initializeAppLogic failed: %v", err)
-		}
-		if appLogic == nil {
-			t.Error("initializeAppLogic returned nil")
-		}
-	})
+func TestRegisterShutdownChannelHookTriggersShutdown(t *testing.T) {
+	shutdownChan := make(chan os.Signal, 1)
+	app := fx.New(
+		fx.Supply(ShutdownChannel(shutdownChan)),
+		fx.Supply(slog.New(slog.NewTextHandler(os.Stderr, nil))),
+		fx.Invoke(registerShutdownChannelHook),
+	)
+	if err := app.Err(); err != nil {
+		t.Fatalf("fx.New returned error: %v", err)
+	}
 
-	t.Run("with nil logger", func(t *testing.T) {
-		appLogic, err := initializeAppLogic(nil, nil)
-		if err != nil {
-			t.Errorf("initializeAppLogic should not error with nil logger: %v", err)
-		}
-		if appLogic == nil {
-			t.Error("initializeAppLogic returned nil")
-		}
-	})
+	startCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := app.Start(startCtx); err != nil {
+		t.Fatalf("app.Start returned error: %v", err)
+	}
+
+	shutdownChan <- os.Interrupt
+
+	select {
+	case <-app.Wait():
+	case <-time.After(time.Second):
+		t.Fatal("expected shutdown signal from fx app")
+	}
+
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Second)
+	defer stopCancel()
+	if err := app.Stop(stopCtx); err != nil {
+		t.Fatalf("app.Stop returned error: %v", err)
+	}
+}
+
+func TestRegisterTelemetryHooksRejectsInvalidMetricsExporter(t *testing.T) {
+	app := fx.New(
+		fx.Supply((*tracing.Config)(nil)),
+		fx.Supply(&metrics.Config{
+			Enabled:             true,
+			OTELMetricsExporter: "invalid",
+			ServiceName:         "test-service",
+			ServiceVersion:      "1.0.0",
+		}),
+		fx.Supply(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))),
+		fx.Invoke(registerTelemetryHooks),
+	)
+	if err := app.Err(); err != nil {
+		t.Fatalf("fx.New returned error: %v", err)
+	}
+
+	if err := app.Start(context.Background()); err == nil {
+		t.Fatal("expected startup error")
+	}
+}
+
+type bootstrapMockProducer struct{}
+
+func (bootstrapMockProducer) PublishProto(context.Context, string, proto.Message, protoflow.Metadata) error {
+	return nil
 }

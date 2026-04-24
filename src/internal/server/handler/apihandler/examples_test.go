@@ -235,7 +235,7 @@ func TestCreateExampleRecordWithAppLogic(t *testing.T) {
 	info := &domain.Info{Version: "1.0.0"}
 
 	// Create AppLogic without database (will return early without error)
-	appLogic, _ := usecase.NewAppLogic(nil, logger)
+	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "", "")
 
 	body := `{"record_id": "test-with-logic", "title": "Test with AppLogic"}`
@@ -255,7 +255,7 @@ func TestCreateExampleRecordWithAppLogicFullPayload(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	info := &domain.Info{Version: "1.0.0"}
 
-	appLogic, _ := usecase.NewAppLogic(nil, logger)
+	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "/api", "")
 
 	body := `{
@@ -285,7 +285,7 @@ func TestCreateExampleRecordSuccessResponse(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	info := &domain.Info{Version: "1.0.0"}
 
-	appLogic, _ := usecase.NewAppLogic(nil, logger)
+	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "", "")
 
 	body := `{"record_id": "response-test", "title": "Response Test"}`
