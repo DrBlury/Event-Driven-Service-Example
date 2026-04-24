@@ -2,13 +2,16 @@ package main
 
 import (
 	"drblury/event-driven-service/internal/app"
-	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
 
-	// Import all protoflow transports for auto-registration
-	_ "github.com/drblury/protoflow/transport/transports"
+	_ "github.com/drblury/protoflow/transport/aws"
+	_ "github.com/drblury/protoflow/transport/channel"
+	_ "github.com/drblury/protoflow/transport/io"
+	_ "github.com/drblury/protoflow/transport/jetstream"
+	_ "github.com/drblury/protoflow/transport/kafka"
+	_ "github.com/drblury/protoflow/transport/nats"
+	_ "github.com/drblury/protoflow/transport/postgres"
+	_ "github.com/drblury/protoflow/transport/rabbitmq"
+	_ "github.com/drblury/protoflow/transport/sqlite"
 )
 
 // Application metadata that is set at compile time.
@@ -20,29 +23,12 @@ var (
 	commitDate  string
 )
 
-// main just loads config and inits logger. Rest is done in app.Run.
 func main() {
-	appCfg, err := app.LoadConfig(
-		version,
-		buildDate,
-		description,
-		commitHash,
-		commitDate,
-	)
-	if err != nil {
-		fmt.Printf("could not load config: %s", err.Error())
-		os.Exit(1)
-	}
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-
-	err = app.Run(
-		appCfg,
-		quit,
-	)
-
-	if err != nil {
-		slog.Error("error running app", "error", err)
-	}
+	app.New(app.Metadata{
+		Version:     version,
+		BuildDate:   buildDate,
+		Description: description,
+		CommitHash:  commitHash,
+		CommitDate:  commitDate,
+	}, nil).Run()
 }

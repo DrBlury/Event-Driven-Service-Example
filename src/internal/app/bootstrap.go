@@ -5,87 +5,210 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"os/signal"
 
 	"drblury/event-driven-service/internal/database"
+	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/events"
+	"drblury/event-driven-service/internal/server"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"
 	"drblury/event-driven-service/pkg/logging/metrics"
 	"drblury/event-driven-service/pkg/logging/tracing"
+
+	"github.com/drblury/apiweaver/router"
+	"github.com/drblury/protoflow"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 )
 
-// createAppContext builds a cancellable context reacting to OS interrupts and optional external shutdown signals.
-func createAppContext(shutdownChannel chan os.Signal) (context.Context, context.CancelFunc) {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	if shutdownChannel != nil {
-		go func() {
-			select {
-			case <-shutdownChannel:
-				stop()
-			case <-ctx.Done():
-			}
-		}()
-	}
-	return ctx, stop
+type ShutdownChannel <-chan os.Signal
+
+type configSections struct {
+	fx.Out
+
+	Info      *domain.Info
+	Router    *router.Config
+	Server    *server.Config
+	Database  *database.Config
+	Logger    *logging.Config
+	Tracing   *tracing.Config
+	Metrics   *metrics.Config
+	Protoflow *protoflow.Config
+	Events    *events.Config
 }
 
-// initializeLogger configures the structured logger according to the supplied configuration.
-func initializeLogger(ctx context.Context, cfg *Config) *slog.Logger {
+func splitConfig(cfg *Config) configSections {
 	if cfg == nil {
-		return logging.SetLogger(ctx)
+		return configSections{}
 	}
-	return logging.SetLogger(ctx, logging.WithConfig(cfg.Logger))
+
+	return configSections{
+		Info:      cfg.Info,
+		Router:    cfg.Router,
+		Server:    cfg.Server,
+		Database:  cfg.Database,
+		Logger:    cfg.Logger,
+		Tracing:   cfg.Tracing,
+		Metrics:   cfg.Metrics,
+		Protoflow: cfg.Protoflow,
+		Events:    cfg.Events,
+	}
 }
 
-// initializeTracing wires OpenTelemetry tracing when enabled.
-func initializeTracing(ctx context.Context, logger *slog.Logger, cfg *Config) error {
-	if cfg == nil || cfg.Tracing == nil {
-		return nil
+func provideLogger(cfg *logging.Config) *slog.Logger {
+	if cfg == nil {
+		return logging.SetLogger(context.Background())
 	}
-	if err := tracing.NewOtelTracer(ctx, logger, cfg.Tracing); err != nil {
-		logger.Error("failed to initialize tracer", "error", err)
-		return err
-	}
-	return nil
+	return logging.SetLogger(context.Background(), logging.WithConfig(cfg))
 }
 
-// initializeMetrics sets up metrics exporters and returns a descriptive error when it fails.
-func initializeMetrics(ctx context.Context, cfg *Config, logger *slog.Logger) error {
-	if cfg == nil || cfg.Metrics == nil {
-		return nil
-	}
-	if !cfg.Metrics.Enabled {
-		logger.Debug("metrics disabled, skipping initialization")
-		return nil
-	}
-	if err := metrics.NewOtelMetrics(ctx, cfg.Metrics, logger); err != nil {
-		logger.Error("failed to initialize metrics", "error", err)
-		return err
-	}
-	return nil
+func provideFXLogger(cfg *logging.Config) fxevent.Logger {
+	return &fxevent.SlogLogger{Logger: provideLogger(cfg)}
 }
 
-// connectToDatabase initialises the database connection pool.
-func connectToDatabase(ctx context.Context, cfg *Config, logger *slog.Logger) (*database.Database, error) {
-	if cfg == nil || cfg.Database == nil {
-		logger.Error("missing database configuration")
+func registerTelemetryHooks(
+	lc fx.Lifecycle,
+	tracingCfg *tracing.Config,
+	metricsCfg *metrics.Config,
+	logger *slog.Logger,
+) {
+	log := fallbackLogger(logger)
+
+	var tracerProvider *sdktrace.TracerProvider
+	var meterProvider *sdkmetric.MeterProvider
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if tracingCfg != nil && tracingCfg.Enabled {
+				tp, err := tracing.NewTracerProvider(ctx, tracingCfg, log)
+				if err != nil {
+					log.Error("failed to initialize tracer", "error", err)
+					return err
+				}
+				tracerProvider = tp
+				otel.SetTracerProvider(tp)
+			}
+
+			if metricsCfg == nil {
+				return nil
+			}
+			if !metricsCfg.Enabled {
+				log.Debug("metrics disabled, skipping initialization")
+				return nil
+			}
+
+			mp, err := metrics.NewMeterProvider(ctx, metricsCfg, log)
+			if err != nil {
+				log.Error("failed to initialize metrics", "error", err)
+				return err
+			}
+			meterProvider = mp
+			otel.SetMeterProvider(mp)
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			var shutdownErr error
+			if meterProvider != nil {
+				shutdownErr = errors.Join(shutdownErr, meterProvider.Shutdown(ctx))
+			}
+			if tracerProvider != nil {
+				shutdownErr = errors.Join(shutdownErr, tracerProvider.Shutdown(ctx))
+			}
+			return shutdownErr
+		},
+	})
+}
+
+func provideDatabase(lc fx.Lifecycle, cfg *database.Config, logger *slog.Logger) (*database.Database, error) {
+	log := fallbackLogger(logger)
+	if cfg == nil {
+		log.Error("missing database configuration")
 		return nil, errors.New("database configuration is required")
 	}
 
-	db, err := database.NewDatabase(cfg.Database, logger, ctx)
-	if err != nil {
-		logger.Error("failed to connect to database", "error", err)
-		return nil, err
-	}
+	db := &database.Database{Cfg: cfg}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if err := db.Connect(ctx, log); err != nil {
+				log.Error("failed to connect to database", "error", err)
+				return err
+			}
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if err := db.Close(ctx); err != nil {
+				log.Error("failed to disconnect from database", "error", err)
+				return err
+			}
+			return nil
+		},
+	})
+
 	return db, nil
 }
 
-// initializeAppLogic constructs the core application use cases.
-func initializeAppLogic(db *database.Database, logger *slog.Logger) (*usecase.AppLogic, error) {
-	appLogic, err := usecase.NewAppLogic(db, logger)
+func provideEventProducer(svc *protoflow.Service) protoflow.Producer {
+	return svc
+}
+
+func provideAppLogic(
+	db *database.Database,
+	logger *slog.Logger,
+	cfg *events.Config,
+	producer protoflow.Producer,
+) (*usecase.AppLogic, error) {
+	appLogic, err := usecase.NewAppLogic(db, logger, cfg, producer)
 	if err != nil {
-		logger.Error("failed to initialize app logic", "error", err)
+		fallbackLogger(logger).Error("failed to initialize app logic", "error", err)
 		return nil, err
 	}
 	return appLogic, nil
+}
+
+func registerShutdownChannelHook(
+	lc fx.Lifecycle,
+	shutdowner fx.Shutdowner,
+	logger *slog.Logger,
+	shutdownChannel ShutdownChannel,
+) {
+	if shutdownChannel == nil {
+		return
+	}
+
+	log := fallbackLogger(logger)
+	stopWatcher := make(chan struct{})
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				select {
+				case sig, ok := <-shutdownChannel:
+					if !ok {
+						return
+					}
+					log.Info("received external shutdown signal", "signal", sig)
+					if err := shutdowner.Shutdown(); err != nil {
+						log.Error("failed to trigger fx shutdown", "error", err)
+					}
+				case <-stopWatcher:
+				}
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			close(stopWatcher)
+			return nil
+		},
+	})
+}
+
+func fallbackLogger(logger *slog.Logger) *slog.Logger {
+	if logger != nil {
+		return logger
+	}
+	return slog.Default()
 }

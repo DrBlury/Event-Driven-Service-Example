@@ -4,21 +4,20 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
-	"drblury/event-driven-service/internal/usecase"
 
 	"github.com/drblury/protoflow"
+	"go.uber.org/fx"
 )
 
 // BuildEventService wires middleware, handlers, and dependencies for the event processing pipeline.
 func BuildEventService(
-	ctx context.Context,
 	cfg *Config,
 	logger *slog.Logger,
 	db *database.Database,
-	appLogic *usecase.AppLogic,
 	protoflowCfg *protoflow.Config,
 ) (*protoflow.Service, error) {
 	if cfg == nil || protoflowCfg == nil {
@@ -37,7 +36,7 @@ func BuildEventService(
 	svc := protoflow.NewService(
 		protoflowCfg,
 		protoflow.NewSlogServiceLogger(logger),
-		ctx,
+		context.Background(),
 		protoflow.ServiceDependencies{
 			Outbox:                    db,
 			Validator:                 validator,
@@ -89,6 +88,65 @@ func poisonQueueFilter() func(error) bool {
 		var validationErr domain.ErrValidations
 		return errors.As(err, &validationErr)
 	}
+}
+
+func RegisterLifecycle(lc fx.Lifecycle, svc *protoflow.Service, logger *slog.Logger, cfg *Config) {
+	if svc == nil {
+		return
+	}
+
+	var (
+		runCtx context.Context
+		cancel context.CancelFunc
+		wg     sync.WaitGroup
+	)
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			runCtx, cancel = newLifecycleContext()
+			logEventServiceStartup(logger, svc)
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := svc.Start(runCtx); err != nil && !errors.Is(err, context.Canceled) {
+					logger.Error("event service stopped", "error", err)
+				}
+			}()
+
+			if cfg != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					RunExampleSimulation(runCtx, svc, cfg)
+				}()
+			}
+
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if cancel != nil {
+				cancel()
+			}
+
+			done := make(chan struct{})
+			go func() {
+				wg.Wait()
+				close(done)
+			}()
+
+			select {
+			case <-done:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		},
+	})
+}
+
+func newLifecycleContext() (context.Context, context.CancelFunc) {
+	return context.WithCancel(context.Background())
 }
 
 // StartEventService runs the event consumer loop until the context is cancelled.

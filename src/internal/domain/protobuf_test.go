@@ -2,6 +2,8 @@ package domain
 
 import (
 	"testing"
+
+	datepb "google.golang.org/genproto/googleapis/type/date"
 )
 
 func TestDateGetters(t *testing.T) {
@@ -180,7 +182,7 @@ func TestExampleMetaGetters(t *testing.T) {
 		RequestedBy:      "test-user",
 		RequiresFollowUp: true,
 		Priority:         3,
-		DesiredStartDate: &Date{
+		DesiredStartDate: &datepb.Date{
 			Year:  2024,
 			Month: 7,
 			Day:   1,
@@ -266,7 +268,7 @@ func TestExampleResultGetters(t *testing.T) {
 		RecordId: "result-123",
 		Status:   "completed",
 		Note:     "Test note",
-		ProcessedOn: &Date{
+		ProcessedOn: &datepb.Date{
 			Year:  2024,
 			Month: 8,
 			Day:   15,

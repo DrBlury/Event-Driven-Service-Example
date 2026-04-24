@@ -3,6 +3,8 @@ package events
 import (
 	"testing"
 
+	datepb "google.golang.org/genproto/googleapis/type/date"
+
 	"drblury/event-driven-service/internal/domain"
 )
 
@@ -98,7 +100,7 @@ func TestValidatorValidateExampleResult(t *testing.T) {
 		RecordId: "result-123",
 		Status:   "completed",
 		Note:     "Processed successfully",
-		ProcessedOn: &domain.Date{
+		ProcessedOn: &datepb.Date{
 			Year:  2024,
 			Month: 6,
 			Day:   15,
@@ -171,7 +173,7 @@ func TestValidatorValidateExampleMeta(t *testing.T) {
 		RequestedBy:      "test-user",
 		RequiresFollowUp: true,
 		Priority:         10,
-		DesiredStartDate: &domain.Date{
+		DesiredStartDate: &datepb.Date{
 			Year:  2025,
 			Month: 1,
 			Day:   1,
@@ -213,7 +215,7 @@ func TestValidatorValidateExampleResultVariants(t *testing.T) {
 	results := []*domain.ExampleResult{
 		{RecordId: "r1", Status: "pending"},
 		{RecordId: "r2", Status: "completed", Note: "Done"},
-		{RecordId: "r3", Status: "failed", Note: "Error occurred", ProcessedOn: &domain.Date{Year: 2024, Month: 1, Day: 1}},
+		{RecordId: "r3", Status: "failed", Note: "Error occurred", ProcessedOn: &datepb.Date{Year: 2024, Month: 1, Day: 1}},
 	}
 
 	for i, result := range results {
@@ -281,7 +283,7 @@ func TestValidatorValidateRecordWithAllFields(t *testing.T) {
 			RequestedBy:      "test-automation",
 			RequiresFollowUp: true,
 			Priority:         5,
-			DesiredStartDate: &domain.Date{
+			DesiredStartDate: &datepb.Date{
 				Year:  2024,
 				Month: 12,
 				Day:   25,
