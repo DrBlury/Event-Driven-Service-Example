@@ -21,16 +21,12 @@ inputs:
     description: Ignore unfixed vulnerabilities.
     required: false
     default: "true"
-  trivy-version:
-    description: Trivy action version.
-    required: false
-    default: "0.36.0"
 runs:
   using: composite
   steps:
     - name: Run Trivy vulnerability scanner (filesystem)
       if: inputs.scan-type == 'fs' || inputs.scan-type == 'both'
-      uses: aquasecurity/trivy-action@0.36.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: fs
         scan-ref: ${{ inputs.scan-path }}
@@ -41,7 +37,7 @@ runs:
 
     - name: Run Trivy config scanner (IaC misconfigurations)
       if: inputs.scan-type == 'config' || inputs.scan-type == 'both'
-      uses: aquasecurity/trivy-action@0.36.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: config
         scan-ref: ${{ inputs.scan-path }}
