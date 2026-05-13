@@ -2,11 +2,12 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"drblury/event-driven-service/internal/observability"
 )
 
 type Server struct {
@@ -35,7 +36,9 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Start(errChan chan<- error) error {
 	if s == nil || s.server == nil {
-		return errors.New("server not configured")
+		return observability.Builder(context.Background(), "server.start", "server_not_configured").
+			Public("server is not configured").
+			New("server not configured")
 	}
 
 	s.mu.Lock()
@@ -47,7 +50,10 @@ func (s *Server) Start(errChan chan<- error) error {
 
 	listener, err := net.Listen("tcp", s.server.Addr)
 	if err != nil {
-		return err
+		return observability.Builder(context.Background(), "server.start", "listen_failed").
+			Public("server could not bind to its address").
+			With("address", s.server.Addr).
+			Wrap(err)
 	}
 
 	s.listener = listener
@@ -72,7 +78,13 @@ func (s *Server) Shutdown(ctxShutDown context.Context) error {
 	s.mu.Lock()
 	s.listener = nil
 	s.mu.Unlock()
-	return err
+	if err == nil {
+		return nil
+	}
+
+	return observability.Builder(ctxShutDown, "server.shutdown", "shutdown_failed").
+		Public("server shutdown failed").
+		Wrap(err)
 }
 
 func (s *Server) Address() string {

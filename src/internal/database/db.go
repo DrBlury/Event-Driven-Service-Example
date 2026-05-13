@@ -2,18 +2,23 @@ package database
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"time"
 
+	"drblury/event-driven-service/internal/observability"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Database struct {
 	DB  *mongo.Database
 	Cfg *Config
 }
+
+var tracer = otel.Tracer("drblury/event-driven-service/internal/database")
 
 func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Database, error) {
 	db := &Database{Cfg: cfg}
@@ -27,22 +32,37 @@ func NewDatabase(cfg *Config, logger *slog.Logger, ctx context.Context) (*Databa
 
 // Connect initializes the MongoDB client and verifies connectivity.
 func (db *Database) Connect(ctx context.Context, logger *slog.Logger) error {
+	ctx, span := tracer.Start(ctx, "database.connect")
+	defer span.End()
+
+	log := observability.Logger(ctx, logger)
+
 	if db == nil {
-		return errors.New("database not configured")
+		err := observability.Builder(ctx, "database.connect", "database_not_configured").
+			Public("database configuration is invalid").
+			New("database not configured")
+		observability.RecordError(span, err)
+		return err
 	}
 	if db.Cfg == nil {
-		return errors.New("database configuration is required")
+		err := observability.Builder(ctx, "database.connect", "database_config_missing").
+			Public("database configuration is invalid").
+			New("database configuration is required")
+		observability.RecordError(span, err)
+		return err
 	}
 	if db.DB != nil {
+		span.SetAttributes(attribute.Bool("database.already_connected", true))
 		return nil
 	}
 
-	log := logger
-	if log == nil {
-		log = slog.Default()
-	}
+	span.SetAttributes(
+		attribute.String("db.system", "mongodb"),
+		attribute.String("db.name", db.Cfg.MongoDB),
+		attribute.String("db.user", db.Cfg.MongoUser),
+	)
 
-	log.Info("Connecting to MongoDB", "url", db.Cfg.MongoURL, "db", db.Cfg.MongoDB, "user", db.Cfg.MongoUser)
+	log.Info("connecting to MongoDB", "db", db.Cfg.MongoDB, "user", db.Cfg.MongoUser)
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -54,29 +74,41 @@ func (db *Database) Connect(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	if err := clientOpts.Validate(); err != nil {
-		log.Error("MongoDB client options validation failed", "error", err)
-		return err
+		wrapped := observability.Builder(ctx, "database.connect", "mongo_options_invalid").
+			Public("database connection configuration is invalid").
+			Wrapf(err, "validate MongoDB client options")
+		observability.RecordError(span, wrapped)
+		return wrapped
 	}
 
 	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
-		log.Error("MongoDB connection failed", "error", err)
-		return err
+		wrapped := observability.Builder(ctx, "database.connect", "mongo_connect_failed").
+			Public("database connection failed").
+			Wrapf(err, "connect to MongoDB database %q", db.Cfg.MongoDB)
+		observability.RecordError(span, wrapped)
+		return wrapped
 	}
 	if err := client.Ping(ctx, nil); err != nil {
-		log.Error("MongoDB ping failed", "error", err)
 		_ = client.Disconnect(ctx)
-		return err
+		wrapped := observability.Builder(ctx, "database.connect", "mongo_ping_failed").
+			Public("database connection check failed").
+			Wrapf(err, "ping MongoDB database %q after connect", db.Cfg.MongoDB)
+		observability.RecordError(span, wrapped)
+		return wrapped
 	}
 
 	db.DB = client.Database(db.Cfg.MongoDB)
-	log.Info("Connected to MongoDB successfully")
+	log.Info("connected to MongoDB successfully", "db", db.Cfg.MongoDB)
 
 	return nil
 }
 
 // Close disconnects the MongoDB client.
 func (db *Database) Close(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, "database.close")
+	defer span.End()
+
 	if db == nil || db.DB == nil {
 		return nil
 	}
@@ -86,22 +118,54 @@ func (db *Database) Close(ctx context.Context) error {
 		return nil
 	}
 
-	return client.Disconnect(ctx)
+	if err := client.Disconnect(ctx); err != nil {
+		wrapped := observability.Builder(ctx, "database.close", "mongo_disconnect_failed").
+			Public("database shutdown failed").
+			Wrap(err)
+		observability.RecordError(span, wrapped)
+		return wrapped
+	}
+
+	return nil
 }
 
 // Ping verifies that the MongoDB client is still reachable.
 func (db *Database) Ping(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, "database.ping")
+	defer span.End()
+
 	if db == nil {
-		return errors.New("database not configured")
+		err := observability.Builder(ctx, "database.ping", "database_not_configured").
+			Public("database is not available").
+			New("database not configured")
+		observability.RecordError(span, err)
+		return err
 	}
 	if db.DB == nil {
-		return errors.New("mongo database handle is nil")
+		err := observability.Builder(ctx, "database.ping", "database_handle_missing").
+			Public("database is not available").
+			New("mongo database handle is nil")
+		observability.RecordError(span, err)
+		return err
 	}
 
 	client := db.DB.Client()
 	if client == nil {
-		return errors.New("mongo client is nil")
+		err := observability.Builder(ctx, "database.ping", "mongo_client_missing").
+			Public("database is not available").
+			New("mongo client is nil")
+		observability.RecordError(span, err)
+		return err
 	}
 
-	return client.Ping(ctx, nil)
+	err := client.Ping(ctx, nil)
+	if err == nil {
+		return nil
+	}
+
+	wrapped := observability.Builder(ctx, "database.ping", "mongo_ping_failed").
+		Public("database health check failed").
+		Wrap(err)
+	observability.RecordError(span, wrapped)
+	return wrapped
 }

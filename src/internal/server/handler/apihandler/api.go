@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/observability"
 	generator "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/usecase"
 	"log/slog"
@@ -241,7 +242,7 @@ func (h *APIHandler) GetOpenAPIHTML(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		// Fall back to default if unknown UI type
 		handler = h.uiHandlers[UIStoplight]
-		h.log.Warn("unknown UI type requested, falling back to stoplight", "requested", uiType)
+		observability.Logger(r.Context(), h.log).Warn("unknown UI type requested, falling back to stoplight", "requested", uiType)
 	}
 
 	handler.GetOpenAPIHTML(w, r)

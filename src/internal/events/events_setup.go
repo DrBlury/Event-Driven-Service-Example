@@ -8,6 +8,7 @@ import (
 
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/observability"
 
 	"github.com/drblury/protoflow"
 	"go.uber.org/fx"
@@ -21,8 +22,11 @@ func BuildEventService(
 	protoflowCfg *protoflow.Config,
 ) (*protoflow.Service, error) {
 	if cfg == nil || protoflowCfg == nil {
-		logger.Error("missing events configuration")
-		return nil, errors.New("events configuration is required")
+		err := observability.Builder(context.Background(), "events.build_service", "events_config_missing").
+			Public("event configuration is required").
+			New("events configuration is required")
+		logger.Error("missing events configuration", "error", err)
+		return nil, err
 	}
 
 	middlewares := composeEventMiddlewares(protoflowCfg)
@@ -30,7 +34,9 @@ func BuildEventService(
 	validator, err := NewValidator()
 	if err != nil {
 		logger.Error("failed to create proto validator", "error", err)
-		return nil, err
+		return nil, observability.Builder(context.Background(), "events.build_service", "validator_init_failed").
+			Public("event validation could not be initialized").
+			Wrap(err)
 	}
 
 	svc := protoflow.NewService(
@@ -46,8 +52,11 @@ func BuildEventService(
 	)
 
 	if err := registerAppEventHandlers(svc, cfg); err != nil {
-		logger.Error("failed to register event handlers", "error", err)
-		return nil, err
+		wrapped := observability.Builder(context.Background(), "events.build_service", "handler_registration_failed").
+			Public("event handlers could not be registered").
+			Wrap(err)
+		logger.Error("failed to register event handlers", "error", wrapped)
+		return nil, wrapped
 	}
 
 	return svc, nil
@@ -110,7 +119,7 @@ func RegisterLifecycle(lc fx.Lifecycle, svc *protoflow.Service, logger *slog.Log
 			go func() {
 				defer wg.Done()
 				if err := svc.Start(runCtx); err != nil && !errors.Is(err, context.Canceled) {
-					logger.Error("event service stopped", "error", err)
+					logger.Error("event service stopped", "error", observability.Builder(runCtx, "events.lifecycle", "event_service_stopped").Wrap(err))
 				}
 			}()
 
@@ -157,7 +166,7 @@ func StartEventService(ctx context.Context, svc *protoflow.Service, logger *slog
 	logEventServiceStartup(logger, svc)
 
 	if err := svc.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("event service stopped", "error", err)
+		logger.Error("event service stopped", "error", observability.Builder(ctx, "events.lifecycle", "event_service_stopped").Wrap(err))
 	}
 }
 

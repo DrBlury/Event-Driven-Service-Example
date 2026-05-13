@@ -9,6 +9,7 @@ import (
 	"drblury/event-driven-service/internal/database"
 	"drblury/event-driven-service/internal/domain"
 	"drblury/event-driven-service/internal/events"
+	"drblury/event-driven-service/internal/observability"
 	"drblury/event-driven-service/internal/server"
 	"drblury/event-driven-service/internal/usecase"
 	"drblury/event-driven-service/pkg/logging"
@@ -82,11 +83,16 @@ func registerTelemetryHooks(
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			log := observability.Logger(ctx, log)
+
 			if tracingCfg != nil && tracingCfg.Enabled {
 				tp, err := tracing.NewTracerProvider(ctx, tracingCfg, log)
 				if err != nil {
-					log.Error("failed to initialize tracer", "error", err)
-					return err
+					wrapped := observability.Builder(ctx, "app.telemetry", "tracer_init_failed").
+						Public("tracing could not be initialized").
+						Wrap(err)
+					log.Error("failed to initialize tracer", "error", wrapped)
+					return wrapped
 				}
 				tracerProvider = tp
 				otel.SetTracerProvider(tp)
@@ -102,8 +108,11 @@ func registerTelemetryHooks(
 
 			mp, err := metrics.NewMeterProvider(ctx, metricsCfg, log)
 			if err != nil {
-				log.Error("failed to initialize metrics", "error", err)
-				return err
+				wrapped := observability.Builder(ctx, "app.telemetry", "metrics_init_failed").
+					Public("metrics could not be initialized").
+					Wrap(err)
+				log.Error("failed to initialize metrics", "error", wrapped)
+				return wrapped
 			}
 			meterProvider = mp
 			otel.SetMeterProvider(mp)
@@ -125,8 +134,11 @@ func registerTelemetryHooks(
 func provideDatabase(lc fx.Lifecycle, cfg *database.Config, logger *slog.Logger) (*database.Database, error) {
 	log := fallbackLogger(logger)
 	if cfg == nil {
-		log.Error("missing database configuration")
-		return nil, errors.New("database configuration is required")
+		err := observability.Builder(context.Background(), "app.bootstrap", "database_config_missing").
+			Public("database configuration is required").
+			New("database configuration is required")
+		log.Error("missing database configuration", "error", err)
+		return nil, err
 	}
 
 	db := &database.Database{Cfg: cfg}
@@ -134,14 +146,16 @@ func provideDatabase(lc fx.Lifecycle, cfg *database.Config, logger *slog.Logger)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if err := db.Connect(ctx, log); err != nil {
-				log.Error("failed to connect to database", "error", err)
+				logWithTrace := observability.Logger(ctx, log)
+				logWithTrace.Error("failed to connect to database", "error", err)
 				return err
 			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			if err := db.Close(ctx); err != nil {
-				log.Error("failed to disconnect from database", "error", err)
+				logWithTrace := observability.Logger(ctx, log)
+				logWithTrace.Error("failed to disconnect from database", "error", err)
 				return err
 			}
 			return nil
@@ -163,8 +177,11 @@ func provideAppLogic(
 ) (*usecase.AppLogic, error) {
 	appLogic, err := usecase.NewAppLogic(db, logger, cfg, producer)
 	if err != nil {
-		fallbackLogger(logger).Error("failed to initialize app logic", "error", err)
-		return nil, err
+		wrapped := observability.Builder(context.Background(), "app.bootstrap", "app_logic_init_failed").
+			Public("application logic could not be initialized").
+			Wrap(err)
+		fallbackLogger(logger).Error("failed to initialize app logic", "error", wrapped)
+		return nil, wrapped
 	}
 	return appLogic, nil
 }
@@ -192,7 +209,10 @@ func registerShutdownChannelHook(
 					}
 					log.Info("received external shutdown signal", "signal", sig)
 					if err := shutdowner.Shutdown(); err != nil {
-						log.Error("failed to trigger fx shutdown", "error", err)
+						wrapped := observability.Builder(context.Background(), "app.shutdown", "shutdown_trigger_failed").
+							Public("service shutdown could not be triggered").
+							Wrap(err)
+						log.Error("failed to trigger fx shutdown", "error", wrapped)
 					}
 				case <-stopWatcher:
 				}

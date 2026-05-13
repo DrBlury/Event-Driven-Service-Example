@@ -64,7 +64,7 @@ func testDemoHandlerCoreFunctionality(t *testing.T, handler demoHandlerFunc, ctx
 		evt := protoflow.JSONMessageContext[*demoEvent]{Payload: fixtures.DemoEvent(456, 2023, 12, 25)}
 		result, err := handler(ctx, evt)
 		AssertNoError(t, err, "demoHandler returned error")
-		AssertMetadataContains(t, result[0].Metadata, "handler", "exampleRecordHandler")
+		AssertMetadataContains(t, result[0].Metadata, "handler", "demoHandler")
 		AssertMetadataContains(t, result[0].Metadata, "next_queue", "demo_processed_events")
 		AssertMetadataHasKey(t, result[0].Metadata, "processed_at")
 	})

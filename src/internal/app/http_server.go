@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"drblury/event-driven-service/internal/domain"
+	"drblury/event-driven-service/internal/observability"
 	"drblury/event-driven-service/internal/server"
 	gen "drblury/event-driven-service/internal/server/gen"
 	"drblury/event-driven-service/internal/server/handler/apihandler"
@@ -27,10 +28,14 @@ func buildHTTPServer(
 ) (*server.Server, error) {
 	log := fallbackLogger(logger)
 	if serverCfg == nil {
-		return nil, errors.New("server configuration is required")
+		return nil, observability.Builder(context.Background(), "app.http_server", "server_config_missing").
+			Public("server configuration is required").
+			New("server configuration is required")
 	}
 	if routerCfg == nil {
-		return nil, errors.New("router configuration is required")
+		return nil, observability.Builder(context.Background(), "app.http_server", "router_config_missing").
+			Public("router configuration is required").
+			New("router configuration is required")
 	}
 
 	apiHandler := apihandler.NewAPIHandler(appLogic, info, log, serverCfg.BaseURL, serverCfg.DocsTemplatePath)
@@ -40,8 +45,11 @@ func buildHTTPServer(
 
 	swagger, err := gen.GetSwagger()
 	if err != nil {
-		log.Error("failed to get swagger", "error", err)
-		return nil, err
+		wrapped := observability.Builder(context.Background(), "app.http_server", "swagger_load_failed").
+			Public("OpenAPI specification could not be loaded").
+			Wrap(err)
+		log.Error("failed to get swagger", "error", wrapped)
+		return nil, wrapped
 	}
 
 	options := []router.Option{
@@ -63,27 +71,37 @@ func registerHTTPServerLifecycle(lc fx.Lifecycle, srv *server.Server, cfg *serve
 	var errChan chan error
 
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+		OnStart: func(ctx context.Context) error {
 			errChan = make(chan error, 1)
 			if err := srv.Start(errChan); err != nil {
-				return err
+				wrapped := observability.Builder(ctx, "app.http_server", "server_start_failed").
+					Public("HTTP server could not start").
+					Wrapf(err, "start HTTP server on %s", cfg.Address)
+				observability.Logger(ctx, log).Error("failed to start HTTP server", "error", wrapped, "address", cfg.Address)
+				return wrapped
 			}
 
-			log.With("address", srv.Address()).Info("server started")
+			observability.Logger(ctx, log).With("address", srv.Address()).Info("server started")
 
 			go func() {
 				err := <-errChan
 				if err == nil || errors.Is(err, http.ErrServerClosed) {
 					return
 				}
-				log.Error("server stopped unexpectedly", "error", err)
+				wrapped := observability.Builder(context.Background(), "app.http_server", "server_stopped_unexpectedly").
+					Public("HTTP server stopped unexpectedly").
+					Wrap(err)
+				log.Error("server stopped unexpectedly", "error", wrapped)
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			if err := srv.Shutdown(ctx); err != nil {
-				log.Error("server shutdown error", "error", err)
-				return err
+				wrapped := observability.Builder(ctx, "app.http_server", "server_shutdown_failed").
+					Public("HTTP server could not shut down cleanly").
+					Wrap(err)
+				observability.Logger(ctx, log).Error("server shutdown error", "error", wrapped)
+				return wrapped
 			}
 			return nil
 		},
