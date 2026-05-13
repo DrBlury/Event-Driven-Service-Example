@@ -8,6 +8,7 @@ import (
 
 	"github.com/drblury/protoflow"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // HandleExample persists the received example payload. Token handling is left as an
@@ -80,38 +81,8 @@ func (a *AppLogic) emitExampleEvent(ctx context.Context, record *domain.ExampleR
 	ctx, span := tracer.Start(ctx, "usecase.emit_example_event")
 	defer span.End()
 
-	if a == nil {
-		err := observability.Builder(ctx, "usecase.emit_example_event", "app_logic_nil").
-			Public("example event publishing is unavailable").
-			New("applogic is nil")
-		observability.RecordError(span, err)
-		return err
-	}
-	if record == nil {
-		err := observability.Builder(ctx, "usecase.emit_example_event", "example_payload_required").
-			Public("example payload is required").
-			New("example payload is required")
-		observability.RecordError(span, err)
-		return err
-	}
-
-	topic := a.exampleTopic
-	producer := a.eventProducer
-
-	if topic == "" {
-		err := observability.Builder(ctx, "usecase.emit_example_event", "example_topic_missing").
-			Public("example event topic is not configured").
-			With("record_id", record.GetRecordId()).
-			New("example topic not configured")
-		observability.RecordError(span, err)
-		return err
-	}
-	if producer == nil {
-		err := observability.Builder(ctx, "usecase.emit_example_event", "event_producer_missing").
-			Public("event producer is not configured").
-			With("record_id", record.GetRecordId(), "topic", topic).
-			New("event producer not configured")
-		observability.RecordError(span, err)
+	topic, producer, err := a.validateEmitExampleEvent(ctx, span, record)
+	if err != nil {
 		return err
 	}
 
@@ -120,18 +91,9 @@ func (a *AppLogic) emitExampleEvent(ctx context.Context, record *domain.ExampleR
 		attribute.String("messaging.destination.name", topic),
 	)
 
-	metadata := protoflow.Metadata{
-		"source": "api.examples",
-	}
-	traceID, spanID := observability.TraceAndSpanIDs(ctx)
-	if traceID != "" {
-		metadata["trace_id"] = traceID
-	}
-	if spanID != "" {
-		metadata["span_id"] = spanID
-	}
+	metadata := buildExampleEventMetadata(ctx)
 
-	err := producer.PublishProto(ctx, topic, record, metadata)
+	err = producer.PublishProto(ctx, topic, record, metadata)
 	if err == nil {
 		return nil
 	}
@@ -142,4 +104,62 @@ func (a *AppLogic) emitExampleEvent(ctx context.Context, record *domain.ExampleR
 		Wrap(err)
 	observability.RecordError(span, wrapped)
 	return wrapped
+}
+
+func (a *AppLogic) validateEmitExampleEvent(
+	ctx context.Context,
+	span trace.Span,
+	record *domain.ExampleRecord,
+) (string, protoflow.Producer, error) {
+	if a == nil {
+		err := observability.Builder(ctx, "usecase.emit_example_event", "app_logic_nil").
+			Public("example event publishing is unavailable").
+			New("applogic is nil")
+		observability.RecordError(span, err)
+		return "", nil, err
+	}
+	if record == nil {
+		err := observability.Builder(ctx, "usecase.emit_example_event", "example_payload_required").
+			Public("example payload is required").
+			New("example payload is required")
+		observability.RecordError(span, err)
+		return "", nil, err
+	}
+
+	topic := a.exampleTopic
+	if topic == "" {
+		err := observability.Builder(ctx, "usecase.emit_example_event", "example_topic_missing").
+			Public("example event topic is not configured").
+			With("record_id", record.GetRecordId()).
+			New("example topic not configured")
+		observability.RecordError(span, err)
+		return "", nil, err
+	}
+
+	if a.eventProducer == nil {
+		err := observability.Builder(ctx, "usecase.emit_example_event", "event_producer_missing").
+			Public("event producer is not configured").
+			With("record_id", record.GetRecordId(), "topic", topic).
+			New("event producer not configured")
+		observability.RecordError(span, err)
+		return "", nil, err
+	}
+
+	return topic, a.eventProducer, nil
+}
+
+func buildExampleEventMetadata(ctx context.Context) protoflow.Metadata {
+	metadata := protoflow.Metadata{
+		"source": "api.examples",
+	}
+
+	traceID, spanID := observability.TraceAndSpanIDs(ctx)
+	if traceID != "" {
+		metadata["trace_id"] = traceID
+	}
+	if spanID != "" {
+		metadata["span_id"] = spanID
+	}
+
+	return metadata
 }

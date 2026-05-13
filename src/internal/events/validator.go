@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -19,7 +20,7 @@ type Validator struct {
 func NewValidator() (*Validator, error) {
 	validator, err := protovalidate.New()
 	if err != nil {
-		wrapped := observability.Builder(nil, "events.validator", "protovalidate_init_failed").
+		wrapped := observability.Builder(context.TODO(), "events.validator", "protovalidate_init_failed").
 			Public("event validation could not be initialized").
 			Wrap(err)
 		slog.Error("error creating protovalidate validator", "error", wrapped)
@@ -38,7 +39,7 @@ func (v Validator) Validate(a any) error {
 		slog.Error(
 			"validation error",
 			"error",
-			observability.Builder(nil, "events.validator", "event_validation_failed").
+			observability.Builder(context.TODO(), "events.validator", "event_validation_failed").
 				With("violations", errMessages).
 				Wrap(err),
 		)
