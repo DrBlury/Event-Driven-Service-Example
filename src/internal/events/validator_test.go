@@ -42,7 +42,7 @@ func TestValidatorValidateValidMessage(t *testing.T) {
 
 	// Create a valid ExampleRecord
 	record := &domain.ExampleRecord{
-		RecordId:    "test-123",
+		RecordId:    "550e8400-e29b-41d4-a716-446655440000",
 		Title:       "Test Record",
 		Description: "A test description",
 	}
@@ -73,7 +73,7 @@ func TestValidatorValidateWithMeta(t *testing.T) {
 	}
 
 	record := &domain.ExampleRecord{
-		RecordId:    "test-456",
+		RecordId:    "550e8400-e29b-41d4-a716-446655440001",
 		Title:       "Test with Meta",
 		Description: "A record with metadata",
 		Meta: &domain.ExampleMeta{
@@ -97,7 +97,7 @@ func TestValidatorValidateExampleResult(t *testing.T) {
 	}
 
 	result := &domain.ExampleResult{
-		RecordId: "result-123",
+		RecordId: "550e8400-e29b-41d4-a716-446655440002",
 		Status:   "completed",
 		Note:     "Processed successfully",
 		ProcessedOn: &datepb.Date{
@@ -172,7 +172,7 @@ func TestValidatorValidateExampleMeta(t *testing.T) {
 	meta := &domain.ExampleMeta{
 		RequestedBy:      "test-user",
 		RequiresFollowUp: true,
-		Priority:         10,
+		Priority:         5,
 		DesiredStartDate: &datepb.Date{
 			Year:  2025,
 			Month: 1,
@@ -193,9 +193,14 @@ func TestValidatorValidateMultipleRecords(t *testing.T) {
 	}
 
 	records := []*domain.ExampleRecord{
-		{RecordId: "rec-1", Title: "Record 1"},
-		{RecordId: "rec-2", Title: "Record 2", Description: "Description"},
-		{RecordId: "rec-3", Title: "Record 3", Tags: []string{"tag1", "tag2"}},
+		{RecordId: "550e8400-e29b-41d4-a716-446655440010", Title: "Record 1"},
+		{RecordId: "550e8400-e29b-41d4-a716-446655440011", Title: "Record 2", Description: "Description"},
+		{
+			RecordId: "550e8400-e29b-41d4-a716-446655440012",
+			Title:    "Record 3",
+			Tags:     []string{"tag1", "tag2"},
+			Meta:     &domain.ExampleMeta{RequestedBy: "owner", Priority: 1},
+		},
 	}
 
 	for i, record := range records {
@@ -213,9 +218,9 @@ func TestValidatorValidateExampleResultVariants(t *testing.T) {
 	}
 
 	results := []*domain.ExampleResult{
-		{RecordId: "r1", Status: "pending"},
-		{RecordId: "r2", Status: "completed", Note: "Done"},
-		{RecordId: "r3", Status: "failed", Note: "Error occurred", ProcessedOn: &datepb.Date{Year: 2024, Month: 1, Day: 1}},
+		{RecordId: "550e8400-e29b-41d4-a716-446655440020", Status: "pending"},
+		{RecordId: "550e8400-e29b-41d4-a716-446655440021", Status: "completed", Note: "Done"},
+		{RecordId: "550e8400-e29b-41d4-a716-446655440022", Status: "failed", Note: "Error occurred", ProcessedOn: &datepb.Date{Year: 2024, Month: 1, Day: 1}},
 	}
 
 	for i, result := range results {
@@ -275,7 +280,7 @@ func TestValidatorValidateRecordWithAllFields(t *testing.T) {
 	}
 
 	record := &domain.ExampleRecord{
-		RecordId:    "full-record-123",
+		RecordId:    "550e8400-e29b-41d4-a716-446655440030",
 		Title:       "Complete Example Record",
 		Description: "This is a fully populated example record for testing",
 		Tags:        []string{"test", "complete", "all-fields"},
@@ -323,7 +328,7 @@ func TestValidatorValidateResultWithNilDate(t *testing.T) {
 	}
 
 	result := &domain.ExampleResult{
-		RecordId:    "result-no-date",
+		RecordId:    "550e8400-e29b-41d4-a716-446655440040",
 		Status:      "pending",
 		Note:        "No processed date",
 		ProcessedOn: nil,
@@ -342,9 +347,10 @@ func TestValidatorValidateRecordWithTags(t *testing.T) {
 	}
 
 	record := &domain.ExampleRecord{
-		RecordId: "tags-test",
+		RecordId: "550e8400-e29b-41d4-a716-446655440050",
 		Title:    "Tags Test",
 		Tags:     []string{"tag1", "tag2", "tag3", "tag4", "tag5"},
+		Meta:     &domain.ExampleMeta{RequestedBy: "owner", Priority: 1},
 	}
 
 	err = v.Validate(record)
@@ -360,7 +366,7 @@ func TestValidatorValidateRecordWithEmptyTags(t *testing.T) {
 	}
 
 	record := &domain.ExampleRecord{
-		RecordId: "empty-tags",
+		RecordId: "550e8400-e29b-41d4-a716-446655440051",
 		Title:    "Empty Tags Test",
 		Tags:     []string{},
 	}
@@ -395,7 +401,7 @@ func TestValidatorValidateMetaPriorityValues(t *testing.T) {
 		t.Fatalf("NewValidator() error = %v", err)
 	}
 
-	priorities := []int32{0, 1, 5, 10, 100}
+	priorities := []int32{1, 2, 3, 4, 5}
 	for _, priority := range priorities {
 		meta := &domain.ExampleMeta{
 			RequestedBy: "test",
@@ -426,10 +432,10 @@ func TestValidatorValidateMultipleTypes(t *testing.T) {
 		t.Fatalf("NewValidator() error = %v", err)
 	}
 
-	// Test validating different protobuf message types in sequence
+	// messages is a list of valid proto messages of different types
 	messages := []interface{}{
-		&domain.ExampleRecord{RecordId: "test-1", Title: "Title 1"},
-		&domain.ExampleResult{RecordId: "result-1", Status: "pending"},
+		&domain.ExampleRecord{RecordId: "550e8400-e29b-41d4-a716-446655440060", Title: "Title 1"},
+		&domain.ExampleResult{RecordId: "550e8400-e29b-41d4-a716-446655440061", Status: "pending"},
 		&domain.ExampleMeta{RequestedBy: "user1", Priority: 1},
 		&domain.Date{Year: 2024, Month: 6, Day: 15},
 		&domain.Info{Version: "1.0.0"},
@@ -449,13 +455,14 @@ func TestValidatorValidateRecordWithLongDescription(t *testing.T) {
 		t.Fatalf("NewValidator() error = %v", err)
 	}
 
+	// Build a description just at the limit to verify the constraint boundary
 	longDescription := ""
-	for i := 0; i < 1000; i++ {
-		longDescription += "This is a very long description. "
+	for len(longDescription) < 490 {
+		longDescription += "Test. "
 	}
 
 	record := &domain.ExampleRecord{
-		RecordId:    "long-desc-test",
+		RecordId:    "550e8400-e29b-41d4-a716-446655440070",
 		Title:       "Long Description Test",
 		Description: longDescription,
 	}
@@ -472,15 +479,14 @@ func TestValidatorValidateManyTags(t *testing.T) {
 		t.Fatalf("NewValidator() error = %v", err)
 	}
 
-	tags := make([]string, 100)
-	for i := 0; i < 100; i++ {
-		tags[i] = "tag" + string(rune('A'+i%26))
-	}
+	// Use 10 unique tags (the maximum allowed)
+	tags := []string{"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa"}
 
 	record := &domain.ExampleRecord{
-		RecordId: "many-tags",
+		RecordId: "550e8400-e29b-41d4-a716-446655440071",
 		Title:    "Many Tags Test",
 		Tags:     tags,
+		Meta:     &domain.ExampleMeta{RequestedBy: "owner", Priority: 1},
 	}
 
 	err = v.Validate(record)
@@ -497,7 +503,7 @@ func TestValidatorValidateSequential(t *testing.T) {
 
 	// Validate same record multiple times
 	record := &domain.ExampleRecord{
-		RecordId: "seq-test",
+		RecordId: "550e8400-e29b-41d4-a716-446655440072",
 		Title:    "Sequential Test",
 	}
 

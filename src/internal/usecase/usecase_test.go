@@ -98,7 +98,7 @@ func TestHandleExampleNilRecord(t *testing.T) {
 
 func TestHandleExampleWithoutDatabase(t *testing.T) {
 	logic, _ := NewAppLogic(nil, nil, nil, nil)
-	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
+	record := &domain.ExampleRecord{RecordId: "550e8400-e29b-41d4-a716-446655440100", Title: "Test Record"}
 
 	err := logic.HandleExample(context.Background(), record, "token")
 	if err != nil {
@@ -109,7 +109,7 @@ func TestHandleExampleWithoutDatabase(t *testing.T) {
 func TestHandleExampleWithProducerNoDb(t *testing.T) {
 	producer := &mockProducer{}
 	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
-	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
+	record := &domain.ExampleRecord{RecordId: "550e8400-e29b-41d4-a716-446655440101", Title: "Test Record"}
 
 	err := logic.HandleExample(context.Background(), record, "token")
 	if err != nil {
@@ -192,7 +192,7 @@ func TestEmitExampleEventNoProducer(t *testing.T) {
 func TestEmitExampleEventSuccess(t *testing.T) {
 	producer := &mockProducer{}
 	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
-	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
+	record := &domain.ExampleRecord{RecordId: "550e8400-e29b-41d4-a716-446655440110", Title: "Test Record"}
 
 	err := logic.emitExampleEvent(context.Background(), record)
 	if err != nil {
@@ -209,7 +209,7 @@ func TestEmitExampleEventSuccess(t *testing.T) {
 func TestEmitExampleEventPublishError(t *testing.T) {
 	producer := &mockProducer{publishErr: errors.New("publish failed")}
 	logic, _ := NewAppLogic(nil, nil, &events.Config{ExampleConsumeQueue: "test-topic"}, producer)
-	record := &domain.ExampleRecord{RecordId: "test-123", Title: "Test Record"}
+	record := &domain.ExampleRecord{RecordId: "550e8400-e29b-41d4-a716-446655440111", Title: "Test Record"}
 
 	err := logic.emitExampleEvent(context.Background(), record)
 	if err == nil {

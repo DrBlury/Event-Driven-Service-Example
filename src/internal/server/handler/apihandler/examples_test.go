@@ -238,7 +238,7 @@ func TestCreateExampleRecordWithAppLogic(t *testing.T) {
 	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "", "")
 
-	body := `{"record_id": "test-with-logic", "title": "Test with AppLogic"}`
+	body := `{"record_id": "550e8400-e29b-41d4-a716-446655440300", "title": "Test with AppLogic"}`
 	req := httptest.NewRequest(http.MethodPost, "/examples", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -259,7 +259,7 @@ func TestCreateExampleRecordWithAppLogicFullPayload(t *testing.T) {
 	handler := NewAPIHandler(appLogic, info, logger, "/api", "")
 
 	body := `{
-		"record_id": "full-payload-test",
+		"record_id": "550e8400-e29b-41d4-a716-446655440301",
 		"title": "Full Payload Test",
 		"description": "Testing with full payload",
 		"tags": ["test", "full", "payload"],
@@ -288,7 +288,7 @@ func TestCreateExampleRecordSuccessResponse(t *testing.T) {
 	appLogic, _ := usecase.NewAppLogic(nil, logger, nil, nil)
 	handler := NewAPIHandler(appLogic, info, logger, "", "")
 
-	body := `{"record_id": "response-test", "title": "Response Test"}`
+	body := `{"record_id": "550e8400-e29b-41d4-a716-446655440302", "title": "Response Test"}`
 	req := httptest.NewRequest(http.MethodPost, "/examples", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

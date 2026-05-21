@@ -9,6 +9,7 @@ replace github.com/go-chi/chi => ./third_party/go-chi
 replace github.com/go-chi/chi/v5 => ./third_party/go-chi-v5
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1
 	github.com/bytedance/gopkg v0.1.3
 	github.com/bytedance/sonic v1.14.2
 	github.com/getkin/kin-openapi v0.133.0
@@ -116,7 +117,6 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1 // indirect
 	github.com/ThreeDotsLabs/watermill-nats/v2 v2.1.3 // indirect

@@ -2,6 +2,7 @@ package events
 
 import (
 	"drblury/event-driven-service/internal/domain"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -30,10 +31,17 @@ func (v Validator) Validate(a any) error {
 	if err := v.validator.Validate(a.(protoreflect.ProtoMessage)); err != nil {
 		// log the error
 		slog.With("error", err).Error("validation error")
-		errMessages := lo.Map(err.(*protovalidate.ValidationError).Violations, func(violation *protovalidate.Violation, _ int) string {
-			return fmt.Sprintf("%s %s", violation.Proto.GetField(), violation.Proto.GetMessage())
-		})
-		return domain.ErrValidations{Errors: errMessages}
+
+		var valErr *protovalidate.ValidationError
+		if errors.As(err, &valErr) {
+			errMessages := lo.Map(valErr.Violations, func(violation *protovalidate.Violation, _ int) string {
+				return fmt.Sprintf("%s %s", violation.Proto.GetField(), violation.Proto.GetMessage())
+			})
+			return domain.ErrValidations{Errors: errMessages}
+		}
+
+		// CompilationError or any unexpected error type — surface it as-is
+		return fmt.Errorf("validator setup error: %w", err)
 	}
 	return nil
 }
