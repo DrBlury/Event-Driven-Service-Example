@@ -6,3 +6,5 @@ plugins:
       - module=drblury/event-driven-service
 inputs:
   - directory: .
+    exclude_paths:
+      - buf/validate/validate.proto
