@@ -1,6 +1,7 @@
 # Configuration Guide
 
-This document describes all configuration options available in the Event-Driven Service Example.
+This document describes the configuration options available in the Event-Driven Service Example.
+Code defaults are defined in `src/internal/app/config.go`, while `infra/env/example/*.env.example` captures the opinionated values used by the local sample stacks.
 
 ## Configuration Sources
 
@@ -31,6 +32,7 @@ This copies templates from `infra/env/example/` to `infra/env/` with default val
 | `APP_SERVER_BASE_URL` | `http://localhost:8080` | Base URL for the service |
 | `APP_SERVER_TIMEOUT` | `60s` | Request timeout duration |
 | `VERSION` | `dev-local` | Application version for telemetry |
+| `APP_INFO_TEMPLATE_PATH` | empty | Optional custom template path for `/info/*` HTML pages |
 
 ### CORS Configuration
 
@@ -45,8 +47,8 @@ This copies templates from `infra/env/example/` to `infra/env/` with default val
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_SERVER_HIDE_HEADERS` | `Authorization` | Headers to redact from logs (comma-separated) |
-| `APP_SERVER_QUIETDOWN_ROUTES` | `/info/version,/info/status,/info/openapi.json` | Routes excluded from verbose logging |
+| `APP_SERVER_HIDE_HEADERS` | `Authorization,Proxy-Authorization,Cookie,Set-Cookie` | Headers to redact from logs |
+| `APP_SERVER_QUIETDOWN_ROUTES` | `/healthz,/readyz,/info/status` | Routes excluded from verbose logging |
 
 ## Logging Configuration
 
@@ -92,6 +94,7 @@ This copies templates from `infra/env/example/` to `infra/env/` with default val
 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | - | OTLP endpoint for metrics |
 | `OTEL_EXPORTER_OTLP_METRICS_HEADERS` | - | Custom headers for OTLP metrics |
 | `OTEL_METRICS_PRODUCERS` | - | Additional metric producers: `prometheus` |
+| `METRICS_ENABLED` | `false` | Enable metrics provider initialization |
 
 ### OTEL Protocol
 
@@ -128,6 +131,8 @@ MONGO_URL=mongodb://root:example@mongo:27017/serviceflow?authSource=admin
 
 ## Event Processing (Protoflow)
 
+Protoflow is initialized during Fx application startup and uses middleware for correlation IDs, protovalidate validation, tracing, retries, poison queues, and panic recovery.
+
 ### Pub/Sub System Selection
 
 | Variable | Default | Description |
@@ -144,16 +149,38 @@ MONGO_URL=mongodb://root:example@mongo:27017/serviceflow?authSource=admin
 | `EVENTS_EXAMPLE_CONSUME_QUEUE` | `example-records` | Example record input queue |
 | `EVENTS_EXAMPLE_PUBLISH_QUEUE` | `example-records-processed` | Example record output queue |
 
+### Retry Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROTOFLOW_RETRY_MAX_RETRIES` | `5` | Maximum retry attempts before poison-queue handling |
+| `PROTOFLOW_RETRY_INITIAL_INTERVAL` | `1s` | Initial retry backoff |
+| `PROTOFLOW_RETRY_MAX_INTERVAL` | `16s` | Maximum retry backoff |
+
 ### Protoflow Web UI
 
 Protoflow includes a metadata API for debugging registered handlers.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PROTOFLOW_WEBUI_ENABLED` | `false` | Enable metadata API server |
-| `PROTOFLOW_WEBUI_PORT` | `8085` | Metadata API port |
+| `PROTOFLOW_WEBUI_ENABLED` | `true` | Enable metadata API server |
+| `PROTOFLOW_WEBUI_PORT` | `8081` | Metadata API port |
 
-When enabled, visit `http://localhost:8085/api/handlers` to see registered event handlers and their configuration.
+The checked-in `infra/env/example/app.env.example` overrides the port to `8085` for local compose usage.
+When enabled, visit `http://localhost:<PROTOFLOW_WEBUI_PORT>/api/handlers` to see registered event handlers and their configuration.
+
+### Transport-Specific Connection Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAFKA_BROKERS_URL` | - | Kafka broker list |
+| `KAFKA_CLIENT_ID` | - | Kafka client identifier |
+| `KAFKA_CONSUMER_GROUP_ID` | - | Kafka consumer group |
+| `RABBITMQ_URL` | - | RabbitMQ connection string |
+| `NATS_URL` | - | NATS server URL |
+| `HTTP_SERVER_ADDRESS` | - | Address for Protoflow's HTTP receiver transport |
+| `HTTP_PUBLISHER_URL` | - | Target URL for Protoflow's HTTP publisher transport |
+| `IO_FILE` | - | File path for the local file-based IO transport |
 
 ### Kafka-Specific Configuration
 
@@ -170,7 +197,8 @@ When using LocalStack or AWS:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AWS_REGION` | `us-east-1` | AWS region |
-| `AWS_ENDPOINT` | - | Override endpoint (for LocalStack) |
+| `AWS_ENDPOINT_URL` | - | Override endpoint (for LocalStack) |
+| `AWS_ACCOUNT_ID` | - | AWS account identifier used by local/provisioned resources |
 | `AWS_ACCESS_KEY_ID` | - | AWS access key |
 | `AWS_SECRET_ACCESS_KEY` | - | AWS secret key |
 
@@ -259,6 +287,7 @@ infra/env/
 2. Customize `infra/env/*.env` for your local setup
 3. Use `LOGGER=pretty` for readable local logs
 4. Enable Protoflow Web UI with `PROTOFLOW_WEBUI_ENABLED=true`
+5. Treat the example env files as local defaults, not production-safe settings
 
 ### Production
 
@@ -268,6 +297,7 @@ infra/env/
 4. Enable TLS/HTTPS
 5. Set appropriate timeouts
 6. Hide sensitive headers with `APP_SERVER_HIDE_HEADERS`
+7. Disable or restrict the Protoflow metadata API outside trusted environments
 
 ## Troubleshooting
 
