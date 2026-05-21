@@ -16,6 +16,7 @@ type AppLogic struct {
 	log           *slog.Logger
 	eventProducer protoflow.Producer
 	exampleTopic  string
+	validator     *events.Validator
 }
 
 func NewAppLogic(
@@ -24,10 +25,16 @@ func NewAppLogic(
 	eventsCfg *events.Config,
 	producer protoflow.Producer,
 ) (*AppLogic, error) {
+	validator, err := events.NewValidator()
+	if err != nil {
+		return nil, err
+	}
+
 	appLogic := &AppLogic{
 		db:            db,
 		log:           logger,
 		eventProducer: producer,
+		validator:     validator,
 	}
 	if eventsCfg != nil {
 		appLogic.exampleTopic = eventsCfg.ExampleConsumeQueue

@@ -2,6 +2,7 @@ edition = "2023";
 
 package domain.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/descriptor.proto";
 import "google/type/date.proto";
 
@@ -9,26 +10,133 @@ option features.field_presence = IMPLICIT;
 option go_package = "drblury/event-driven-service/internal/domain";
 
 // ExampleRecord demonstrates the payload this sample service works with.
+//
+// Validation showcase:
+//   - record_id: non-empty string with UUID format (CEL regex — impossible in plain JSON Schema)
+//   - title: 3–100 characters (built-in range constraint)
+//   - description: optional, max 500 characters
+//   - tags: at most 10 items, each 1–30 characters, no duplicates (CEL all+filter — CEL advantage)
+//   - cross-field CEL: when tags are provided, meta.requested_by must be set
 message ExampleRecord {
-  string          record_id   = 1;
-  string          title       = 2;
-  string          description = 3;
-  ExampleMeta     meta        = 4;
-  repeated string tags        = 5;
+  option (buf.validate.message).cel = {
+    id: "example_record.tags_require_meta"
+    message: "meta.requested_by must be set when tags are specified"
+    expression: "this.tags.size() == 0 || this.meta.requested_by.size() > 0"
+  };
+
+  string record_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 36,
+    (buf.validate.field).cel = {
+      id: "record_id.uuid_format"
+      message: "record_id must be a valid UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+      expression: "this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    }
+  ];
+
+  string title = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  string description = 3 [
+    (buf.validate.field).string.max_len = 500,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+
+  ExampleMeta meta = 4;
+
+  // CEL uniqueness check via all()+filter() — not expressible in OpenAPI JSON Schema
+  repeated string tags = 5 [
+    (buf.validate.field).repeated.max_items = 10,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 30,
+    (buf.validate.field).cel = {
+      id: "tags.no_duplicates"
+      message: "tags must be unique (no duplicates allowed)"
+      expression: "this.all(x, this.filter(y, y == x).size() == 1)"
+    }
+  ];
 }
 
 // ExampleMeta groups together additional sample fields.
+//
+// Validation showcase:
+//   - requested_by: 2–64 characters, only alphanumeric/dots/underscores/hyphens (CEL regex)
+//   - priority: 1–5 range (built-in int constraint)
+//   - desired_start_date: when present, year must be ≥ 2020 (message-level CEL on nested field)
+//   - cross-field CEL: if requires_follow_up is true, priority must be ≥ 3
+//     (impossible with field-level OpenAPI validation alone)
 message ExampleMeta {
-  string             requested_by       = 1;
-  google.type.Date   desired_start_date = 2;
-  bool               requires_follow_up = 3;
-  int32              priority           = 4;
+  option (buf.validate.message).cel = {
+    id: "example_meta.follow_up_priority"
+    message: "priority must be at least 3 when follow-up is required"
+    expression: "!this.requires_follow_up || this.priority >= 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "example_meta.start_date_min_year"
+    message: "desired_start_date year must be 2020 or later"
+    expression: "!has(this.desired_start_date) || this.desired_start_date.year >= 2020"
+  };
+
+  string requested_by = 1 [
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 64,
+    (buf.validate.field).cel = {
+      id: "requested_by.format"
+      message: "requested_by must contain only letters, digits, dots, underscores, or hyphens"
+      expression: "this.matches('^[a-zA-Z0-9._-]+$')"
+    }
+  ];
+
+  google.type.Date desired_start_date = 2;
+
+  bool requires_follow_up = 3;
+
+  int32 priority = 4 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 5
+  ];
 }
 
 // ExampleResult is emitted by event handlers once the record was processed.
+//
+// Validation showcase:
+//   - record_id: UUID format (same rule reused — proto annotation DRY)
+//   - status: must be one of a fixed set (CEL `in` operator — enum-like without proto enum)
+//   - note: optional, max 1000 characters
+//   - cross-field CEL: when status is "failed", note must explain the failure reason
+//     (conditional requirement — not possible in field-level OpenAPI validation)
 message ExampleResult {
-  string           record_id    = 1;
-  string           status       = 2;
-  string           note         = 3;
+  option (buf.validate.message).cel = {
+    id: "example_result.failed_requires_note"
+    message: "note is required when status is 'failed' to describe the failure reason"
+    expression: "this.status != 'failed' || this.note.size() > 0"
+  };
+
+  string record_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 36,
+    (buf.validate.field).cel = {
+      id: "result_record_id.uuid_format"
+      message: "record_id must be a valid UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+      expression: "this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    }
+  ];
+
+  // CEL `in` operator validates against an allowed set — cleaner than multiple enum values
+  string status = 2 [
+    (buf.validate.field).cel = {
+      id: "status.valid_value"
+      message: "status must be one of: pending, processing, completed, failed"
+      expression: "this in ['pending', 'processing', 'completed', 'failed']"
+    }
+  ];
+
+  string note = 3 [
+    (buf.validate.field).string.max_len = 1000,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+
   google.type.Date processed_on = 4;
 }

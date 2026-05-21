@@ -9,8 +9,12 @@ import (
 	"github.com/drblury/protoflow"
 )
 
-// HandleExample persists the received example payload. Token handling is left as an
-// exercise for service integrators so the sample stays vendor-neutral.
+// HandleExample validates, then persists the received example payload.
+//
+// Domain validation via protovalidate runs before any I/O so that invalid
+// messages are rejected early with structured error details. This showcases
+// how protovalidate CEL rules (defined once in the .proto file) protect the
+// entire service stack: API → usecase → event layer.
 //
 // NOTE: The token parameter is intentionally unused in this reference implementation.
 // Integrators should implement proper token validation (e.g., JWT verification,
@@ -22,6 +26,17 @@ func (a *AppLogic) HandleExample(ctx context.Context, record *domain.ExampleReco
 	if record == nil {
 		return errors.New("example payload is required")
 	}
+
+	// Validate the domain record against the protovalidate rules declared in
+	// the .proto file (UUID format, field lengths, cross-field CEL, etc.).
+	// Validation errors are returned as domain.ErrValidations so the API
+	// layer can map them directly to HTTP 400 without any extra logic.
+	if a.validator != nil {
+		if err := a.validator.Validate(record); err != nil {
+			return err
+		}
+	}
+
 	// TODO: Implement token validation for your authentication scheme.
 	// Example: if err := validateToken(ctx, token); err != nil { return err }
 	_ = token
