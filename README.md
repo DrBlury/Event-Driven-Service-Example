@@ -39,7 +39,7 @@ This repository is a from-scratch reference implementation of a production-style
 
 ### Prerequisites
 
-- Go 1.25.4+
+- Go 1.25.9+
 - Docker + Docker Compose
 - [Task](https://taskfile.dev/) CLI (`brew install go-task/tap/go-task` on macOS)
 - Optional: Terraform, act, Redocly CLI, Buf (these run via containers but installing locally speeds things up)
